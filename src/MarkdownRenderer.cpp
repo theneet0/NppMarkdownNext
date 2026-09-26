@@ -174,90 +174,90 @@ HRESULT MarkdownRenderer::CreateDeviceResources() {
     SafeRelease(&m_pBrushBtnHover);
 
     if (m_isDarkMode) {
-        // Modern Dark Palette (VS Code / GitHub Dark inspired)
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x18181C), &m_pBrushBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xDFDFE6), &m_pBrushText);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x569CD6), &m_pBrushH1);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x4EC9B0), &m_pBrushH2);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xDCDCAA), &m_pBrushH3);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x121215), &m_pBrushCodeBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xD4D4D4), &m_pBrushCodeText);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2D2D35), &m_pBrushCodeBorder);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xC586C0), &m_pBrushKeyword);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x4EC9B0), &m_pBrushType);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xCE9178), &m_pBrushString);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x6A9955), &m_pBrushComment);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xB5CEA8), &m_pBrushNumber);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x202026), &m_pBrushQuoteBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x007ACC), &m_pBrushQuoteBar);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2D2D36), &m_pBrushBorder);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x22222A), &m_pBrushTableHdrBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1A1A20), &m_pBrushTableAltBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x58A6FF), &m_pBrushLink);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x79C0FF), &m_pBrushLinkHover);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x25252E), &m_pBrushCheckboxBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x4E4E5E), &m_pBrushCheckboxBorder);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x4EC9B0), &m_pBrushCheckboxCheck);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x262630), &m_pBrushBtnBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x363644), &m_pBrushBtnHover);
+        // Material Design 3 Dark Palette
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x141218), &m_pBrushBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xE6E0E9), &m_pBrushText);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xADC6FF), &m_pBrushH1);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xE6E0E9), &m_pBrushH2);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xCAC4D0), &m_pBrushH3);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x211F26), &m_pBrushCodeBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xE6E0E9), &m_pBrushCodeText);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x49454F), &m_pBrushCodeBorder);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFB4AB), &m_pBrushKeyword);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xDEBCDF), &m_pBrushType);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x4ADE80), &m_pBrushString);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x938F99), &m_pBrushComment);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xADC6FF), &m_pBrushNumber);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1D1B20), &m_pBrushQuoteBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xADC6FF), &m_pBrushQuoteBar);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x49454F), &m_pBrushBorder);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2B2930), &m_pBrushTableHdrBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x211F26), &m_pBrushTableAltBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xADC6FF), &m_pBrushLink);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xD8E2FF), &m_pBrushLinkHover);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1D1B20), &m_pBrushCheckboxBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x938F99), &m_pBrushCheckboxBorder);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xADC6FF), &m_pBrushCheckboxCheck);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2B2930), &m_pBrushBtnBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x36343B), &m_pBrushBtnHover);
 
-        // Alert Callouts (Dark Mode)
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1C2836), &m_pBrushAlertNoteBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2F81F7), &m_pBrushAlertNoteBar);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x162D20), &m_pBrushAlertTipBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2EA043), &m_pBrushAlertTipBar);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x261E33), &m_pBrushAlertImportantBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xA371F7), &m_pBrushAlertImportantBar);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2E2214), &m_pBrushAlertWarningBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xD29922), &m_pBrushAlertWarningBar);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x31191B), &m_pBrushAlertCautionBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xF85149), &m_pBrushAlertCautionBar);
+        // Alert Callouts (Material 3 Dark)
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x132438), &m_pBrushAlertNoteBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xADC6FF), &m_pBrushAlertNoteBar);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x142A1D), &m_pBrushAlertTipBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x4ADE80), &m_pBrushAlertTipBar);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x291A38), &m_pBrushAlertImportantBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xC084FC), &m_pBrushAlertImportantBar);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2E200C), &m_pBrushAlertWarningBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFBBF24), &m_pBrushAlertWarningBar);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x301314), &m_pBrushAlertCautionBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xF87171), &m_pBrushAlertCautionBar);
         m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x3E3816), &m_pBrushHighlightBg);
         m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x25252E), &m_pBrushInlineCodeBg);
         m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFF5F56), &m_pBrushMacClose);
         m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFBD2E), &m_pBrushMacMin);
         m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x27C93F), &m_pBrushMacMax);
     } else {
-        // Modern Light Palette (GitHub Light inspired)
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFFFFF), &m_pBrushBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x24292F), &m_pBrushText);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x0969DA), &m_pBrushH1);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1F2328), &m_pBrushH2);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x24292F), &m_pBrushH3);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xF6F8FA), &m_pBrushCodeBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x24292F), &m_pBrushCodeText);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xD0D7DE), &m_pBrushCodeBorder);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xCF222E), &m_pBrushKeyword);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x953800), &m_pBrushType);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x0A3069), &m_pBrushString);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x6E7781), &m_pBrushComment);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x0550AE), &m_pBrushNumber);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xF6F8FA), &m_pBrushQuoteBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x0969DA), &m_pBrushQuoteBar);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xD0D7DE), &m_pBrushBorder);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xF6F8FA), &m_pBrushTableHdrBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFAFAFA), &m_pBrushTableAltBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x0969DA), &m_pBrushLink);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1A7F37), &m_pBrushLinkHover);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFFFFF), &m_pBrushCheckboxBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x8C959F), &m_pBrushCheckboxBorder);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x0969DA), &m_pBrushCheckboxCheck);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xEEF1F4), &m_pBrushBtnBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xDFE3E8), &m_pBrushBtnHover);
+        // Material Design 3 Light Palette
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFDFCFF), &m_pBrushBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1D1B20), &m_pBrushText);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x005AC1), &m_pBrushH1);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1D1B20), &m_pBrushH2);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x49454F), &m_pBrushH3);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xF1ECF4), &m_pBrushCodeBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1D1B20), &m_pBrushCodeText);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xCAC4D0), &m_pBrushCodeBorder);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xB3261E), &m_pBrushKeyword);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x7D5260), &m_pBrushType);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x198754), &m_pBrushString);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x79747E), &m_pBrushComment);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x005AC1), &m_pBrushNumber);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xF7F2FA), &m_pBrushQuoteBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x005AC1), &m_pBrushQuoteBar);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xCAC4D0), &m_pBrushBorder);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xECE6EE), &m_pBrushTableHdrBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFDFCFF), &m_pBrushTableAltBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x005AC1), &m_pBrushLink);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x00438F), &m_pBrushLinkHover);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFDFCFF), &m_pBrushCheckboxBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x79747E), &m_pBrushCheckboxBorder);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x005AC1), &m_pBrushCheckboxCheck);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xE6E0E9), &m_pBrushBtnBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xD8E2FF), &m_pBrushBtnHover);
 
-        // Alert Callouts (Light Mode)
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xEDF6FD), &m_pBrushAlertNoteBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x0969DA), &m_pBrushAlertNoteBar);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xEDF9EF), &m_pBrushAlertTipBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1A7F37), &m_pBrushAlertTipBar);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xF7F2FA), &m_pBrushAlertImportantBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x8250DF), &m_pBrushAlertImportantBar);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFFBEA), &m_pBrushAlertWarningBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xBF8700), &m_pBrushAlertWarningBar);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFF0ED), &m_pBrushAlertCautionBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xCF222E), &m_pBrushAlertCautionBar);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFF8C5), &m_pBrushHighlightBg);
-        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xEFF1F3), &m_pBrushInlineCodeBg);
+        // Alert Callouts (Material 3 Light)
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xEDF3FD), &m_pBrushAlertNoteBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x005AC1), &m_pBrushAlertNoteBar);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xEAF7ED), &m_pBrushAlertTipBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x198754), &m_pBrushAlertTipBar);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xF8EFFB), &m_pBrushAlertImportantBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x8338EC), &m_pBrushAlertImportantBar);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFF8E6), &m_pBrushAlertWarningBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xD97706), &m_pBrushAlertWarningBar);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFDF0F0), &m_pBrushAlertCautionBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xDC2626), &m_pBrushAlertCautionBar);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xD8E2FF), &m_pBrushHighlightBg);
+        m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xF1ECF4), &m_pBrushInlineCodeBg);
         m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFF5F56), &m_pBrushMacClose);
         m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFBD2E), &m_pBrushMacMin);
         m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x27C93F), &m_pBrushMacMax);
@@ -457,6 +457,10 @@ void MarkdownRenderer::Layout(float clientWidth) {
                         &pLineLayout
                     );
                     if (pLineLayout) {
+                        if (BiDiEngine::IsParagraphRTL(codeLine)) {
+                            pLineLayout->SetReadingDirection(DWRITE_READING_DIRECTION_RIGHT_TO_LEFT);
+                            pLineLayout->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
+                        }
                         auto tokens = SyntaxHighlighter::Tokenize(codeLine, block.codeLanguage);
                         for (const auto& tok : tokens) {
                             DWRITE_TEXT_RANGE range = { static_cast<UINT32>(tok.start), static_cast<UINT32>(tok.length) };
@@ -512,11 +516,12 @@ void MarkdownRenderer::Layout(float clientWidth) {
                         for (size_t c = 0; c < row.cells.size(); ++c) {
                             IDWriteTextLayout* pCellL = nullptr;
                             IDWriteTextFormat* pFmt = row.isHeader ? m_pFormatTableHeader : m_pFormatTable;
+                            float cellLayoutW = (std::max)(10.0f, colW - (12.0f * m_zoom));
                             m_pDWriteFactory->CreateTextLayout(
                                 row.cells[c].text.c_str(),
                                 static_cast<UINT32>(row.cells[c].text.size()),
                                 pFmt,
-                                colW - (12.0f * m_zoom),
+                                cellLayoutW,
                                 5000.0f,
                                 &pCellL
                             );
@@ -699,25 +704,27 @@ void MarkdownRenderer::Layout(float clientWidth) {
                     // Apply inline styling
                     size_t charPos = 0;
                     for (const auto& span : block.inlines) {
-                        DWRITE_TEXT_RANGE range = { static_cast<UINT32>(charPos), static_cast<UINT32>(span.text.size()) };
-                        if (span.type == InlineStyleType::Bold) {
-                            item.pLayout->SetFontWeight(DWRITE_FONT_WEIGHT_BOLD, range);
-                        } else if (span.type == InlineStyleType::Italic) {
-                            item.pLayout->SetFontStyle(DWRITE_FONT_STYLE_ITALIC, range);
-                        } else if (span.type == InlineStyleType::BoldItalic) {
-                            item.pLayout->SetFontWeight(DWRITE_FONT_WEIGHT_BOLD, range);
-                            item.pLayout->SetFontStyle(DWRITE_FONT_STYLE_ITALIC, range);
-                        } else if (span.type == InlineStyleType::Highlight) {
-                            item.pLayout->SetFontWeight(DWRITE_FONT_WEIGHT_SEMI_BOLD, range);
-                            item.pLayout->SetDrawingEffect(m_pBrushH3, range);
-                        } else if (span.type == InlineStyleType::InlineCode || span.type == InlineStyleType::InlineMath) {
-                            item.pLayout->SetFontFamilyName(L"Consolas", range);
-                            item.pLayout->SetDrawingEffect(m_pBrushType, range);
-                        } else if (span.type == InlineStyleType::Strikethrough) {
-                            item.pLayout->SetStrikethrough(TRUE, range);
-                        } else if (span.type == InlineStyleType::Link) {
-                            item.pLayout->SetUnderline(TRUE, range);
-                            item.pLayout->SetDrawingEffect(m_pBrushLink, range);
+                        if (static_cast<UINT32>(charPos) + static_cast<UINT32>(span.text.size()) <= static_cast<UINT32>(block.rawText.size())) {
+                            DWRITE_TEXT_RANGE range = { static_cast<UINT32>(charPos), static_cast<UINT32>(span.text.size()) };
+                            if (span.type == InlineStyleType::Bold) {
+                                item.pLayout->SetFontWeight(DWRITE_FONT_WEIGHT_BOLD, range);
+                            } else if (span.type == InlineStyleType::Italic) {
+                                item.pLayout->SetFontStyle(DWRITE_FONT_STYLE_ITALIC, range);
+                            } else if (span.type == InlineStyleType::BoldItalic) {
+                                item.pLayout->SetFontWeight(DWRITE_FONT_WEIGHT_BOLD, range);
+                                item.pLayout->SetFontStyle(DWRITE_FONT_STYLE_ITALIC, range);
+                            } else if (span.type == InlineStyleType::Highlight) {
+                                item.pLayout->SetFontWeight(DWRITE_FONT_WEIGHT_SEMI_BOLD, range);
+                                item.pLayout->SetDrawingEffect(m_pBrushH3, range);
+                            } else if (span.type == InlineStyleType::InlineCode || span.type == InlineStyleType::InlineMath) {
+                                item.pLayout->SetFontFamilyName(L"Consolas", range);
+                                item.pLayout->SetDrawingEffect(m_pBrushType, range);
+                            } else if (span.type == InlineStyleType::Strikethrough) {
+                                item.pLayout->SetStrikethrough(TRUE, range);
+                            } else if (span.type == InlineStyleType::Link) {
+                                item.pLayout->SetUnderline(TRUE, range);
+                                item.pLayout->SetDrawingEffect(m_pBrushLink, range);
+                            }
                         }
                         charPos += span.text.size();
                     }
@@ -803,11 +810,11 @@ void MarkdownRenderer::Render() {
             }
 
             case MarkdownBlockType::CodeBlock: {
-                D2D1_ROUNDED_RECT rRect = D2D1::RoundedRect(item.rect, 8.0f, 8.0f);
+                D2D1_ROUNDED_RECT rRect = D2D1::RoundedRect(item.rect, 12.0f * m_zoom, 12.0f * m_zoom);
                 m_pRenderTarget->FillRoundedRectangle(&rRect, m_pBrushCodeBg);
                 m_pRenderTarget->DrawRoundedRectangle(&rRect, m_pBrushCodeBorder, 1.0f);
 
-                // Code Header (macOS window dots + Language badge + Copy button)
+                // Code Header (Material 3 minimal chip + Copy button)
                 float headerH = 28.0f * m_zoom;
                 m_pRenderTarget->DrawLine(
                     D2D1::Point2F(item.rect.left, item.rect.top + headerH),
@@ -815,28 +822,25 @@ void MarkdownRenderer::Render() {
                     m_pBrushCodeBorder, 0.75f
                 );
 
-                // 3 macOS dots
-                float dotRadius = 4.5f * m_zoom;
-                float dotY = item.rect.top + (headerH * 0.5f);
-                float dotX = item.rect.left + (14.0f * m_zoom);
-                m_pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(dotX, dotY), dotRadius, dotRadius), m_pBrushMacClose);
-                m_pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(dotX + (12.0f * m_zoom), dotY), dotRadius, dotRadius), m_pBrushMacMin);
-                m_pRenderTarget->FillEllipse(D2D1::Ellipse(D2D1::Point2F(dotX + (24.0f * m_zoom), dotY), dotRadius, dotRadius), m_pBrushMacMax);
+                // Language tag / Chip (M3 style)
+                std::wstring langDisplay = item.codeLanguage.empty() ? L"TEXT" : item.codeLanguage;
+                float chipX = item.rect.left + (12.0f * m_zoom);
+                float chipH = 18.0f * m_zoom;
+                float chipY = item.rect.top + ((headerH - chipH) * 0.5f);
+                float chipW = (static_cast<float>(langDisplay.size()) * 7.0f + 14.0f) * m_zoom;
+                D2D1_ROUNDED_RECT chipR = D2D1::RoundedRect(D2D1::RectF(chipX, chipY, chipX + chipW, chipY + chipH), 4.0f * m_zoom, 4.0f * m_zoom);
+                m_pRenderTarget->FillRoundedRectangle(&chipR, m_pBrushBtnBg);
+                m_pRenderTarget->DrawRoundedRectangle(&chipR, m_pBrushCodeBorder, 0.5f);
+                m_pRenderTarget->DrawTextW(
+                    langDisplay.c_str(),
+                    static_cast<UINT32>(langDisplay.size()),
+                    m_pFormatBadge,
+                    &chipR.rect,
+                    m_pBrushComment
+                );
 
-                // Language tag
-                if (!item.codeLanguage.empty()) {
-                    D2D1_RECT_F langRect = D2D1::RectF(dotX + (38.0f * m_zoom), item.rect.top + 4.0f, item.rect.left + 250.0f, item.rect.top + headerH);
-                    m_pRenderTarget->DrawTextW(
-                        item.codeLanguage.c_str(),
-                        static_cast<UINT32>(item.codeLanguage.size()),
-                        m_pFormatBadge,
-                        &langRect,
-                        m_pBrushComment
-                    );
-                }
-
-                // Copy button
-                D2D1_ROUNDED_RECT btnR = D2D1::RoundedRect(item.copyBtnRect, 4.0f, 4.0f);
+                // Copy button (M3 pill style)
+                D2D1_ROUNDED_RECT btnR = D2D1::RoundedRect(item.copyBtnRect, 6.0f * m_zoom, 6.0f * m_zoom);
                 m_pRenderTarget->FillRoundedRectangle(&btnR, item.isCopyBtnHovered ? m_pBrushBtnHover : m_pBrushBtnBg);
                 m_pRenderTarget->DrawRoundedRectangle(&btnR, m_pBrushCodeBorder, 0.75f);
                 const wchar_t* copyLabel = item.isCopiedAnim ? L"✓ Copied" : L"Copy";

@@ -377,24 +377,23 @@ void NppMarkdownNext::ToggleBiDi() {
 
 void NppMarkdownNext::ShowAbout() {
     const wchar_t* aboutMsg =
-        L"NppMarkdownNext - Modern Native Edition (2026)\n"
-        L"Version 1.0.1 (x64 / x86 Pure C++26)\n\n"
-        L"Ultra-lightweight Notepad++ Markdown preview panel.\n"
-        L"Engine: Direct2D 1.1 + DirectWrite GPU Hardware Accelerated\n"
+        L"NppMarkdownNext (Native C++ Modern Edition)\n"
+        L"Version 1.0.4 (x64 / x86 / ARM64)\n\n"
+        L"Next-generation native Markdown live preview panel for Notepad++.\n\n"
         L"Features:\n"
-        L"  • Zero .NET / Zero Chromium Child Processes (RAM < 8 MB)\n"
-        L"  • First-class Persian / RTL BiDi & Inline Code Isolation\n"
-        L"  • Persian Numerals in Ordered Lists & Vazirmatn Typography\n"
-        L"  • GitHub & Persian Alert Callouts ([!NOTE], [!نکته], etc.)\n"
-        L"  • GFM Tables, Task Lists, Syntax Highlighting & Copy Button\n"
+        L"  • Dual Engine: Chromium WebView2 + Direct2D Fallback\n"
+        L"  • Material Design 3 Minimal Typography & Theming\n"
+        L"  • Minimal Vector SVG Context Menu & Overlays\n"
+        L"  • Intelligent RTL / BiDi & Persian/Arabic Typography\n"
+        L"  • GFM Tables, Task Lists, Syntax Highlighting & 1-Click Copy\n"
+        L"  • LaTeX / KaTeX Math & Offline Mermaid Diagrams\n"
         L"  • Live Caret & Scrollbar Synchronization\n"
-        L"  • Document Map / Outline (TOC) Navigation\n"
-        L"  • Self-Contained HTML Export & Clipboard Copy\n"
-        L"  • Native Dark / Light Mode Synchronization\n\n"
-        L"Original concept by theneet0 & mohzy83\n"
-        L"Modernized into C++26 by Google DeepMind Antigravity.";
+        L"  • Responsive Table of Contents & In-Page Search\n"
+        L"  • Standalone HTML Export & PDF Printing\n\n"
+        L"Author: theneet0\n"
+        L"Licensed under the MIT License";
 
-    MessageBox(m_nppData._nppHandle, aboutMsg, L"About Markdown Panel", MB_OK | MB_ICONINFORMATION);
+    MessageBox(m_nppData._nppHandle, aboutMsg, L"About Markdown Next", MB_OK | MB_ICONINFORMATION);
 }
 
 void NppMarkdownNext::RequestRenderDebounced() {

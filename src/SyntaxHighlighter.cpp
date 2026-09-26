@@ -77,11 +77,16 @@ std::vector<HighlightToken> SyntaxHighlighter::Tokenize(const std::wstring& line
     std::wstring lowerLang = language;
     std::transform(lowerLang.begin(), lowerLang.end(), lowerLang.begin(), ::towlower);
 
+    if (lowerLang == L"text" || lowerLang == L"txt" || lowerLang == L"plaintext" || lowerLang == L"none") {
+        return tokens;
+    }
+
     bool isPy = (lowerLang == L"python" || lowerLang == L"py");
     bool isJs = (lowerLang == L"js" || lowerLang == L"javascript" || lowerLang == L"ts" || lowerLang == L"typescript");
     bool isSh = (lowerLang == L"bash" || lowerLang == L"sh" || lowerLang == L"shell" || lowerLang == L"powershell" || lowerLang == L"ps1" || lowerLang == L"zsh");
     bool isYaml = (lowerLang == L"yaml" || lowerLang == L"yml");
     bool isSql = (lowerLang == L"sql");
+    bool isCpp = (lowerLang == L"cpp" || lowerLang == L"c++" || lowerLang == L"c" || lowerLang == L"cxx" || lowerLang == L"h" || lowerLang == L"hpp" || lowerLang == L"cs" || lowerLang == L"java" || lowerLang.empty());
 
     size_t i = 0;
     while (i < line.size()) {
@@ -122,11 +127,13 @@ std::vector<HighlightToken> SyntaxHighlighter::Tokenize(const std::wstring& line
                 token.length = i - start;
                 tokens.push_back(token);
                 continue;
+            } else {
+                i = start; // Restore i so fallback loop doesn't double-skip
             }
         }
 
         // Preprocessor / directive (#include, etc.)
-        if (!isPy && !isSh && !isYaml && ch == L'#' && i == 0) {
+        if (isCpp && ch == L'#' && i == 0) {
             HighlightToken token;
             token.type = HighlightTokenType::Preprocessor;
             token.start = i;
@@ -162,10 +169,13 @@ std::vector<HighlightToken> SyntaxHighlighter::Tokenize(const std::wstring& line
             continue;
         }
 
-        // Numbers: 0x..., 123, 3.14
+        // Numbers: 0x..., 123, 3.14, Persian/Arabic Unicode digits
         if (std::iswdigit(ch)) {
             size_t start = i;
-            while (i < line.size() && (std::iswxdigit(line[i]) || line[i] == L'.' || line[i] == L'x' || line[i] == L'X' || line[i] == L'f' || line[i] == L'u' || line[i] == L'l')) {
+            while (i < line.size() && (std::iswdigit(line[i]) || std::iswxdigit(line[i]) || line[i] == L'.' || line[i] == L'x' || line[i] == L'X' || line[i] == L'f' || line[i] == L'u' || line[i] == L'l' || line[i] == L'L' || line[i] == L'U')) {
+                i++;
+            }
+            if (i == start) {
                 i++;
             }
             HighlightToken token;
@@ -180,6 +190,9 @@ std::vector<HighlightToken> SyntaxHighlighter::Tokenize(const std::wstring& line
         if (std::iswalpha(ch) || ch == L'_') {
             size_t start = i;
             while (i < line.size() && (std::iswalnum(line[i]) || line[i] == L'_')) {
+                i++;
+            }
+            if (i == start) {
                 i++;
             }
             std::wstring word = line.substr(start, i - start);
@@ -221,10 +234,12 @@ std::vector<HighlightToken> SyntaxHighlighter::Tokenize(const std::wstring& line
                 std::transform(lowerWord.begin(), lowerWord.end(), lowerWord.begin(), ::towlower);
                 if (s_sqlKeywords.count(lowerWord)) token.type = HighlightTokenType::Keyword;
                 else token.type = HighlightTokenType::Default;
-            } else {
+            } else if (isCpp) {
                 if (s_cppKeywords.count(word)) token.type = HighlightTokenType::Keyword;
                 else if (s_cppTypes.count(word)) token.type = HighlightTokenType::Type;
                 else token.type = HighlightTokenType::Default;
+            } else {
+                token.type = HighlightTokenType::Default;
             }
 
             if (token.type != HighlightTokenType::Default) {

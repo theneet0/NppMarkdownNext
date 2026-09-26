@@ -18,7 +18,7 @@
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" />
   </a>
   <img src="https://img.shields.io/badge/C%2B%2B-26%20ISO-ff69b4?logo=cplusplus" alt="C++26" />
-  <img src="https://img.shields.io/badge/platform-Windows%20x64%20%7C%20x86-lightgrey?logo=windows" alt="Platform: Windows" />
+  <img src="https://img.shields.io/badge/platform-Windows%20x64%20%7C%20x86%20%7C%20ARM64-lightgrey?logo=windows" alt="Platform: Windows" />
   <img src="https://img.shields.io/badge/engine-WebView2%20Evergreen%20Chromium-0078d7?logo=microsoftedge" alt="Engine: WebView2" />
 </p>
 
@@ -32,7 +32,8 @@ Traditional Notepad++ Markdown plugins rely on outdated Internet Explorer (Tride
 
 - 🚀 **Chromium Evergreen Power**: Backed by Microsoft WebView2 for pixel-perfect web standards and sub-millisecond render updates.
 - 🛡️ **Hardware Direct2D Fallback**: Zero external runtime requirements; gracefully falls back to a GPU-accelerated Direct2D/DirectWrite rendering engine if WebView2 is absent.
-- 🌐 **First-Class Smart BiDi Engine**: Unmatched support for Persian, Arabic, Hebrew, and mixed bidirectional technical documents with zero punctuation inversion or path flipping.
+- 🎨 **Material Design 3 (Material You)**: Sleek, minimal elevation tokens, tonal containers, and unified dark/light theme palettes.
+- 🌐 **First-Class Smart BiDi Engine**: Unmatched support for Persian, Arabic, and mixed bidirectional technical documents with line-by-line BiDi isolation in code blocks.
 - 📐 **Mathematics & Diagrams**: Instant offline **KaTeX** math formulas and **Mermaid.js** flowcharts & architecture diagrams.
 - 🌓 **Dynamic Dark Mode**: Synchronizes seamlessly with Notepad++ Dark Mode in real time.
 - 🔒 **100% Offline & Private**: Zero tracking, zero telemetry, and zero remote CDN latency.
@@ -44,13 +45,14 @@ Traditional Notepad++ Markdown plugins rely on outdated Internet Explorer (Tride
 | Feature | Description |
 | :--- | :--- |
 | **🚀 Zero-Latency Live Preview** | Debounced background parsing and incremental in-place DOM diffing provide instant live preview while typing. |
-| **🌐 Smart BiDi Engine** | Autonomous paragraph direction detection (RTL/LTR), Persian glyph normalization, and inline code isolation (no flipped `/usr/local/bin` paths). |
+| **🎨 Material Design 3 Theming** | Ergonomic cards, tonal surfaces, and clean typography in both Light and Dark modes. |
+| **🌐 Smart BiDi Engine** | Autonomous paragraph direction detection (RTL/LTR), Persian glyph normalization, and line-by-line isolation in code blocks. |
 | **📐 KaTeX LaTeX Math** | Render inline math (`$...$`) and display blocks (`$$...$$`) with crisp KaTeX typography without internet access. |
 | **📊 Mermaid UML & Diagrams** | Render architecture diagrams, sequence charts, Gantt timelines, and class graphs directly from fenced code blocks (` ```mermaid `). |
-| **🎨 macOS-Styled Code Blocks** | Fenced code blocks feature three-button window decorations, language chips, syntax highlighting, and 1-click clipboard copy. |
+| **💻 Minimal M3 Code Blocks** | Fenced code blocks feature clean M3 tonal container cards, syntax language chips, and 1-click clipboard copy. |
 | **📑 Non-Overlapping TOC Drawer** | Slide-out Table of Contents drawer with smooth anchor navigation that never obstructs your markdown content. |
 | **🔍 In-Page Search Bar** | Press `Ctrl+F` or click Search to find text across the rendered preview with real-time match count and highlighting. |
-| **🖱️ Modern Context Menu** | Right-click anywhere for quick zoom in/out/reset, Smart BiDi toggle, HTML export, and clipboard copy. |
+| **🖱️ Minimal Vector SVG Context Menu** | Right-click anywhere for sleek, vector-driven controls: zoom in/out/reset, Smart BiDi toggle, HTML export, and PDF printing. |
 | **⚡ Bidirectional Caret Sync** | Keep your place automatically: scrolling or clicking in Notepad++ syncs the preview, and clicking headers jumps to the source. |
 | **💾 Standalone HTML Export** | Export the complete rendered document (including themes, math, and diagrams) into a single portable HTML file. |
 

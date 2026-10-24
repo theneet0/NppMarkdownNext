@@ -2,6 +2,7 @@
 #include "../include/BiDiEngine.h"
 #include "../include/HtmlExporter.h"
 #include "../include/Resource.h"
+#include "../include/NppLog.h"
 #include <commctrl.h>
 #include <shlwapi.h>
 #include <commdlg.h>
@@ -10,20 +11,6 @@
 namespace {
 const wchar_t* s_panelClassName = L"NppMarkdownNextWindowClass";
 const wchar_t* s_renderCanvasClassName = L"NppMarkdownCanvasWindowClass";
-
-#ifdef _DEBUG
-void NppLog(const char* fmt, ...) {
-    char buf[512];
-    va_list args;
-    va_start(args, fmt);
-    vsnprintf(buf, sizeof(buf), fmt, args);
-    va_end(args);
-    OutputDebugStringA(buf);
-    OutputDebugStringA("\n");
-}
-#else
-inline void NppLog(const char*, ...) {}
-#endif
 }
 
 NppMarkdownNext& NppMarkdownNext::Instance() {
@@ -64,6 +51,45 @@ void NppMarkdownNext::OnNppReady() {
     if (cmdOutline > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdOutline, (LPARAM)(m_config.showOutline ? TRUE : FALSE));
     int cmdBiDi = GetPluginCmdId(CMD_TOGGLE_BIDI);
     if (cmdBiDi > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdBiDi, (LPARAM)(m_config.isSmartBiDiEnabled ? TRUE : FALSE));
+
+    SyncThemeMenuItems();
+}
+
+void NppMarkdownNext::SyncThemeMenuItems() {
+    struct ThemeCmd { PreviewTheme theme; int cmdId; };
+    ThemeCmd themeCmds[] = {
+        { PreviewTheme::FollowNpp, CMD_THEME_FOLLOW_NPP },
+        { PreviewTheme::Light, CMD_THEME_LIGHT },
+        { PreviewTheme::Dark, CMD_THEME_DARK },
+        { PreviewTheme::Sepia, CMD_THEME_SEPIA },
+        { PreviewTheme::Monokai, CMD_THEME_MONOKAI },
+        { PreviewTheme::Dracula, CMD_THEME_DRACULA },
+        { PreviewTheme::SolarizedLight, CMD_THEME_SOLARIZED_LIGHT },
+        { PreviewTheme::SolarizedDark, CMD_THEME_SOLARIZED_DARK },
+        { PreviewTheme::Nord, CMD_THEME_NORD },
+        { PreviewTheme::GitHubLight, CMD_THEME_GITHUB_LIGHT },
+        { PreviewTheme::GitHubDark, CMD_THEME_GITHUB_DARK },
+        { PreviewTheme::VSCodeDark, CMD_THEME_VSCODE_DARK },
+    };
+    for (auto& tc : themeCmds) {
+        int cmdId = GetPluginCmdId(tc.cmdId);
+        if (cmdId > 0) {
+            SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdId,
+                        (LPARAM)(m_config.theme == tc.theme ? TRUE : FALSE));
+        }
+    }
+
+    // Bearded: the plain entry means the classic variation, the Gold entry its own variation
+    int cmdBearded = GetPluginCmdId(CMD_THEME_BEARDED);
+    if (cmdBearded > 0) {
+        bool checked = (m_config.theme == PreviewTheme::Bearded) && m_config.beardedVariant.empty();
+        SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdBearded, (LPARAM)(checked ? TRUE : FALSE));
+    }
+    int cmdBeardedGold = GetPluginCmdId(CMD_THEME_BEARDED_GOLD);
+    if (cmdBeardedGold > 0) {
+        bool checked = (m_config.theme == PreviewTheme::Bearded) && (m_config.beardedVariant == L"gold-d-raynh");
+        SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdBeardedGold, (LPARAM)(checked ? TRUE : FALSE));
+    }
 }
 
 void NppMarkdownNext::EnsurePanelRegistered() {
@@ -130,17 +156,64 @@ bool NppMarkdownNext::CreatePanelWindow() {
     m_isPanelRegistered = true;
 
     // Dark mode check from Notepad++
-    bool isNppDark = SendMessage(m_nppData._nppHandle, NPPM_ISDARKMODEENABLED, 0, 0) != 0;
-    bool isDark = (m_config.darkModeOverride == 1) || (m_config.darkModeOverride == -1 && isNppDark);
+    bool isDark = (EffectiveTheme() == PreviewTheme::Dark);
 
     // Try initializing modern WebView2 (Chromium Evergreen) first
     wchar_t tempPath[MAX_PATH] = { 0 };
     GetTempPathW(MAX_PATH, tempPath);
     std::wstring userDataDir = std::wstring(tempPath) + L"NppMarkdownNext_WebView2";
 
+    // Fallbacks for the two silent startup failures:
+    //  - page becomes ready after an early render attempt -> re-render once loaded
+    //  - async WebView2 init fails -> switch to Direct2D instead of a blank panel
+    m_webViewViewer.SetPageReadyCallback([this]() {
+        // Push settings state (BiDi / dark mode / zoom %) into the freshly
+        // loaded page so the settings popover shows correct values.
+        m_webViewViewer.SyncUiState(m_config.isSmartBiDiEnabled, m_config.darkModeOverride,
+                                    static_cast<int>(m_config.zoomLevel * 100.0f + 0.5f));
+        if (m_openSettingsPending) {
+            m_openSettingsPending = false;
+            m_webViewViewer.ExecuteScript(L"if (typeof openSettingsPopover === 'function') openSettingsPopover();");
+        }
+        m_lastRawContent.clear();
+        if (!m_isPanelVisible) return;
+        NppLog("WebView2 page ready, re-rendering");
+        m_renderRetryCount = 0;
+        if (!ExecuteRender() && m_hPanel) {
+            SetTimer(m_hPanel, IDT_RENDER_RETRY, IDT_RENDER_RETRY_DELAY_MS, nullptr);
+        }
+    });
+    m_webViewViewer.SetInitFailedCallback([this]() {
+        if (!m_useWebView2) return;
+        NppLog("WebView2 async initialization failed, falling back to Direct2D");
+        m_useWebView2 = false;
+        m_renderer.Initialize(m_hPanel);
+        m_renderer.SetZoom(m_config.zoomLevel);
+        m_renderer.SetDarkMode(EffectiveTheme() == PreviewTheme::Dark);
+        m_lastRawContent.clear();
+        m_renderRetryCount = 0;
+        if (!ExecuteRender() && m_hPanel) {
+            SetTimer(m_hPanel, IDT_RENDER_RETRY, IDT_RENDER_RETRY_DELAY_MS, nullptr);
+        }
+    });
+    // Startup race guard: whatever order the panel-show / WebView2-init / buffer
+    // restore events arrive in, once the controller is usable we force a render.
+    // Without this a render that ran too early (empty buffer, viewer not ready)
+    // leaves a blank white panel until some later buffer event.
+    m_webViewViewer.SetInitCompletedCallback([this]() {
+        NppLog("WebView2 init completed, forceRender visible=%d", (int)m_isPanelVisible);
+        if (!m_isPanelVisible) return;
+        m_lastRawContent.clear();
+        m_renderRetryCount = 0;
+        if (!ExecuteRender() && m_hPanel) {
+            SetTimer(m_hPanel, IDT_RENDER_RETRY, IDT_RENDER_RETRY_DELAY_MS, nullptr);
+        }
+    });
+
     m_useWebView2 = m_webViewViewer.Initialize(m_hPanel, userDataDir);
+    NppLog("CreatePanelWindow: Initialize returned %d (useWebView2=%d)", (int)m_useWebView2, (int)m_useWebView2);
     if (m_useWebView2) {
-        m_webViewViewer.SetDarkMode(isDark);
+        m_webViewViewer.SetTheme(ThemeClassName(EffectiveTheme()), CurrentThemeId());
         m_webViewViewer.SetZoom(m_config.zoomLevel);
         m_webViewViewer.SetCheckboxCallback([this](int lineIdx) {
             HWND hSci = GetCurrentScintilla();
@@ -177,13 +250,33 @@ bool NppMarkdownNext::CreatePanelWindow() {
             ToggleSyncWithCaret();
         });
         m_webViewViewer.SetThemeCallback([this]() {
-            bool isNppDark = SendMessage(m_nppData._nppHandle, NPPM_ISDARKMODEENABLED, 0, 0) != 0;
-            bool curDark = (m_config.darkModeOverride == 1) || (m_config.darkModeOverride == -1 && isNppDark);
-            m_config.darkModeOverride = curDark ? 0 : 1;
-            OnDarkModeChanged();
+            SelectTheme(EffectiveTheme() == PreviewTheme::Dark ? PreviewTheme::Light : PreviewTheme::Dark);
+        });
+        m_webViewViewer.SetSelectThemeCallback([this](const std::wstring& themeName) {
+            PreviewTheme theme = PreviewTheme::FollowNpp;
+            std::wstring beardedVariant;
+            const std::wstring beardedPrefix = L"bearded-v-";
+            if (themeName == L"light") theme = PreviewTheme::Light;
+            else if (themeName == L"dark") theme = PreviewTheme::Dark;
+            else if (themeName == L"sepia") theme = PreviewTheme::Sepia;
+            else if (themeName == L"monokai") theme = PreviewTheme::Monokai;
+            else if (themeName == L"dracula") theme = PreviewTheme::Dracula;
+            else if (themeName == L"solarized-light") theme = PreviewTheme::SolarizedLight;
+            else if (themeName == L"solarized-dark") theme = PreviewTheme::SolarizedDark;
+            else if (themeName == L"nord") theme = PreviewTheme::Nord;
+            else if (themeName == L"github-light") theme = PreviewTheme::GitHubLight;
+            else if (themeName == L"github-dark") theme = PreviewTheme::GitHubDark;
+            else if (themeName == L"vscode-dark") theme = PreviewTheme::VSCodeDark;
+            else if (themeName.rfind(beardedPrefix, 0) == 0) {
+                theme = PreviewTheme::Bearded;
+                beardedVariant = themeName.substr(beardedPrefix.length());
+            }
+            else if (themeName == L"bearded") theme = PreviewTheme::Bearded;
+            SelectTheme(theme, beardedVariant);
         });
         m_webViewViewer.SetTocCallback([this](bool isOpen) {
             m_config.showOutline = isOpen;
+            m_config.Save(m_configPath);
             int cmdOutline = GetPluginCmdId(CMD_TOGGLE_OUTLINE);
             if (cmdOutline > 0) {
                 SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdOutline, (LPARAM)(isOpen ? TRUE : FALSE));
@@ -194,6 +287,16 @@ bool NppMarkdownNext::CreatePanelWindow() {
         });
         m_webViewViewer.SetBiDiCallback([this]() {
             ToggleBiDi();
+        });
+        m_webViewViewer.SetCopyHtmlCallback([this]() {
+            CopyRenderedHtml();
+        });
+        m_webViewViewer.SetDarkModeCallback([this](int mode) {
+            if (mode < -1 || mode > 1) mode = -1;
+            if (mode == m_config.darkModeOverride) return;
+            m_config.darkModeOverride = mode;
+            m_config.Save(m_configPath);
+            SelectTheme(m_config.theme, m_config.beardedVariant);
         });
         m_webViewViewer.SetZoomInCallback([this]() {
             ZoomIn();
@@ -208,7 +311,12 @@ bool NppMarkdownNext::CreatePanelWindow() {
             m_config.zoomLevel = factor;
             if (m_config.zoomLevel < 0.3f) m_config.zoomLevel = 0.3f;
             if (m_config.zoomLevel > 3.0f) m_config.zoomLevel = 3.0f;
+            m_config.Save(m_configPath);
             m_renderer.SetZoom(m_config.zoomLevel);
+            // Native Ctrl+wheel zoom never goes through SetZoom(), so echo the
+            // state here or the popover's zoom label stays stale.
+            m_webViewViewer.SyncUiState(m_config.isSmartBiDiEnabled, m_config.darkModeOverride,
+                                        static_cast<int>(m_config.zoomLevel * 100.0f + 0.5f));
         });
         NppLog("Modern WebView2 engine initialized successfully");
     } else {
@@ -267,6 +375,26 @@ bool NppMarkdownNext::IsCurrentBufferMarkdown() const {
     return m_config.IsExtensionSupported(ext);
 }
 
+void NppMarkdownNext::OpenSettings() {
+    EnsurePanelRegistered();
+    if (!m_isPanelVisible) {
+        m_isPanelVisible = true;
+        SendMessage(m_nppData._nppHandle, NPPM_DMMSHOW, 0, (LPARAM)m_hPanel);
+        int cmdId = GetPluginCmdId(CMD_TOGGLE_PANEL);
+        if (cmdId > 0) {
+            SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdId, (LPARAM)TRUE);
+        }
+        m_lastRawContent.clear();
+        ExecuteRender();
+    }
+    if (!m_useWebView2) return;
+    if (m_webViewViewer.IsPageReady()) {
+        m_webViewViewer.ExecuteScript(L"if (typeof openSettingsPopover === 'function') openSettingsPopover();");
+    } else {
+        m_openSettingsPending = true;
+    }
+}
+
 void NppMarkdownNext::TogglePanel() {
     NppLog("TogglePanel() enter, current isVisible=%d", (int)m_isPanelVisible);
     bool wasRegistered = m_isPanelRegistered;
@@ -299,12 +427,14 @@ void NppMarkdownNext::TogglePanel() {
 
 void NppMarkdownNext::ToggleSyncWithCaret() {
     m_config.syncWithCaret = !m_config.syncWithCaret;
+    m_config.Save(m_configPath);
     int cmdCaret = GetPluginCmdId(CMD_SYNC_CARET);
     if (cmdCaret > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdCaret, (LPARAM)(m_config.syncWithCaret ? TRUE : FALSE));
 }
 
 void NppMarkdownNext::ToggleOutline() {
     m_config.showOutline = !m_config.showOutline;
+    m_config.Save(m_configPath);
     if (m_useWebView2) {
         if (m_config.showOutline) {
             m_webViewViewer.ExecuteScript(L"if (typeof openToc === 'function') openToc();");
@@ -325,7 +455,7 @@ void NppMarkdownNext::ToggleOutline() {
 
 void NppMarkdownNext::CopyRenderedHtml() {
     std::wstring title = L"Markdown Preview";
-    HtmlExporter::CopyToClipboard(m_hPanel, m_currentDoc, title, m_renderer.IsDarkMode());
+    HtmlExporter::CopyToClipboard(m_hPanel, m_currentDoc, title, m_config.theme, m_config.beardedVariant);
 }
 
 void NppMarkdownNext::SaveAsHtml() {
@@ -339,13 +469,14 @@ void NppMarkdownNext::SaveAsHtml() {
     ofn.lpstrDefExt = L"html";
 
     if (GetSaveFileNameW(&ofn)) {
-        HtmlExporter::SaveToFile(fileName, m_currentDoc, L"Markdown Export", m_renderer.IsDarkMode());
+        HtmlExporter::SaveToFile(fileName, m_currentDoc, L"Markdown Export", m_config.theme, m_config.beardedVariant);
     }
 }
 
 void NppMarkdownNext::ZoomIn() {
     m_config.zoomLevel += 0.1f;
     if (m_config.zoomLevel > 3.0f) m_config.zoomLevel = 3.0f;
+    m_config.Save(m_configPath);
     if (m_useWebView2) {
         m_webViewViewer.SetZoom(m_config.zoomLevel);
     } else {
@@ -357,6 +488,7 @@ void NppMarkdownNext::ZoomIn() {
 void NppMarkdownNext::ZoomOut() {
     m_config.zoomLevel -= 0.1f;
     if (m_config.zoomLevel < 0.4f) m_config.zoomLevel = 0.4f;
+    m_config.Save(m_configPath);
     if (m_useWebView2) {
         m_webViewViewer.SetZoom(m_config.zoomLevel);
     } else {
@@ -367,6 +499,7 @@ void NppMarkdownNext::ZoomOut() {
 
 void NppMarkdownNext::ZoomReset() {
     m_config.zoomLevel = 1.0f;
+    m_config.Save(m_configPath);
     if (m_useWebView2) {
         m_webViewViewer.SetZoom(m_config.zoomLevel);
     } else {
@@ -377,8 +510,86 @@ void NppMarkdownNext::ZoomReset() {
 
 void NppMarkdownNext::ToggleBiDi() {
     m_config.isSmartBiDiEnabled = !m_config.isSmartBiDiEnabled;
+    m_config.Save(m_configPath);
     int cmdBiDi = GetPluginCmdId(CMD_TOGGLE_BIDI);
     if (cmdBiDi > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdBiDi, (LPARAM)(m_config.isSmartBiDiEnabled ? TRUE : FALSE));
+    ExecuteRender();
+}
+
+PreviewTheme NppMarkdownNext::EffectiveTheme() const {
+    if (m_config.theme != PreviewTheme::FollowNpp) return m_config.theme;
+    bool isNppDark = SendMessage(m_nppData._nppHandle, NPPM_ISDARKMODEENABLED, 0, 0) != 0;
+    bool isDark = (m_config.darkModeOverride == 1) || (m_config.darkModeOverride == -1 && isNppDark);
+    return isDark ? PreviewTheme::Dark : PreviewTheme::Light;
+}
+
+std::wstring NppMarkdownNext::ThemeClassName(PreviewTheme theme) const {
+    switch (theme) {
+        case PreviewTheme::Dark: return L"dark";
+        case PreviewTheme::Sepia: return L"sepia";
+        case PreviewTheme::Monokai: return L"monokai";
+        case PreviewTheme::Dracula: return L"dracula";
+        case PreviewTheme::SolarizedLight: return L"solarized-light";
+        case PreviewTheme::SolarizedDark: return L"solarized-dark";
+        case PreviewTheme::Nord: return L"nord";
+        case PreviewTheme::GitHubLight: return L"github-light";
+        case PreviewTheme::GitHubDark: return L"github-dark";
+        case PreviewTheme::VSCodeDark: return L"vscode-dark";
+        case PreviewTheme::Bearded:
+            if (m_config.beardedVariant.empty()) return L"bearded";
+            return L"bearded-v-" + m_config.beardedVariant;
+        default: return L"";
+    }
+}
+
+std::wstring NppMarkdownNext::CurrentThemeId() const {
+    switch (m_config.theme) {
+        case PreviewTheme::FollowNpp: return L"follow";
+        case PreviewTheme::Light: return L"light";
+        case PreviewTheme::Dark: return L"dark";
+        case PreviewTheme::Sepia: return L"sepia";
+        case PreviewTheme::Monokai: return L"monokai";
+        case PreviewTheme::Dracula: return L"dracula";
+        case PreviewTheme::SolarizedLight: return L"solarized-light";
+        case PreviewTheme::SolarizedDark: return L"solarized-dark";
+        case PreviewTheme::Nord: return L"nord";
+        case PreviewTheme::GitHubLight: return L"github-light";
+        case PreviewTheme::GitHubDark: return L"github-dark";
+        case PreviewTheme::VSCodeDark: return L"vscode-dark";
+        case PreviewTheme::Bearded:
+            if (m_config.beardedVariant.empty()) return L"bearded";
+            return L"bearded-v-" + m_config.beardedVariant;
+        default: return L"";
+    }
+}
+
+void NppMarkdownNext::SelectTheme(PreviewTheme theme, const std::wstring& beardedVariant) {
+    m_config.theme = theme;
+    // Variant ids are generated as [a-z0-9-]; drop anything else from config/JS input
+    std::wstring variant;
+    if (theme == PreviewTheme::Bearded) {
+        for (wchar_t ch : beardedVariant) {
+            if ((ch >= L'a' && ch <= L'z') || (ch >= L'0' && ch <= L'9') || ch == L'-') variant.push_back(ch);
+        }
+    }
+    m_config.beardedVariant = variant;
+    NppLog("SelectTheme: theme=%d variant=%s", static_cast<int>(theme),
+           BiDiEngine::WideToUtf8(variant).c_str());
+    m_config.Save(m_configPath);
+    SyncThemeMenuItems();
+
+    PreviewTheme effective = EffectiveTheme();
+    bool isDark = (effective == PreviewTheme::Dark);
+
+    if (m_useWebView2) {
+        m_webViewViewer.SetTheme(ThemeClassName(effective), CurrentThemeId());
+    }
+
+    m_renderer.SetDarkMode(isDark);
+    if (m_hPanel) {
+        InvalidateRect(m_hPanel, nullptr, TRUE);
+    }
+
     ExecuteRender();
 }
 
@@ -409,14 +620,20 @@ void NppMarkdownNext::RequestRenderDebounced() {
     SetTimer(m_hPanel, IDT_RENDER_DEBOUNCE, RENDER_DEBOUNCE_DELAY_MS, nullptr);
 }
 
-void NppMarkdownNext::ExecuteRender() {
+bool NppMarkdownNext::ExecuteRender() {
     HWND hSci = GetCurrentScintilla();
-    if (!hSci) return;
+    NppLog("ExecuteRender: hSci=%p visible=%d wv2=%d ready=%d",
+           (void*)hSci, (int)m_isPanelVisible, (int)m_useWebView2,
+           (int)m_webViewViewer.IsPageReady());
+    if (!hSci) return false;
 
     std::string utf8Content = GetScintillaText(hSci);
     std::wstring wideContent = BiDiEngine::Utf8ToWide(utf8Content);
+    NppLog("ExecuteRender: contentBytes=%u cacheWide=%u",
+           (unsigned)utf8Content.size(), (unsigned)m_lastRawContent.size());
 
     if (wideContent == m_lastRawContent) {
+        NppLog("ExecuteRender: cache hit, caret-sync only");
         // Only sync caret position if text didn't change
         if (m_config.syncWithCaret) {
             int line = GetScintillaCaretLine(hSci);
@@ -426,7 +643,7 @@ void NppMarkdownNext::ExecuteRender() {
                 m_renderer.ScrollToSourceLine(line);
             }
         }
-        return;
+        return true;
     }
 
     m_lastRawContent = wideContent;
@@ -438,24 +655,29 @@ void NppMarkdownNext::ExecuteRender() {
     std::wstring docTitle = PathFindFileNameW(currentPath.c_str());
     if (docTitle.empty()) docTitle = L"Markdown Preview";
 
-    bool isDark = (m_config.darkModeOverride == 1) ||
-                  (m_config.darkModeOverride == -1 && SendMessage(m_nppData._nppHandle, NPPM_ISDARKMODEENABLED, 0, 0) != 0);
+    PreviewTheme effective = EffectiveTheme();
 
     if (m_useWebView2) {
         auto components = HtmlExporter::GeneratePreviewComponents(
             m_currentDoc,
             docTitle,
-            isDark,
+            effective,
             m_config.zoomLevel,
-            m_config.syncWithCaret
+            m_config.syncWithCaret,
+            m_config.darkModeOverride,
+            m_config.beardedVariant
         );
 
         if (m_webViewViewer.IsPageReady()) {
             std::string titleUtf8 = BiDiEngine::WideToUtf8(docTitle);
-            if (!m_webViewViewer.UpdateContent(components.bodyHtml, components.tocHtml, titleUtf8, isDark)) {
+            if (!m_webViewViewer.UpdateContent(components.bodyHtml, components.tocHtml, titleUtf8,
+                                               ThemeClassName(effective))) {
+                NppLog("ExecuteRender: UpdateContent failed, full navigation");
                 m_webViewViewer.SetHtmlContent(components.fullHtml);
             }
         } else {
+            NppLog("ExecuteRender: page not ready, full SetHtmlContent len=%u",
+                   (unsigned)components.fullHtml.size());
             m_webViewViewer.SetHtmlContent(components.fullHtml);
         }
 
@@ -479,6 +701,8 @@ void NppMarkdownNext::ExecuteRender() {
 
         InvalidateRect(m_hPanel, nullptr, FALSE);
     }
+
+    return true;
 }
 
 void NppMarkdownNext::OnNotification(SCNotification* notifyCode) {
@@ -508,12 +732,10 @@ void NppMarkdownNext::OnNotification(SCNotification* notifyCode) {
 
 void NppMarkdownNext::OnDarkModeChanged() {
     if (!m_isNppReady) return;
-    bool isDark = SendMessage(m_nppData._nppHandle, NPPM_ISDARKMODEENABLED, 0, 0) != 0;
-    if (m_config.darkModeOverride != -1) {
-        isDark = (m_config.darkModeOverride == 1);
-    }
+    PreviewTheme effective = EffectiveTheme();
+    bool isDark = (effective == PreviewTheme::Dark);
     if (m_useWebView2) {
-        m_webViewViewer.SetDarkMode(isDark);
+        m_webViewViewer.SetTheme(ThemeClassName(effective), CurrentThemeId());
     }
     m_renderer.SetDarkMode(isDark);
     if (m_hPanel) {
@@ -523,6 +745,7 @@ void NppMarkdownNext::OnDarkModeChanged() {
 
 void NppMarkdownNext::OnBufferActivated() {
     if (!m_isNppReady) return;
+    NppLog("OnBufferActivated: visible=%d", (int)m_isPanelVisible);
 
     if (m_isPanelVisible) {
         m_lastRawContent.clear();
@@ -543,10 +766,6 @@ LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wPara
 
     if (!self) return DefWindowProc(hwnd, msg, wParam, lParam);
 
-    if (msg != WM_SETCURSOR && msg != WM_NCHITTEST && msg != WM_MOUSEMOVE) {
-        NppLog("PanelWndProc msg=0x%04X, wp=0x%p, lp=0x%p", msg, (void*)wParam, (void*)lParam);
-    }
-
     switch (msg) {
         case WM_SHOWWINDOW: {
             NppLog("PanelWndProc WM_SHOWWINDOW wp=%d", (int)wParam);
@@ -557,7 +776,13 @@ LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wPara
             }
             if (self->m_isPanelVisible) {
                 self->m_lastRawContent.clear();
-                self->ExecuteRender();
+                self->m_renderRetryCount = 0;
+                // Startup race: Scintilla may not be reachable yet - retry on a timer
+                bool ok = self->ExecuteRender();
+                NppLog("WM_SHOWWINDOW(TRUE) render=%d", (int)ok);
+                if (!ok) {
+                    SetTimer(hwnd, IDT_RENDER_RETRY, IDT_RENDER_RETRY_DELAY_MS, nullptr);
+                }
             }
             return 0;
         }
@@ -578,6 +803,17 @@ LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wPara
             if (wParam == IDT_RENDER_DEBOUNCE) {
                 KillTimer(hwnd, IDT_RENDER_DEBOUNCE);
                 self->ExecuteRender();
+                return 0;
+            }
+            if (wParam == IDT_RENDER_RETRY) {
+                KillTimer(hwnd, IDT_RENDER_RETRY);
+                bool ok = self->ExecuteRender();
+                NppLog("IDT_RENDER_RETRY try=%d ok=%d", (int)self->m_renderRetryCount, (int)ok);
+                if (!ok && ++self->m_renderRetryCount < 100) {
+                    SetTimer(hwnd, IDT_RENDER_RETRY, IDT_RENDER_RETRY_DELAY_MS, nullptr);
+                } else {
+                    self->m_renderRetryCount = 0;
+                }
                 return 0;
             }
             break;

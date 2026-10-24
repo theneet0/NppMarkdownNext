@@ -873,12 +873,515 @@ math {
     display: block;
 }
 
+/* Floating theme picker button */
+#theme-fab {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9985;
+    background: var(--toolbar-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+#theme-fab:hover {
+    color: var(--link-color);
+    border-color: var(--link-color);
+    transform: rotate(30deg);
+}
+
+body.toc-open #theme-fab {
+    right: 290px;
+}
+
+#theme-popover {
+    position: fixed;
+    right: 16px;
+    bottom: 58px;
+    width: 200px;
+    max-height: 65vh;
+    overflow-y: auto;
+    z-index: 9990;
+    display: none;
+    background: var(--toolbar-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    box-shadow: var(--toolbar-shadow);
+    padding: 6px;
+}
+
+body.toc-open #theme-popover {
+    right: 290px;
+}
+
+.theme-pop-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    padding: 6px 10px 4px;
+    user-select: none;
+}
+
+.theme-pop-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.theme-pop-item:hover {
+    background: rgba(128, 128, 128, 0.16);
+}
+
+.theme-pop-item.checked {
+    color: var(--link-color);
+    font-weight: 600;
+}
+
+.theme-pop-check {
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 14px;
+}
+
+.theme-pop-label {
+    flex: 1;
+}
+
+.theme-pop-arrow {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    padding-left: 8px;
+    opacity: 0.55;
+}
+
 @media print {
-    #custom-context-menu, #search-overlay, #toc-drawer, #toc-backdrop, #toast-msg { display: none !important; }
+    #custom-context-menu, #search-overlay, #toc-drawer, #toc-backdrop, #toast-msg, #theme-fab, #theme-popover { display: none !important; }
     #content-container { padding: 0 !important; max-width: 100% !important; }
     body { background: #ffffff !important; color: #000000 !important; }
 }
 )CSS";
+
+const char* s_themeOverrideCss = R"CSS(
+/* === Theme: Sepia === */
+body.sepia {
+    --bg-page: #f4ecd8;
+    --text-primary: #5b4636;
+    --text-secondary: #8b7355;
+    --border-color: #d4c5a9;
+    --code-bg: #efe6d0;
+    --code-header-bg: #e8dcc0;
+    --code-border: #d4c5a9;
+    --quote-bg: #efe6d0;
+    --quote-bar: #b8860b;
+    --table-alt: #f0e8d5;
+    --table-header: #e8dcc0;
+    --link-color: #8b4513;
+    --toolbar-bg: rgba(244, 236, 216, 0.92);
+    --toolbar-border: #d4c5a9;
+    --toolbar-shadow: 0 4px 20px rgba(91, 70, 54, 0.15);
+    --search-match: #d4a574;
+    --search-active: #b8860b;
+    --alert-note-bg: #e8f0e0;
+    --alert-note-bar: #6b8e23;
+    --alert-tip-bg: #e0f0e0;
+    --alert-tip-bar: #2e8b57;
+    --alert-important-bg: #f0e0f0;
+    --alert-important-bar: #8b008b;
+    --alert-warning-bg: #f5e6d0;
+    --alert-warning-bar: #d2691e;
+    --alert-caution-bg: #f0d0d0;
+    --alert-caution-bar: #b22222;
+    --drawer-bg: #efe6d0;
+}
+body.sepia .hl-keyword { color: #8b0000; }
+body.sepia .hl-type { color: #8b4513; }
+body.sepia .hl-string { color: #2e8b57; }
+body.sepia .hl-comment { color: #8b7355; font-style: italic; }
+body.sepia .hl-number { color: #006400; }
+body.sepia .hl-preprocessor { color: #4b0082; }
+body.sepia .hl-operator { color: #5b4636; }
+
+/* === Theme: Monokai === */
+body.monokai {
+    --bg-page: #272822;
+    --text-primary: #f8f8f2;
+    --text-secondary: #a6a69c;
+    --border-color: #3e3d32;
+    --code-bg: #1e1f1c;
+    --code-header-bg: #3e3d32;
+    --code-border: #49483e;
+    --quote-bg: #1e1f1c;
+    --quote-bar: #a6e22e;
+    --table-alt: #1e1f1c;
+    --table-header: #3e3d32;
+    --link-color: #66d9ef;
+    --toolbar-bg: rgba(39, 40, 34, 0.92);
+    --toolbar-border: #49483e;
+    --toolbar-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --search-match: #49483e;
+    --search-active: #a6e22e;
+    --alert-note-bg: #1a2a1a;
+    --alert-note-bar: #a6e22e;
+    --alert-tip-bg: #1a2a1a;
+    --alert-tip-bar: #a6e22e;
+    --alert-important-bg: #2a1a2a;
+    --alert-important-bar: #ae81ff;
+    --alert-warning-bg: #2a2a1a;
+    --alert-warning-bar: #e6db74;
+    --alert-caution-bg: #2a1a1a;
+    --alert-caution-bar: #f92672;
+    --drawer-bg: #1e1f1c;
+}
+body.monokai .hl-keyword { color: #f92672; }
+body.monokai .hl-type { color: #66d9ef; }
+body.monokai .hl-string { color: #e6db74; }
+body.monokai .hl-comment { color: #75715e; font-style: italic; }
+body.monokai .hl-number { color: #ae81ff; }
+body.monokai .hl-preprocessor { color: #f92672; }
+body.monokai .hl-operator { color: #f8f8f2; }
+
+/* === Theme: Dracula === */
+body.dracula {
+    --bg-page: #282a36;
+    --text-primary: #f8f8f2;
+    --text-secondary: #6272a4;
+    --border-color: #44475a;
+    --code-bg: #21222c;
+    --code-header-bg: #44475a;
+    --code-border: #6272a4;
+    --quote-bg: #21222c;
+    --quote-bar: #bd93f9;
+    --table-alt: #21222c;
+    --table-header: #44475a;
+    --link-color: #8be9fd;
+    --toolbar-bg: rgba(40, 42, 54, 0.92);
+    --toolbar-border: #6272a4;
+    --toolbar-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --search-match: #44475a;
+    --search-active: #bd93f9;
+    --alert-note-bg: #1a2a3a;
+    --alert-note-bar: #8be9fd;
+    --alert-tip-bg: #1a2a1a;
+    --alert-tip-bar: #50fa7b;
+    --alert-important-bg: #2a1a3a;
+    --alert-important-bar: #bd93f9;
+    --alert-warning-bg: #2a2a1a;
+    --alert-warning-bar: #f1fa8c;
+    --alert-caution-bg: #2a1a1a;
+    --alert-caution-bar: #ff5555;
+    --drawer-bg: #21222c;
+}
+body.dracula .hl-keyword { color: #ff79c6; }
+body.dracula .hl-type { color: #8be9fd; }
+body.dracula .hl-string { color: #f1fa8c; }
+body.dracula .hl-comment { color: #6272a4; font-style: italic; }
+body.dracula .hl-number { color: #bd93f9; }
+body.dracula .hl-preprocessor { color: #ff79c6; }
+body.dracula .hl-operator { color: #f8f8f2; }
+
+/* === Theme: Solarized Light === */
+body.solarized-light {
+    --bg-page: #fdf6e3;
+    --text-primary: #657b83;
+    --text-secondary: #93a1a1;
+    --border-color: #eee8d5;
+    --code-bg: #eee8d5;
+    --code-header-bg: #e0d5c0;
+    --code-border: #d4c5a9;
+    --quote-bg: #eee8d5;
+    --quote-bar: #268bd2;
+    --table-alt: #f5efdc;
+    --table-header: #e0d5c0;
+    --link-color: #268bd2;
+    --toolbar-bg: rgba(253, 246, 227, 0.92);
+    --toolbar-border: #d4c5a9;
+    --toolbar-shadow: 0 4px 20px rgba(101, 123, 131, 0.15);
+    --search-match: #b58900;
+    --search-active: #cb4b16;
+    --alert-note-bg: #e8f0f5;
+    --alert-note-bar: #268bd2;
+    --alert-tip-bg: #e8f5e8;
+    --alert-tip-bar: #2aa198;
+    --alert-important-bg: #f5e8f5;
+    --alert-important-bar: #6c71c4;
+    --alert-warning-bg: #f5f0e0;
+    --alert-warning-bar: #cb4b16;
+    --alert-caution-bg: #f5e8e8;
+    --alert-caution-bar: #dc322f;
+    --drawer-bg: #eee8d5;
+}
+body.solarized-light .hl-keyword { color: #dc322f; }
+body.solarized-light .hl-type { color: #268bd2; }
+body.solarized-light .hl-string { color: #2aa198; }
+body.solarized-light .hl-comment { color: #93a1a1; font-style: italic; }
+body.solarized-light .hl-number { color: #d33682; }
+body.solarized-light .hl-preprocessor { color: #6c71c4; }
+body.solarized-light .hl-operator { color: #657b83; }
+
+/* === Theme: Solarized Dark === */
+body.solarized-dark {
+    --bg-page: #002b36;
+    --text-primary: #839496;
+    --text-secondary: #586e75;
+    --border-color: #073642;
+    --code-bg: #073642;
+    --code-header-bg: #0a4050;
+    --code-border: #0e4a5a;
+    --quote-bg: #073642;
+    --quote-bar: #268bd2;
+    --table-alt: #073642;
+    --table-header: #0a4050;
+    --link-color: #268bd2;
+    --toolbar-bg: rgba(0, 43, 54, 0.92);
+    --toolbar-border: #0e4a5a;
+    --toolbar-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --search-match: #0a4050;
+    --search-active: #b58900;
+    --alert-note-bg: #0a2a3a;
+    --alert-note-bar: #268bd2;
+    --alert-tip-bg: #0a2a1a;
+    --alert-tip-bar: #2aa198;
+    --alert-important-bg: #1a0a2a;
+    --alert-important-bar: #6c71c4;
+    --alert-warning-bg: #1a1a0a;
+    --alert-warning-bar: #cb4b16;
+    --alert-caution-bg: #1a0a0a;
+    --alert-caution-bar: #dc322f;
+    --drawer-bg: #073642;
+}
+body.solarized-dark .hl-keyword { color: #dc322f; }
+body.solarized-dark .hl-type { color: #268bd2; }
+body.solarized-dark .hl-string { color: #2aa198; }
+body.solarized-dark .hl-comment { color: #586e75; font-style: italic; }
+body.solarized-dark .hl-number { color: #d33682; }
+body.solarized-dark .hl-preprocessor { color: #6c71c4; }
+body.solarized-dark .hl-operator { color: #839496; }
+
+/* === Theme: Nord === */
+body.nord {
+    --bg-page: #2e3440;
+    --text-primary: #d8dee9;
+    --text-secondary: #81a1c1;
+    --border-color: #3b4252;
+    --code-bg: #272c36;
+    --code-header-bg: #3b4252;
+    --code-border: #4c566a;
+    --quote-bg: #272c36;
+    --quote-bar: #88c0d0;
+    --table-alt: #272c36;
+    --table-header: #3b4252;
+    --link-color: #88c0d0;
+    --toolbar-bg: rgba(46, 52, 64, 0.92);
+    --toolbar-border: #4c566a;
+    --toolbar-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --search-match: #3b4252;
+    --search-active: #88c0d0;
+    --alert-note-bg: #1a2a3a;
+    --alert-note-bar: #88c0d0;
+    --alert-tip-bg: #1a2a1a;
+    --alert-tip-bar: #a3be8c;
+    --alert-important-bg: #2a1a3a;
+    --alert-important-bar: #b48ead;
+    --alert-warning-bg: #2a2a1a;
+    --alert-warning-bar: #ebcb8b;
+    --alert-caution-bg: #2a1a1a;
+    --alert-caution-bar: #bf616a;
+    --drawer-bg: #272c36;
+}
+body.nord .hl-keyword { color: #81a1c1; }
+body.nord .hl-type { color: #8fbcbb; }
+body.nord .hl-string { color: #a3be8c; }
+body.nord .hl-comment { color: #4c566a; font-style: italic; }
+body.nord .hl-number { color: #b48ead; }
+body.nord .hl-preprocessor { color: #81a1c1; }
+body.nord .hl-operator { color: #d8dee9; }
+
+/* === Theme: GitHub Light === */
+body.github-light {
+    --bg-page: #ffffff;
+    --text-primary: #24292f;
+    --text-secondary: #57606a;
+    --border-color: #d0d7de;
+    --code-bg: #f6f8fa;
+    --code-header-bg: #eaeef2;
+    --code-border: #d0d7de;
+    --quote-bg: #f6f8fa;
+    --quote-bar: #0969da;
+    --table-alt: #f6f8fa;
+    --table-header: #eaeef2;
+    --link-color: #0969da;
+    --toolbar-bg: rgba(255, 255, 255, 0.92);
+    --toolbar-border: #d0d7de;
+    --toolbar-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --search-match: #fff8c5;
+    --search-active: #fdac54;
+    --alert-note-bg: #ddf4ff;
+    --alert-note-bar: #0969da;
+    --alert-tip-bg: #dafbe1;
+    --alert-tip-bar: #1a7f37;
+    --alert-important-bg: #fbefff;
+    --alert-important-bar: #8250df;
+    --alert-warning-bg: #fff8c5;
+    --alert-warning-bar: #9a6700;
+    --alert-caution-bg: #ffebe9;
+    --alert-caution-bar: #cf222e;
+    --drawer-bg: #f6f8fa;
+}
+body.github-light .hl-keyword { color: #cf222e; }
+body.github-light .hl-type { color: #953800; }
+body.github-light .hl-string { color: #0a3069; }
+body.github-light .hl-comment { color: #6e7781; font-style: italic; }
+body.github-light .hl-number { color: #0550ae; }
+body.github-light .hl-preprocessor { color: #8250df; }
+body.github-light .hl-operator { color: #24292f; }
+
+/* === Theme: GitHub Dark === */
+body.github-dark {
+    --bg-page: #0d1117;
+    --text-primary: #c9d1d9;
+    --text-secondary: #8b949e;
+    --border-color: #30363d;
+    --code-bg: #161b22;
+    --code-header-bg: #21262d;
+    --code-border: #30363d;
+    --quote-bg: #161b22;
+    --quote-bar: #58a6ff;
+    --table-alt: #161b22;
+    --table-header: #21262d;
+    --link-color: #58a6ff;
+    --toolbar-bg: rgba(13, 17, 23, 0.92);
+    --toolbar-border: #30363d;
+    --toolbar-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --search-match: #30363d;
+    --search-active: #fdac54;
+    --alert-note-bg: #0c2d6b;
+    --alert-note-bar: #58a6ff;
+    --alert-tip-bg: #0a3d1f;
+    --alert-tip-bar: #3fb950;
+    --alert-important-bg: #2d1b4e;
+    --alert-important-bar: #a371f7;
+    --alert-warning-bg: #3d2d00;
+    --alert-warning-bar: #d29922;
+    --alert-caution-bg: #3d0c0c;
+    --alert-caution-bar: #f85149;
+    --drawer-bg: #161b22;
+}
+body.github-dark .hl-keyword { color: #ff7b72; }
+body.github-dark .hl-type { color: #79c0ff; }
+body.github-dark .hl-string { color: #a5d6ff; }
+body.github-dark .hl-comment { color: #8b949e; font-style: italic; }
+body.github-dark .hl-number { color: #79c0ff; }
+body.github-dark .hl-preprocessor { color: #ff7b72; }
+body.github-dark .hl-operator { color: #c9d1d9; }
+
+/* === Theme: VSCode Dark === */
+body.vscode-dark {
+    --bg-page: #1e1e1e;
+    --text-primary: #d4d4d4;
+    --text-secondary: #9d9d9d;
+    --border-color: #3c3c3c;
+    --code-bg: #1e1e1e;
+    --code-header-bg: #252526;
+    --code-border: #3c3c3c;
+    --quote-bg: #252526;
+    --quote-bar: #4ec9b0;
+    --table-alt: #252526;
+    --table-header: #2d2d30;
+    --link-color: #3794ff;
+    --toolbar-bg: rgba(30, 30, 30, 0.94);
+    --toolbar-border: #3c3c3c;
+    --toolbar-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+    --search-match: #264f78;
+    --search-active: #0e639c;
+    --alert-note-bg: #0c2d4a;
+    --alert-note-bar: #3794ff;
+    --alert-tip-bg: #0b3d2e;
+    --alert-tip-bar: #4ec9b0;
+    --alert-important-bg: #341b4a;
+    --alert-important-bar: #c586c0;
+    --alert-warning-bg: #3b2f00;
+    --alert-warning-bar: #dcdcaa;
+    --alert-caution-bg: #4a1414;
+    --alert-caution-bar: #f14c4c;
+    --drawer-bg: #252526;
+}
+body.vscode-dark .hl-keyword { color: #569cd6; }
+body.vscode-dark .hl-type { color: #4ec9b0; }
+body.vscode-dark .hl-string { color: #ce9178; }
+body.vscode-dark .hl-comment { color: #6a9955; font-style: italic; }
+body.vscode-dark .hl-number { color: #b5cea8; }
+body.vscode-dark .hl-preprocessor { color: #c586c0; }
+body.vscode-dark .hl-operator { color: #d4d4d4; }
+
+/* === Theme: Bearded === */
+body.bearded {
+    --bg-page: #1c1f26;
+    --text-primary: #c8ccd4;
+    --text-secondary: #8b93a1;
+    --border-color: #313642;
+    --code-bg: #23272f;
+    --code-header-bg: #2a2f39;
+    --code-border: #313642;
+    --quote-bg: #23272f;
+    --quote-bar: #ff9f43;
+    --table-alt: #23272f;
+    --table-header: #2a2f39;
+    --link-color: #ff9f43;
+    --toolbar-bg: rgba(28, 31, 38, 0.94);
+    --toolbar-border: #313642;
+    --toolbar-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+    --search-match: #3a3f4b;
+    --search-active: #ff9f43;
+    --alert-note-bg: #14304a;
+    --alert-note-bar: #4ecdc4;
+    --alert-tip-bg: #143a2f;
+    --alert-tip-bar: #4ecdc4;
+    --alert-important-bg: #33203f;
+    --alert-important-bar: #c084fc;
+    --alert-warning-bg: #3d2b0f;
+    --alert-warning-bar: #ff9f43;
+    --alert-caution-bg: #451c1c;
+    --alert-caution-bar: #ef4444;
+    --drawer-bg: #23272f;
+}
+body.bearded .hl-keyword { color: #ff9f43; }
+body.bearded .hl-type { color: #4ecdc4; }
+body.bearded .hl-string { color: #ffd166; }
+body.bearded .hl-comment { color: #6b7280; font-style: italic; }
+body.bearded .hl-number { color: #f78fb3; }
+body.bearded .hl-preprocessor { color: #c084fc; }
+body.bearded .hl-operator { color: #e5e7eb; }
+)CSS";
+
+// Full palettes for all 64 official Bearded variations (+ classic mapped to body.bearded),
+// generated by tools/gen-bearded.mjs from BeardedBear/bearded-theme.
+#include "BeardedVariants.inc"
 
 } // namespace
 
@@ -959,9 +1462,11 @@ std::wstring TokenizeCodeHtml(const std::wstring& line, const std::wstring& lang
 PreviewComponents HtmlExporter::GeneratePreviewComponents(
     const MarkdownDocument& doc,
     const std::wstring& title,
-    bool isDarkMode,
+    PreviewTheme theme,
     float zoomLevel,
-    bool isSyncEnabled
+    bool isSyncEnabled,
+    int darkModeOverride,
+    const std::wstring& beardedVariant
 ) {
     std::wstringstream bodyStream;
     std::wstringstream tocStream;
@@ -1177,8 +1682,27 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
     html << "<title>" << WideToUtf8(title) << "</title>\n";
 
     // 100% Local Offline Styles (zero external CDN or web font latency)
-    html << "<style>\n" << s_modernPreviewCss << "\n</style>\n";
-    html << "</head>\n<body class=\"" << (isDarkMode ? "dark" : "") << "\">\n";
+    html << "<style>\n" << s_modernPreviewCss << "\n" << s_themeOverrideCss << "\n"
+         << s_beardedVariantsCss << "\n</style>\n";
+
+    std::string bodyClass;
+    switch (theme) {
+        case PreviewTheme::Dark: bodyClass = "dark"; break;
+        case PreviewTheme::Sepia: bodyClass = "sepia"; break;
+        case PreviewTheme::Monokai: bodyClass = "monokai"; break;
+        case PreviewTheme::Dracula: bodyClass = "dracula"; break;
+        case PreviewTheme::SolarizedLight: bodyClass = "solarized-light"; break;
+        case PreviewTheme::SolarizedDark: bodyClass = "solarized-dark"; break;
+        case PreviewTheme::Nord: bodyClass = "nord"; break;
+        case PreviewTheme::GitHubLight: bodyClass = "github-light"; break;
+        case PreviewTheme::GitHubDark: bodyClass = "github-dark"; break;
+        case PreviewTheme::VSCodeDark: bodyClass = "vscode-dark"; break;
+        case PreviewTheme::Bearded:
+            bodyClass = beardedVariant.empty() ? "bearded" : ("bearded-v-" + WideToUtf8(beardedVariant));
+            break;
+        default: bodyClass = ""; break;
+    }
+    html << "</head>\n<body class=\"" << bodyClass << "\">\n";
 
     // In-page overlays & context menu
     html << R"HTML(
@@ -1189,6 +1713,14 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
   <button class="search-btn" title="Previous match (Shift+Enter)" onclick="prevMatch()"><svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="18 15 12 9 6 15"/></svg></button>
   <button class="search-btn" title="Next match (Enter)" onclick="nextMatch()"><svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="6 9 12 15 18 9"/></svg></button>
   <button class="search-btn search-close" title="Close (Escape)" onclick="closeSearch()"><svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+</div>
+
+<button id="theme-fab" title="Choose theme" onclick="toggleThemePopover(event)">
+  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+</button>
+<div id="theme-popover" style="display: none;">
+  <div class="theme-pop-title">Theme</div>
+  <div id="theme-pop-list"></div>
 </div>
 
 <div id="custom-context-menu" class="context-menu" style="display: none;" onmousedown="event.preventDefault()">
@@ -1227,6 +1759,62 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
     <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
     <span class="menu-label" id="menu-theme-label">Toggle Dark / Light Theme</span>
   </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('follow')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="4"/></svg></span>
+    <span class="menu-label">Theme: Follow Notepad++</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('light')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
+    <span class="menu-label">Theme: Light</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('dark')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+    <span class="menu-label">Theme: Dark</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('sepia')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></span>
+    <span class="menu-label">Theme: Sepia</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('monokai')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><polygon points="12 2 2 22 22 22"/></svg></span>
+    <span class="menu-label">Theme: Monokai</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('dracula')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></span>
+    <span class="menu-label">Theme: Dracula</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('solarized-light')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
+    <span class="menu-label">Theme: Solarized Light</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('solarized-dark')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+    <span class="menu-label">Theme: Solarized Dark</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('nord')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2z"/></path d="M12 6l6 12H6l6-12z"/></svg></span>
+    <span class="menu-label">Theme: Nord</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('github-light')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg></span>
+    <span class="menu-label">Theme: GitHub Light</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('github-dark')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg></span>
+    <span class="menu-label">Theme: GitHub Dark</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('vscode-dark')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><circle cx="12" cy="12" r="3"/></svg></span>
+    <span class="menu-label">Theme: VSCode Dark</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('bearded')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M4 4h16v8a8 8 0 0 1-16 0V4z"/></svg></span>
+    <span class="menu-label">Theme: Bearded</span>
+  </div>
+  <div class="menu-item" onclick="selectThemeFromMenu('bearded-v-gold-d-raynh')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M4 4h16v8a8 8 0 0 1-16 0V4z"/><circle cx="12" cy="8" r="2"/></svg></span>
+    <span class="menu-label">Theme: Bearded Gold D Raynh</span>
+  </div>
   <div class="menu-item" onclick="toggleSyncFromMenu()">
     <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></span>
     <span class="menu-label" id="menu-sync-label">Toggle Caret Sync Scroll</span>
@@ -1247,6 +1835,10 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
   <div class="menu-item" onclick="printFromMenu()">
     <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></span>
     <span class="menu-label">Print / Save as PDF</span>
+  </div>
+  <div class="menu-item" onclick="openSettingsFromMenu()">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg></span>
+    <span class="menu-label">Settings...</span>
   </div>
 </div>
 
@@ -1457,7 +2049,7 @@ function renderLocalMermaid() {
     var blocks = document.querySelectorAll(".mermaid");
     if (!blocks || blocks.length === 0) return;
 
-    var isDark = document.body.classList.contains("dark");
+    var isDark = isDarkTheme();
     var strokeColor = isDark ? "#58a6ff" : "#0969da";
     var nodeBg = isDark ? "#161b22" : "#ffffff";
     var nodeBorder = isDark ? "#30363d" : "#d0d7de";
@@ -1806,9 +2398,77 @@ function copySelectionFromMenu() {
 }
 
 // Theme toggle
+var THEME_CLASSES = ['dark','sepia','monokai','dracula','solarized-light','solarized-dark','nord','github-light','github-dark','vscode-dark','bearded'];
+var THEME_LIST = [
+    { id: 'follow', label: 'Follow Notepad++' },
+    { id: 'light', label: 'Light' },
+    { id: 'dark', label: 'Dark' },
+    { id: 'sepia', label: 'Sepia' },
+    { id: 'monokai', label: 'Monokai' },
+    { id: 'dracula', label: 'Dracula' },
+    { id: 'solarized-light', label: 'Solarized Light' },
+    { id: 'solarized-dark', label: 'Solarized Dark' },
+    { id: 'nord', label: 'Nord' },
+    { id: 'github-light', label: 'GitHub Light' },
+    { id: 'github-dark', label: 'GitHub Dark' },
+    { id: 'vscode-dark', label: 'VSCode Dark' },
+    { id: 'bearded', label: 'Bearded' }
+];
+window._themeId = window._themeId || null;
+
+function isDarkTheme() {
+    // Luminance of the body background: keeps light Bearded variations light too
+    try {
+        var bg = getComputedStyle(document.body).backgroundColor || "";
+        var m = bg.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+        if (m) return (0.2126 * (+m[1]) + 0.7152 * (+m[2]) + 0.0722 * (+m[3])) < 140;
+    } catch (e) {}
+    for (var i = 0; i < THEME_CLASSES.length; i++) {
+        if (document.body.classList.contains(THEME_CLASSES[i])) return true;
+    }
+    return false;
+}
+
+function removeThemeClasses() {
+    var toks = document.body.className.split(/\s+/);
+    for (var i = 0; i < toks.length; i++) {
+        var c = toks[i];
+        if (!c) continue;
+        if (c === 'light' || THEME_CLASSES.indexOf(c) !== -1 || c.indexOf('bearded-v-') === 0) {
+            document.body.classList.remove(c);
+        }
+    }
+}
+
+function applyThemeClass(themeName) {
+    removeThemeClasses();
+    if (themeName && themeName !== 'follow' && themeName !== 'light') {
+        document.body.classList.add(themeName);
+    }
+}
+
+function detectedThemeId() {
+    if (window._themeId) return window._themeId;
+    var toks = document.body.className.split(/\s+/);
+    for (var i = 0; i < toks.length; i++) {
+        if (toks[i] && toks[i].indexOf('bearded-v-') === 0) return toks[i];
+    }
+    for (var j = 0; j < THEME_CLASSES.length; j++) {
+        if (document.body.classList.contains(THEME_CLASSES[j])) return THEME_CLASSES[j];
+    }
+    return 'follow';
+}
+
 function toggleTheme() {
-    document.body.classList.toggle("dark");
+    if (isDarkTheme()) {
+        window._themeId = 'light';
+        applyThemeClass('light');
+    } else {
+        window._themeId = 'dark';
+        applyThemeClass('dark');
+    }
     renderLocalMermaid();
+    refreshThemePopover();
 }
 
 function toggleThemeFromMenu() {
@@ -1817,6 +2477,210 @@ function toggleThemeFromMenu() {
     if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage("toggleTheme");
     }
+}
+
+// Select specific theme
+function selectThemeFromMenu(themeName) {
+    closeContextMenu();
+    closeThemePopover();
+    window._themeId = themeName;
+    applyThemeClass(themeName);
+    renderLocalMermaid();
+    refreshThemePopover();
+    if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage("selectTheme:" + themeName);
+    }
+}
+
+/* Floating theme picker (gear button): settings menu root + theme list,
+   Bearded variants, zoom and dark mode subviews */
+var _themePopView = 'settings';
+
+function toggleThemePopover(ev) {
+    if (ev) ev.stopPropagation();
+    var pop = document.getElementById('theme-popover');
+    if (!pop) return;
+    if (pop.style.display === 'block') { closeThemePopover(); return; }
+    _themePopView = 'settings';
+    refreshThemePopover();
+    pop.style.display = 'block';
+}
+
+/* Hover preview (VSCode-style): show a theme while the pointer is over an item,
+   commit only on click; leaving the popover / closing it restores the real theme. */
+var _themePreview = { savedClass: null, id: null };
+
+function themePreviewIdFor(id) {
+    if (!id || id === '__back' || id === 'follow') return null;
+    if (id === 'bearded') {
+        // Hovering the Bearded row previews what its label shows (current variant if any).
+        var cur = detectedThemeId();
+        if (cur.indexOf('bearded-v-') === 0) return cur;
+    }
+    return id;
+}
+
+function startThemePreview(id) {
+    var pid = themePreviewIdFor(id);
+    if (!pid || pid === _themePreview.id) return;
+    if (_themePreview.savedClass === null) _themePreview.savedClass = document.body.className;
+    _themePreview.id = pid;
+    applyThemeClass(pid);
+}
+
+function endThemePreview() {
+    if (_themePreview.savedClass === null) { _themePreview.id = null; return; }
+    document.body.className = _themePreview.savedClass;
+    _themePreview.savedClass = null;
+    _themePreview.id = null;
+}
+
+function closeThemePopover() {
+    endThemePreview();
+    var pop = document.getElementById('theme-popover');
+    if (pop) pop.style.display = 'none';
+}
+
+function openSettingsPopover() {
+    var pop = document.getElementById('theme-popover');
+    if (!pop) return;
+    _themePopView = 'settings';
+    refreshThemePopover();
+    pop.style.display = 'block';
+    pop.style.top = '58px';
+    pop.style.bottom = 'auto';
+}
+
+function openSettingsFromMenu() {
+    closeContextMenu();
+    openSettingsPopover();
+}
+
+function openThemeView(view) {
+    _themePopView = view;
+    refreshThemePopover();
+}
+
+function openBeardedThemeList() {
+    openThemeView('bearded');
+}
+
+function backToThemeList() {
+    if (_themePopView === 'bearded') openThemeView('themes');
+    else openThemeView('settings');
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function beardedVariantLabel(id) {
+    var list = window.BEARDED_VARIANTS || [];
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].id === id) return list[i].label;
+    }
+    return id.replace('bearded-v-', '');
+}
+
+var _POP_CHECK_SVG = '<svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="3" fill="none"><polyline points="20 6 9 17 4 12"/></svg>';
+var _POP_CHEV_SVG = '<svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none"><polyline points="9 18 15 12 9 6"/></svg>';
+
+function themePopRow(label, onclick, checked, chevron, themeId) {
+    return '<div class="theme-pop-item' + (checked ? ' checked' : '') + '"'
+         + (themeId ? ' data-theme="' + themeId + '"' : '')
+         + ' onclick="' + onclick + '">'
+         + '<span class="theme-pop-check">' + (checked ? _POP_CHECK_SVG : '') + '</span>'
+         + '<span class="theme-pop-label">' + escHtml(label) + '</span>'
+         + (chevron ? '<span class="theme-pop-arrow">' + _POP_CHEV_SVG + '</span>' : '')
+         + '</div>';
+}
+
+function themePopItem(id, label, checked, onclick) {
+    return themePopRow(label, onclick, checked, false, id);
+}
+
+function themeItemLabelById(id) {
+    if (id.indexOf('bearded-v-') === 0) return 'Bearded: ' + beardedVariantLabel(id);
+    for (var i = 0; i < THEME_LIST.length; i++) {
+        if (THEME_LIST[i].id === id) return THEME_LIST[i].label;
+    }
+    return id === 'follow' ? 'Follow Notepad++' : id;
+}
+
+function zoomPercentLabel() {
+    return (window._zoomPercent || 100) + '%';
+}
+
+function darkModeLabel() {
+    if (window._darkMode === 0) return 'Light';
+    if (window._darkMode === 1) return 'Dark';
+    return 'Auto';
+}
+
+function refreshThemePopover() {
+    var list = document.getElementById('theme-pop-list');
+    if (!list) return;
+    var title = document.querySelector('#theme-popover .theme-pop-title');
+    var current = detectedThemeId();
+    var html = '';
+
+    if (_themePopView === 'settings') {
+        if (title) title.textContent = 'Settings';
+        html += themePopRow('Theme: ' + themeItemLabelById(current), "openThemeView('themes')", false, true);
+        html += themePopRow('Sync with caret', 'toggleSyncFromMenu(); refreshThemePopover();', !!window._syncEnabled, false);
+        html += themePopRow('Outline / TOC', 'toggleTocFromMenu(); refreshThemePopover();', document.body.classList.contains('toc-open'), false);
+        html += themePopRow('Smart BiDi', 'toggleBiDiFromMenu(); refreshThemePopover();', !!window._bidiEnabled, false);
+        html += themePopRow('Zoom: ' + zoomPercentLabel(), "openThemeView('zoom')", false, true);
+        html += themePopRow('Copy HTML', 'copyHtmlFromMenu(); closeThemePopover();', false, false);
+        html += themePopRow('Save HTML...', 'closeThemePopover(); saveAsHtmlFromMenu();', false, false);
+        html += themePopRow('Dark mode: ' + darkModeLabel(), "openThemeView('darkmode')", false, true);
+        html += themePopRow('About NppMarkdownNext', "openThemeView('about')", false, false);
+    } else if (_themePopView === 'zoom') {
+        if (title) title.textContent = 'Zoom (' + zoomPercentLabel() + ')';
+        html += themePopRow('< Back', 'backToThemeList()', false, false, '__back');
+        html += themePopRow('Zoom in', 'zoomInFromMenu(); refreshThemePopover();', false, false);
+        html += themePopRow('Zoom out', 'zoomOutFromMenu(); refreshThemePopover();', false, false);
+        html += themePopRow('Reset (100%)', 'zoomResetFromMenu(); refreshThemePopover();', false, false);
+        html += themePopRow('80%', "setZoomPercentFromMenu(80); setTimeout(refreshThemePopover, 80);", window._zoomPercent === 80, false);
+        html += themePopRow('100%', "setZoomPercentFromMenu(100); setTimeout(refreshThemePopover, 80);", window._zoomPercent === 100, false);
+        html += themePopRow('125%', "setZoomPercentFromMenu(125); setTimeout(refreshThemePopover, 80);", window._zoomPercent === 125, false);
+        html += themePopRow('150%', "setZoomPercentFromMenu(150); setTimeout(refreshThemePopover, 80);", window._zoomPercent === 150, false);
+    } else if (_themePopView === 'darkmode') {
+        if (title) title.textContent = 'Dark mode';
+        html += themePopRow('< Back', 'backToThemeList()', false, false, '__back');
+        html += themePopRow('Auto (follow Notepad++)', 'setDarkModeFromMenu(-1);', window._darkMode === undefined || window._darkMode === -1, false);
+        html += themePopRow('Light', 'setDarkModeFromMenu(0);', window._darkMode === 0, false);
+        html += themePopRow('Dark', 'setDarkModeFromMenu(1);', window._darkMode === 1, false);
+    } else if (_themePopView === 'about') {
+        if (title) title.textContent = 'About';
+        html += themePopRow('< Back', 'backToThemeList()', false, false, '__back');
+        html += themePopRow('NppMarkdownNext v1.0.4.0', '', false, false);
+        html += themePopRow('Open project page', "location.href='https://github.com/theneet0/NppMarkdownNext';", false, false);
+    } else if (_themePopView === 'bearded') {
+        if (title) title.textContent = 'Bearded themes';
+        html += themePopRow('< Back', 'backToThemeList()', false, false, '__back');
+        html += themePopItem('bearded', 'Classic (Arc)', current === 'bearded', "selectThemeFromMenu('bearded')");
+        var variants = window.BEARDED_VARIANTS || [];
+        for (var v = 0; v < variants.length; v++) {
+            html += themePopItem(variants[v].id, variants[v].label, current === variants[v].id,
+                                 "selectThemeFromMenu('" + variants[v].id + "')");
+        }
+    } else {
+        if (title) title.textContent = 'Theme';
+        html += themePopRow('< Back', 'backToThemeList()', false, false, '__back');
+        for (var i = 0; i < THEME_LIST.length; i++) {
+            var t = THEME_LIST[i];
+            if (t.id === 'bearded') {
+                var isVariant = current.indexOf('bearded-v-') === 0;
+                var label = isVariant ? ('Bearded: ' + beardedVariantLabel(current)) : t.label;
+                var checked = (current === 'bearded' || isVariant);
+                html += themePopItem('bearded', label, checked, 'openBeardedThemeList()');
+            } else {
+                html += themePopItem(t.id, t.label, t.id === current, "selectThemeFromMenu('" + t.id + "')");
+            }
+        }
+    }
+    list.innerHTML = html;
 }
 
 window.onThemeChanged = function() {
@@ -1835,6 +2699,7 @@ function toggleSyncFromMenu() {
 var _clientZoom = 1.0;
 function applyClientZoom(factor) {
     _clientZoom = Math.min(3.0, Math.max(0.3, factor));
+    window._zoomPercent = Math.round(_clientZoom * 100);
     var container = document.getElementById("content-container");
     if (container) {
         container.style.zoom = _clientZoom;
@@ -1868,8 +2733,17 @@ function zoomResetFromMenu() {
     }
 }
 
+function setZoomPercentFromMenu(percent) {
+    if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage("zoomChange:" + (percent / 100));
+    } else {
+        applyClientZoom(percent / 100);
+    }
+}
+
 function toggleBiDiFromMenu() {
     closeContextMenu();
+    window._bidiEnabled = !window._bidiEnabled;
     if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage("toggleBiDi");
     } else {
@@ -1896,6 +2770,24 @@ function saveAsHtmlFromMenu() {
         a.click();
         document.body.removeChild(a);
         showToast("💾 HTML exported");
+    }
+}
+
+function copyHtmlFromMenu() {
+    closeContextMenu();
+    if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage('copyHtml');
+        showToast('📋 Rendered HTML copied');
+    } else {
+        showToast('⚠ Copy is available in the preview panel');
+    }
+}
+
+function setDarkModeFromMenu(mode) {
+    closeThemePopover();
+    window._darkMode = mode;
+    if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage('darkMode:' + mode);
     }
 }
 
@@ -1966,7 +2858,7 @@ function showContextMenu(x, y) {
     }
 
     // Dynamic state feedback in menu items
-    var isDark = document.body.classList.contains("dark");
+    var isDark = isDarkTheme();
     var themeLabel = document.getElementById("menu-theme-label");
     if (themeLabel) {
         themeLabel.innerText = isDark ? "Switch to Light Theme" : "Switch to Dark Theme";
@@ -2023,9 +2915,31 @@ window.addEventListener("contextmenu", function(e) {
     showContextMenu(e.clientX, e.clientY);
 });
 
+// Keep clicks inside the popover from ever reaching the outside-click handler:
+// rows rebuild #theme-pop-list (innerHTML swap), which detaches e.target and would
+// make pop.contains(e.target) false, closing the popover right after a view switch
+// (main list -> Bearded submenu, submenu -> Back).
+var themePopoverRoot = document.getElementById("theme-popover");
+if (themePopoverRoot) {
+    themePopoverRoot.addEventListener("click", function(e) { e.stopPropagation(); });
+    themePopoverRoot.addEventListener("mouseover", function(e) {
+        var t = e.target;
+        var it = t && t.closest ? t.closest(".theme-pop-item") : null;
+        if (it) startThemePreview(it.getAttribute("data-theme"));
+    });
+    themePopoverRoot.addEventListener("mouseleave", function() { endThemePreview(); });
+}
+
 document.addEventListener("click", function(e) {
     if (contextMenu && !contextMenu.contains(e.target)) {
         closeContextMenu();
+    }
+    // Close the theme picker when clicking outside it (gear button stops propagation itself)
+    var pop = document.getElementById("theme-popover");
+    if (pop && pop.style.display === "block") {
+        var inPop = pop.contains(e.target);
+        var inFab = !!(e.target && e.target.closest && e.target.closest("#theme-fab"));
+        if (!inPop && !inFab) closeThemePopover();
     }
 });
 
@@ -2196,6 +3110,11 @@ function onSearchKey(e) {
 
 document.addEventListener("keydown", function(e) {
     if (e.key === "Escape") {
+        var themePop = document.getElementById("theme-popover");
+        if (themePop && themePop.style.display === "block") {
+            closeThemePopover();
+            return;
+        }
         if (contextMenu && contextMenu.style.display === "block") {
             closeContextMenu();
             return;
@@ -2249,9 +3168,10 @@ if (window.chrome && window.chrome.webview) {
             if (typeof data.title === "string" && data.title) {
                 document.title = data.title;
             }
-            if (typeof data.isDark === "boolean") {
-                if (data.isDark) document.body.classList.add("dark");
-                else document.body.classList.remove("dark");
+            if (typeof data.themeClass === "string") {
+                applyThemeClass(data.themeClass === "" ? 'light' : data.themeClass);
+                renderLocalMermaid();
+                refreshThemePopover();
             }
             var content = document.getElementById("content-container");
             if (content && typeof data.body === "string") {
@@ -2271,9 +3191,11 @@ if (window.chrome && window.chrome.webview) {
     });
 }
 </script>
-</body>
-</html>
 )HTML";
+    // Bearded variation list for the theme picker submenu (generated data)
+    html << "<script>window.BEARDED_VARIANTS=" << s_beardedVariantsJs << ";</script>\n";
+    html << "<script>window._zoomPercent=" << static_cast<int>(zoomLevel*100+0.5) << ";window._darkMode=" << darkModeOverride << ";</script>\n";
+    html << "</body>\n</html>\n";
 
     return PreviewComponents{ html.str(), bodyHtmlUtf8, tocHtmlUtf8 };
 }
@@ -2281,28 +3203,30 @@ if (window.chrome && window.chrome.webview) {
 std::string HtmlExporter::GeneratePreviewHtml(
     const MarkdownDocument& doc,
     const std::wstring& title,
-    bool isDarkMode,
+    PreviewTheme theme,
     float zoomLevel,
-    bool isSyncEnabled
+    bool isSyncEnabled,
+    int darkModeOverride,
+    const std::wstring& beardedVariant
 ) {
-    return GeneratePreviewComponents(doc, title, isDarkMode, zoomLevel, isSyncEnabled).fullHtml;
+    return GeneratePreviewComponents(doc, title, theme, zoomLevel, isSyncEnabled, darkModeOverride, beardedVariant).fullHtml;
 }
 
-std::wstring HtmlExporter::ExportToHtml(const MarkdownDocument& doc, const std::wstring& title, bool isDarkMode) {
-    std::string previewHtml = GeneratePreviewHtml(doc, title, isDarkMode, 1.0f, false);
+std::wstring HtmlExporter::ExportToHtml(const MarkdownDocument& doc, const std::wstring& title, PreviewTheme theme, const std::wstring& beardedVariant) {
+    std::string previewHtml = GeneratePreviewHtml(doc, title, theme, 1.0f, false, 0, beardedVariant);
     return Utf8ToWide(previewHtml);
 }
 
-bool HtmlExporter::SaveToFile(const std::wstring& filePath, const MarkdownDocument& doc, const std::wstring& title, bool isDarkMode) {
-    std::string html = GeneratePreviewHtml(doc, title, isDarkMode, 1.0f, false);
+bool HtmlExporter::SaveToFile(const std::wstring& filePath, const MarkdownDocument& doc, const std::wstring& title, PreviewTheme theme, const std::wstring& beardedVariant) {
+    std::string html = GeneratePreviewHtml(doc, title, theme, 1.0f, false, 0, beardedVariant);
     std::ofstream out(filePath.c_str(), std::ios::binary);
     if (!out.is_open()) return false;
     out.write(html.data(), html.size());
     return true;
 }
 
-bool HtmlExporter::CopyToClipboard(HWND hwndOwner, const MarkdownDocument& doc, const std::wstring& title, bool isDarkMode) {
-    auto components = GeneratePreviewComponents(doc, title, isDarkMode, 1.0f, false);
+bool HtmlExporter::CopyToClipboard(HWND hwndOwner, const MarkdownDocument& doc, const std::wstring& title, PreviewTheme theme, const std::wstring& beardedVariant) {
+    auto components = GeneratePreviewComponents(doc, title, theme, 1.0f, false, 0, beardedVariant);
     std::string cfHtml = GenerateCfHtml(components.bodyHtml);
 
     if (!OpenClipboard(hwndOwner)) return false;

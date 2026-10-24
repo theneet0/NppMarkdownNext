@@ -24,7 +24,9 @@ public:
     void ZoomOut();
     void ZoomReset();
     void ToggleBiDi();
+    void SelectTheme(PreviewTheme theme, const std::wstring& beardedVariant = L"");
     void ShowAbout();
+    void OpenSettings();
 
     // Notepad++ Notifications
     void OnNppReady();
@@ -32,6 +34,7 @@ public:
     void OnDarkModeChanged();
     void OnBufferActivated();
     void OnDocModified();
+    void SyncThemeMenuItems();
 
     void EnsurePanelRegistered();
     bool IsNppReady() const noexcept { return m_isNppReady; }
@@ -50,7 +53,12 @@ private:
 
     bool CreatePanelWindow();
     void RequestRenderDebounced();
-    void ExecuteRender();
+    // Returns false when rendering could not run yet (no Scintilla handle)
+    bool ExecuteRender();
+    PreviewTheme EffectiveTheme() const;
+    std::wstring ThemeClassName(PreviewTheme theme) const;
+    // Canonical theme id as used by the in-preview picker (window._themeId)
+    std::wstring CurrentThemeId() const;
     std::wstring GetCurrentBufferPath() const;
     bool IsCurrentBufferMarkdown() const;
 
@@ -72,8 +80,10 @@ private:
     bool m_isPanelRegistered = false;
     bool m_isPanelVisible = false;
     bool m_isRenderPending = false;
+    bool m_openSettingsPending = false;
     std::wstring m_lastRawContent;
     int m_lastScrolledCaretLine = -1;
+    int m_renderRetryCount = 0;
 };
 
 extern "C" int GetPluginCmdId(int index);

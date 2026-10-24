@@ -15,6 +15,17 @@ $windres64 = "windres"
 $windres32 = "i686-w64-mingw32-windres"
 $windresArm64 = "aarch64-w64-mingw32-windres"
 
+# LLVM ships clang++ but is not added to PATH by a default installer
+# (e.g. C:\Program Files\LLVM\bin); probe the known install locations first.
+if (-not (Get-Command $clang64 -ErrorAction SilentlyContinue)) {
+    foreach ($llvmBin in @('C:\Program Files\LLVM\bin', (Join-Path $env:LOCALAPPDATA 'Programs\LLVM\bin'))) {
+        if (Test-Path (Join-Path $llvmBin 'clang++.exe')) {
+            $env:PATH = "$llvmBin;$env:PATH"
+            break
+        }
+    }
+}
+
 if (-not (Get-Command $clang64 -ErrorAction SilentlyContinue)) {
     $wingetBin = Get-ChildItem -Path "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter "clang++.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty DirectoryName
     if ($wingetBin) {
@@ -26,6 +37,28 @@ if (-not (Get-Command $clang64 -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host ">>> Using Compiler: $(Get-Command $clang64 | Select-Object -ExpandProperty Source)" -ForegroundColor Cyan
+
+# Resource compilation: prefer windres (MinGW), fall back to llvm-rc (LLVM).
+# Both emit a standard .res consumable by lld-link. MinGW is optional now.
+function Invoke-ResourceCompile([string]$windres, [string]$rcPath, [string]$outPath) {
+    if (Get-Command $windres -ErrorAction SilentlyContinue) {
+        & $windres $rcPath -O coff -o $outPath
+    } elseif (Get-Command 'llvm-rc' -ErrorAction SilentlyContinue) {
+        & llvm-rc /FO $outPath $rcPath
+    } else {
+        Write-Error "Neither windres nor llvm-rc could be found!"
+        exit 1
+    }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Resource compilation failed for $rcPath"
+        exit $LASTEXITCODE
+    }
+}
+
+function Invoke-Strip([string]$dllPath) {
+    if (Get-Command strip -ErrorAction SilentlyContinue) { strip --strip-all $dllPath }
+    elseif (Get-Command llvm-strip -ErrorAction SilentlyContinue) { llvm-strip --strip-all $dllPath }
+}
 
 # Ensure bin directories
 $binDir = Join-Path $scriptDir "bin"
@@ -106,7 +139,7 @@ if ($TestsOnly) {
 # 3. Build x64 DLL
 Write-Host "`n>>> [2/4] Compiling NppMarkdownNext.dll (x64 Native)..." -ForegroundColor Yellow
 $resFile64 = Join-Path $binDir "resource.res"
-& $windres64 (Join-Path $scriptDir "res\NppMarkdownNext.rc") -O coff -o "$resFile64"
+Invoke-ResourceCompile $windres64 (Join-Path $scriptDir "res\NppMarkdownNext.rc") $resFile64
 
 $dllPath64 = Join-Path $binDir "NppMarkdownNext.dll"
 $pluginSources = @(
@@ -122,14 +155,15 @@ $pluginSources = @(
     $resFile64
 )
 
-$libs = @("-ld2d1", "-ldwrite", "-luser32", "-lgdi32", "-lcomctl32", "-lshlwapi", "-lole32", "-luuid", "-lcomdlg32")
+# shell32: ShellExecuteW (external link handling in WebView2Viewer)
+$libs = @("-ld2d1", "-ldwrite", "-luser32", "-lgdi32", "-lcomctl32", "-lshlwapi", "-lole32", "-luuid", "-lcomdlg32", "-lshell32")
 
 & $clang64 -shared -std=c++23 -O3 -static -municode -I"$scriptDir\include" -I"$wv2Include" $pluginSources $libs -o "$dllPath64"
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to compile x64 NppMarkdownNext.dll!"
     exit $LASTEXITCODE
 }
-strip --strip-all "$dllPath64"
+Invoke-Strip $dllPath64
 
 # Copy x64 WebView2Loader.dll to bin
 if (Test-Path $wv2Loader64) {
@@ -142,7 +176,7 @@ Write-Host "Built x64 DLL: $dllPath64 ($( (Get-Item $dllPath64).Length / 1KB ) K
 if (Get-Command $clang32 -ErrorAction SilentlyContinue) {
     Write-Host "`n>>> [3/4] Compiling NppMarkdownNext.dll (x86 Native)..." -ForegroundColor Yellow
     $resFile32 = Join-Path $bin32Dir "resource.res"
-    & $windres32 (Join-Path $scriptDir "res\NppMarkdownNext.rc") -O coff -o "$resFile32"
+    Invoke-ResourceCompile $windres32 (Join-Path $scriptDir "res\NppMarkdownNext.rc") $resFile32
 
     $dllPath32 = Join-Path $bin32Dir "NppMarkdownNext.dll"
     $pluginSources32 = @(
@@ -160,8 +194,7 @@ if (Get-Command $clang32 -ErrorAction SilentlyContinue) {
 
     & $clang32 -shared -std=c++23 -O3 -static -municode -I"$scriptDir\include" -I"$wv2Include" $pluginSources32 $libs -o "$dllPath32"
     if ($LASTEXITCODE -eq 0) {
-        if (Get-Command strip -ErrorAction SilentlyContinue) { strip --strip-all "$dllPath32" }
-        elseif (Get-Command llvm-strip -ErrorAction SilentlyContinue) { llvm-strip --strip-all "$dllPath32" }
+        Invoke-Strip $dllPath32
 
         # Copy x86 WebView2Loader.dll to bin\x86
         if (Test-Path $wv2Loader32) {
@@ -176,7 +209,7 @@ if (Get-Command $clang32 -ErrorAction SilentlyContinue) {
 if (Get-Command $clangArm64 -ErrorAction SilentlyContinue) {
     Write-Host "`n>>> [4/4] Compiling NppMarkdownNext.dll (ARM64 Native)..." -ForegroundColor Yellow
     $resFileArm64 = Join-Path $binArm64Dir "resource.res"
-    & $windresArm64 (Join-Path $scriptDir "res\NppMarkdownNext.rc") -O coff -o "$resFileArm64"
+    Invoke-ResourceCompile $windresArm64 (Join-Path $scriptDir "res\NppMarkdownNext.rc") $resFileArm64
 
     $dllPathArm64 = Join-Path $binArm64Dir "NppMarkdownNext.dll"
     $pluginSourcesArm64 = @(
@@ -194,8 +227,7 @@ if (Get-Command $clangArm64 -ErrorAction SilentlyContinue) {
 
     & $clangArm64 -shared -std=c++23 -O3 -static -municode -I"$scriptDir\include" -I"$wv2Include" $pluginSourcesArm64 $libs -o "$dllPathArm64"
     if ($LASTEXITCODE -eq 0) {
-        if (Get-Command llvm-strip -ErrorAction SilentlyContinue) { llvm-strip --strip-all "$dllPathArm64" }
-        elseif (Get-Command strip -ErrorAction SilentlyContinue) { strip --strip-all "$dllPathArm64" }
+        Invoke-Strip $dllPathArm64
 
         # Copy arm64 WebView2Loader.dll to bin\arm64
         if (Test-Path $wv2LoaderArm64) {

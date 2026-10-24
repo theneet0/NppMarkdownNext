@@ -13,6 +13,7 @@ NppMarkdownNext is a native Markdown live preview and export plugin for Notepad+
 - **Theme Matching**: Synchronizes automatically with Notepad++ Dark Mode (`NPPM_ISDARKMODEENABLED`), with an optional manual toggle in the context menu.
 - **Outline & Search**: Slide-out Table of Contents drawer and in-page incremental search (`Ctrl+F`).
 - **Export Options**: Export the current document as a standalone offline HTML file, or copy rendered HTML fragments directly to the system clipboard (`CF_HTML`).
+- **Settings Menu**: A gear menu in the preview toolbar — and **Plugins > NppMarkdownNext > Settings...** — opens a single popover with theme selection, zoom presets (80/100/125/150%), dark mode override, caret sync, outline, smart BiDi, HTML copy/export and an About page. Every change is written to the INI file immediately.
 
 ## Requirements
 
@@ -95,7 +96,7 @@ NppMarkdownNext is written in native C++ using the standard Win32 API and Scinti
 ### Prerequisites
 
 - Windows 10/11 or Windows Server.
-- [LLVM-MinGW](https://github.com/mstorsjo/llvm-mingw) (Clang with UCRT). Ensure `clang++` and `windres` are on your system `PATH`.
+- [LLVM](https://llvm.org/) (`clang++` on your `PATH`, or the default install location `C:\Program Files\LLVM\bin`), or [LLVM-MinGW](https://github.com/mstorsjo/llvm-mingw). `windres` is optional — the build script falls back to `llvm-rc` automatically.
 - PowerShell 5.1 or PowerShell 7.
 
 ### Build Instructions

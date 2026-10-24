@@ -1,5 +1,6 @@
 #include "../include/WebView2Viewer.h"
 #include "../include/BiDiEngine.h"
+#include "../include/NppLog.h"
 #include <initguid.h>
 #include <WebView2.h>
 #include <shlwapi.h>
@@ -184,6 +185,7 @@ bool WebView2Viewer::Initialize(HWND hParentWnd, const std::wstring& userDataDir
         m_hLoaderModule = LoadLibraryW(L"WebView2Loader.dll");
     }
     if (!m_hLoaderModule) {
+        NppLog("WebView2 Initialize: WebView2Loader.dll not found (tried %ls)", loaderPath.c_str());
         m_isInitializing = false;
         return false;
     }
@@ -192,6 +194,7 @@ bool WebView2Viewer::Initialize(HWND hParentWnd, const std::wstring& userDataDir
         m_hLoaderModule, "CreateCoreWebView2EnvironmentWithOptions"
     );
     if (!pfnCreate) {
+        NppLog("WebView2 Initialize: CreateCoreWebView2EnvironmentWithOptions export missing");
         m_isInitializing = false;
         return false;
     }
@@ -215,16 +218,20 @@ bool WebView2Viewer::Initialize(HWND hParentWnd, const std::wstring& userDataDir
     HRESULT hr = pfnCreate(nullptr, targetUserData.c_str(), nullptr, envHandler);
     envHandler->Release();
     if (FAILED(hr)) {
+        NppLog("WebView2 Initialize: CreateEnvironment hr=0x%08X", (unsigned)hr);
         m_isInitializing = false;
         return false;
     }
+    NppLog("WebView2 Initialize: async environment creation started, userData=%ls", targetUserData.c_str());
 
     return true;
 }
 
 void WebView2Viewer::OnEnvironmentCreated(HRESULT result, ICoreWebView2Environment* env) {
+    NppLog("OnEnvironmentCreated: hr=0x%08X env=%p", (unsigned)result, (void*)env);
     if (FAILED(result) || !env) {
         m_isInitializing = false;
+        NotifyInitFailed();
         return;
     }
 
@@ -244,7 +251,9 @@ void WebView2Viewer::OnEnvironmentCreated(HRESULT result, ICoreWebView2Environme
 
 void WebView2Viewer::OnControllerCreated(HRESULT result, ICoreWebView2Controller* controller) {
     m_isInitializing = false;
+    NppLog("OnControllerCreated: hr=0x%08X controller=%p", (unsigned)result, (void*)controller);
     if (FAILED(result) || !controller) {
+        NotifyInitFailed();
         return;
     }
 
@@ -257,7 +266,9 @@ void WebView2Viewer::OnControllerCreated(HRESULT result, ICoreWebView2Controller
     m_pController->put_Bounds(rc);
     m_pController->put_IsVisible(TRUE);
 
-    if (SUCCEEDED(m_pController->get_CoreWebView2(&m_pWebView)) && m_pWebView) {
+    HRESULT coreHr = m_pController->get_CoreWebView2(&m_pWebView);
+    NppLog("OnControllerCreated: get_CoreWebView2 hr=0x%08X web=%p", (unsigned)coreHr, (void*)m_pWebView);
+    if (SUCCEEDED(coreHr) && m_pWebView) {
         // Disable default browser context menu so our modern custom HTML context menu takes over
         ICoreWebView2Settings* settings = nullptr;
         if (SUCCEEDED(m_pWebView->get_Settings(&settings)) && settings) {
@@ -328,10 +339,20 @@ void WebView2Viewer::OnControllerCreated(HRESULT result, ICoreWebView2Controller
         SetZoom(m_zoom);
 
         // Navigate to pending HTML if present
+        NppLog("OnControllerCreated: ready, pendingHtmlBytes=%u", (unsigned)m_pendingHtml.size());
         if (!m_pendingHtml.empty()) {
             SetHtmlContent(m_pendingHtml);
             m_pendingHtml.clear();
         }
+    } else {
+        NotifyInitFailed();
+        return;
+    }
+
+    // Tell the owner the engine is usable so it can force a render even when
+    // no pending HTML existed (startup ordering race - blank panel otherwise)
+    if (m_initCompletedCallback) {
+        m_initCompletedCallback();
     }
 }
 
@@ -380,6 +401,7 @@ std::wstring EscapeJsonWide(const std::string& utf8Str) {
 
 void WebView2Viewer::SetHtmlContent(const std::string& htmlUtf8) {
     if (!m_isInitialized || !m_pWebView) {
+        NppLog("SetHtmlContent: engine not ready, queue pending (%u bytes)", (unsigned)htmlUtf8.size());
         m_pendingHtml = htmlUtf8;
         return;
     }
@@ -387,12 +409,18 @@ void WebView2Viewer::SetHtmlContent(const std::string& htmlUtf8) {
     m_pageReady = false;
     std::wstring wideHtml = BiDiEngine::Utf8ToWide(htmlUtf8);
     if (!wideHtml.empty()) {
-        m_pWebView->NavigateToString(wideHtml.c_str());
+        HRESULT hr = m_pWebView->NavigateToString(wideHtml.c_str());
+        NppLog("SetHtmlContent: NavigateToString(%u bytes) hr=0x%08X",
+               (unsigned)htmlUtf8.size(), (unsigned)hr);
+    } else {
+        NppLog("SetHtmlContent: EMPTY html, no navigation!");
     }
 }
 
-bool WebView2Viewer::UpdateContent(const std::string& bodyHtml, const std::string& tocHtml, const std::string& title, bool isDark) {
+bool WebView2Viewer::UpdateContent(const std::string& bodyHtml, const std::string& tocHtml, const std::string& title, const std::wstring& themeClass) {
     if (!m_isInitialized || !m_pWebView || !m_pageReady) {
+        NppLog("UpdateContent: rejected (init=%d web=%d pageReady=%d)",
+               (int)m_isInitialized, (int)(m_pWebView != nullptr), (int)m_pageReady);
         return false;
     }
 
@@ -400,7 +428,7 @@ bool WebView2Viewer::UpdateContent(const std::string& bodyHtml, const std::strin
     json << L"{\"type\":\"updateContent\",\"body\":\"" << EscapeJsonWide(bodyHtml)
          << L"\",\"toc\":\"" << EscapeJsonWide(tocHtml)
          << L"\",\"title\":\"" << EscapeJsonWide(title)
-         << L"\",\"isDark\":" << (isDark ? L"true" : L"false") << L"}";
+         << L"\",\"themeClass\":\"" << EscapeJsonWide(BiDiEngine::WideToUtf8(themeClass)) << L"\"}";
 
     HRESULT hr = m_pWebView->PostWebMessageAsJson(json.str().c_str());
     return SUCCEEDED(hr);
@@ -412,19 +440,48 @@ void WebView2Viewer::ExecuteScript(const std::wstring& script) {
     }
 }
 
-void WebView2Viewer::SetDarkMode(bool isDark) {
-    m_darkMode = isDark;
+void WebView2Viewer::SetTheme(const std::wstring& themeName, const std::wstring& themeId) {
+    m_themeClass = themeName;
     if (m_isInitialized) {
-        std::wstring script = isDark ? L"document.body.classList.add('dark'); if (window.onThemeChanged) window.onThemeChanged();"
-                                     : L"document.body.classList.remove('dark'); if (window.onThemeChanged) window.onThemeChanged();";
-        ExecuteScript(script);
+        std::wstringstream ss;
+        ss << L"(function(){var t=['dark','sepia','monokai','dracula','solarized-light','solarized-dark',"
+              L"'nord','github-light','github-dark','vscode-dark','bearded'];"
+              L"t.forEach(function(c){document.body.classList.remove(c);});"
+              // Bearded variations carry their own class (bearded-v-<id>)
+              L"var cls=document.body.className.split(/\\s+/);"
+              L"for(var i=0;i<cls.length;i++){if(cls[i].indexOf('bearded-v-')===0){document.body.classList.remove(cls[i]);}}";
+        if (!themeName.empty()) {
+            ss << L"document.body.classList.add('" << themeName << L"');";
+        }
+        if (themeId.empty()) {
+            ss << L"window._themeId=null;";
+        } else {
+            ss << L"window._themeId='" << themeId << L"';";
+        }
+        ss << L"if (window.onThemeChanged) window.onThemeChanged();})();";
+        ExecuteScript(ss.str());
     }
+}
+
+void WebView2Viewer::SyncUiState(bool bidiEnabled, int darkMode, int zoomPercent) {
+    if (!m_isInitialized || !m_pWebView) return;
+    std::wstringstream ss;
+    ss << L"window._bidiEnabled = " << (bidiEnabled ? L"true" : L"false")
+       << L"; window._darkMode = " << darkMode
+       << L"; window._zoomPercent = " << zoomPercent << L";";
+    ExecuteScript(ss.str());
 }
 
 void WebView2Viewer::SetZoom(float zoomFactor) {
     m_zoom = zoomFactor;
     if (m_pController) {
         m_pController->put_ZoomFactor(static_cast<double>(zoomFactor));
+    }
+    if (m_isInitialized) {
+        // Keep window._zoomPercent current for the settings popover zoom label
+        std::wstringstream ss;
+        ss << L"window._zoomPercent = " << static_cast<int>(zoomFactor * 100.0f + 0.5f) << L";";
+        ExecuteScript(ss.str());
     }
 }
 
@@ -443,8 +500,15 @@ void WebView2Viewer::PrintToPdf(const std::wstring& pdfPath) {
 }
 
 void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
+    // Trace every bridge message: a silently dropped selectTheme/click path
+    // leaves no other fingerprint in the file log.
+    NppLog("OnWebMessageReceived: %.160s", BiDiEngine::WideToUtf8(message.substr(0, 160)).c_str());
     if (message == L"pageLoaded") {
+        NppLog("OnWebMessageReceived: pageLoaded (pageReady 0 -> 1)");
         m_pageReady = true;
+        if (m_pageReadyCallback) {
+            m_pageReadyCallback();
+        }
         return;
     }
 
@@ -478,6 +542,15 @@ void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
     if (message == L"toggleTheme") {
         if (m_themeCallback) {
             m_themeCallback();
+        }
+        return;
+    }
+
+    const std::wstring prefixSelectTheme = L"selectTheme:";
+    if (message.find(prefixSelectTheme) == 0) {
+        std::wstring themeName = message.substr(prefixSelectTheme.length());
+        if (m_selectThemeCallback) {
+            m_selectThemeCallback(themeName);
         }
         return;
     }
@@ -527,6 +600,22 @@ void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
         return;
     }
 
+    if (message == L"copyHtml") {
+        if (m_copyHtmlCallback) {
+            m_copyHtmlCallback();
+        }
+        return;
+    }
+
+    const std::wstring prefixDarkMode = L"darkMode:";
+    if (message.find(prefixDarkMode) == 0) {
+        int mode = _wtoi(message.substr(prefixDarkMode.length()).c_str());
+        if (m_darkModeCallback) {
+            m_darkModeCallback(mode);
+        }
+        return;
+    }
+
     const std::wstring prefixZoomChange = L"zoomChange:";
     if (message.find(prefixZoomChange) == 0) {
         std::wstring factorStr = message.substr(prefixZoomChange.length());
@@ -538,6 +627,14 @@ void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
             }
         }
         return;
+    }
+}
+
+void WebView2Viewer::NotifyInitFailed() {
+    if (m_isInitialized) return;
+    NppLog("NotifyInitFailed: firing initFailedCallback");
+    if (m_initFailedCallback) {
+        m_initFailedCallback();
     }
 }
 

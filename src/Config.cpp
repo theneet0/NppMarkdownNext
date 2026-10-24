@@ -37,6 +37,12 @@ void PluginConfig::Load(const std::wstring& configPath) {
     isSmartBiDiEnabled = GetPrivateProfileIntW(sec, L"IsSmartBiDiEnabled", 1, configPath.c_str()) != 0;
     darkModeOverride = GetPrivateProfileIntW(sec, L"DarkModeOverride", -1, configPath.c_str());
 
+    theme = static_cast<PreviewTheme>(GetPrivateProfileIntW(sec, L"Theme", 0, configPath.c_str()));
+
+    wchar_t variantBuf[128] = { 0 };
+    GetPrivateProfileStringW(sec, L"BeardedVariant", L"", variantBuf, 128, configPath.c_str());
+    beardedVariant = variantBuf;
+
     int zoomInt = GetPrivateProfileIntW(sec, L"ZoomLevelPercent", 100, configPath.c_str());
     zoomLevel = static_cast<float>(zoomInt) / 100.0f;
     if (zoomLevel < 0.3f) zoomLevel = 0.3f;
@@ -56,6 +62,8 @@ void PluginConfig::Save(const std::wstring& configPath) const {
     WritePrivateProfileStringW(sec, L"ShowOutline", showOutline ? L"1" : L"0", configPath.c_str());
     WritePrivateProfileStringW(sec, L"IsSmartBiDiEnabled", isSmartBiDiEnabled ? L"1" : L"0", configPath.c_str());
     WritePrivateProfileStringW(sec, L"DarkModeOverride", std::to_wstring(darkModeOverride).c_str(), configPath.c_str());
+    WritePrivateProfileStringW(sec, L"Theme", std::to_wstring(static_cast<int>(theme)).c_str(), configPath.c_str());
+    WritePrivateProfileStringW(sec, L"BeardedVariant", beardedVariant.c_str(), configPath.c_str());
 
     int zoomInt = static_cast<int>(zoomLevel * 100.0f + 0.5f);
     WritePrivateProfileStringW(sec, L"ZoomLevelPercent", std::to_wstring(zoomInt).c_str(), configPath.c_str());

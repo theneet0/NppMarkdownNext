@@ -232,7 +232,7 @@ void TestHtmlExporter() {
         L"```\n";
 
     MarkdownDocument doc = MarkdownParser::Parse(md);
-    std::wstring html = HtmlExporter::ExportToHtml(doc, L"Test Title", true);
+    std::wstring html = HtmlExporter::ExportToHtml(doc, L"Test Title", PreviewTheme::Dark);
 
     assert(!html.empty());
     assert(html.find(L"<!DOCTYPE html>") != std::wstring::npos);
@@ -266,7 +266,7 @@ void TestHtmlExporter() {
     assert(preCodeContent.find(L"<floating-toolbar") == std::wstring::npos);
 
     // 3. Test modern GeneratePreviewHtml
-    std::string previewHtml = HtmlExporter::GeneratePreviewHtml(doc, L"Preview Title", true, 1.0f, true);
+    std::string previewHtml = HtmlExporter::GeneratePreviewHtml(doc, L"Preview Title", PreviewTheme::Dark, 1.0f, true);
     assert(!previewHtml.empty());
     assert(previewHtml.find("floating-toolbar") == std::string::npos);
     assert(previewHtml.find("app-layout") != std::string::npos);
@@ -298,7 +298,7 @@ void TestHtmlExporter() {
     assert(previewHtml.find("https://fonts.") == std::string::npos);
 
     // 6. Test GeneratePreviewComponents for instant in-place DOM updates
-    auto components = HtmlExporter::GeneratePreviewComponents(doc, L"Preview Title", true, 1.0f, true);
+    auto components = HtmlExporter::GeneratePreviewComponents(doc, L"Preview Title", PreviewTheme::Dark, 1.0f, true);
     assert(!components.fullHtml.empty());
     assert(!components.bodyHtml.empty());
     assert(!components.tocHtml.empty());
@@ -337,7 +337,7 @@ void TestPersianDocument() {
     MarkdownDocument doc = MarkdownParser::Parse(wide);
     assert(doc.blocks.size() > 0);
 
-    auto comp = HtmlExporter::GeneratePreviewComponents(doc, L"sample_persian.md", true, 1.0f, true);
+    auto comp = HtmlExporter::GeneratePreviewComponents(doc, L"sample_persian.md", PreviewTheme::Dark, 1.0f, true);
     assert(!comp.bodyHtml.empty());
     assert(comp.bodyHtml.find("class=\"alert-callout") != std::string::npos);
     assert(comp.bodyHtml.find("table") != std::string::npos);
@@ -362,7 +362,7 @@ void TestAdvancedDocument() {
     MarkdownDocument doc = MarkdownParser::Parse(wide);
     assert(doc.blocks.size() >= 10);
 
-    auto comp = HtmlExporter::GeneratePreviewComponents(doc, L"sample_english.md", true, 1.0f, true);
+    auto comp = HtmlExporter::GeneratePreviewComponents(doc, L"sample_english.md", PreviewTheme::Dark, 1.0f, true);
     assert(!comp.bodyHtml.empty());
     assert(!comp.tocHtml.empty());
     assert(!comp.fullHtml.empty());
@@ -473,7 +473,7 @@ void TestParserEdgeCases() {
     assert(plain == L"Hello WorldClick Here");
 
     // 10. Preview components have jumpToSource and dblclick listener
-    std::string previewHtml = HtmlExporter::GeneratePreviewHtml(docTable, L"Title", false);
+    std::string previewHtml = HtmlExporter::GeneratePreviewHtml(docTable, L"Title", PreviewTheme::Light);
     assert(previewHtml.find("jumpToSource") != std::string::npos);
     assert(previewHtml.find("dblclick") != std::string::npos);
 

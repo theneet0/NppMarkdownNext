@@ -32,6 +32,7 @@ void PluginConfig::Load(const std::wstring& configPath) {
 
     const wchar_t* sec = L"Settings";
     isPanelVisible = GetPrivateProfileIntW(sec, L"IsPanelVisible", 0, configPath.c_str()) != 0;
+    autoShowPanel = GetPrivateProfileIntW(sec, L"AutoShowPanel", 1, configPath.c_str()) != 0;
     syncWithCaret = GetPrivateProfileIntW(sec, L"SyncWithCaret", 1, configPath.c_str()) != 0;
     showOutline = GetPrivateProfileIntW(sec, L"ShowOutline", 0, configPath.c_str()) != 0;
     isSmartBiDiEnabled = GetPrivateProfileIntW(sec, L"IsSmartBiDiEnabled", 1, configPath.c_str()) != 0;
@@ -58,6 +59,7 @@ void PluginConfig::Save(const std::wstring& configPath) const {
 
     const wchar_t* sec = L"Settings";
     WritePrivateProfileStringW(sec, L"IsPanelVisible", isPanelVisible ? L"1" : L"0", configPath.c_str());
+    WritePrivateProfileStringW(sec, L"AutoShowPanel", autoShowPanel ? L"1" : L"0", configPath.c_str());
     WritePrivateProfileStringW(sec, L"SyncWithCaret", syncWithCaret ? L"1" : L"0", configPath.c_str());
     WritePrivateProfileStringW(sec, L"ShowOutline", showOutline ? L"1" : L"0", configPath.c_str());
     WritePrivateProfileStringW(sec, L"IsSmartBiDiEnabled", isSmartBiDiEnabled ? L"1" : L"0", configPath.c_str());

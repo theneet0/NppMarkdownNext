@@ -25,6 +25,7 @@ public:
     using ZoomChangeCallback = std::function<void(float factor)>;
     using SaveAsHtmlCallback = std::function<void()>;
     using BiDiCallback = std::function<void()>;
+    using AutoShowCallback = std::function<void()>;
     using CopyHtmlCallback = std::function<void()>;
     using DarkModeCallback = std::function<void(int mode)>;
     using PageReadyCallback = std::function<void()>;
@@ -56,8 +57,8 @@ public:
     // (kept in window._themeId so the theme popover checkmarks stay in sync)
     void SetTheme(const std::wstring& themeName, const std::wstring& themeId = L"");
     void SetZoom(float zoomFactor);
-    // Injects client settings state (BiDi / dark mode / zoom %) into the page
-    void SyncUiState(bool bidiEnabled, int darkMode, int zoomPercent);
+    // Injects client settings state (BiDi / dark mode / zoom % / auto-show) into the page
+    void SyncUiState(bool bidiEnabled, int darkMode, int zoomPercent, bool autoShowPanel);
 
     // Callbacks
     void SetCheckboxCallback(CheckboxCallback cb) { m_checkboxCallback = cb; }
@@ -73,6 +74,7 @@ public:
     void SetZoomChangeCallback(ZoomChangeCallback cb) { m_zoomChangeCallback = cb; }
     void SetSaveAsHtmlCallback(SaveAsHtmlCallback cb) { m_saveAsHtmlCallback = cb; }
     void SetBiDiCallback(BiDiCallback cb) { m_bidiCallback = cb; }
+    void SetAutoShowCallback(AutoShowCallback cb) { m_autoShowCallback = cb; }
     void SetCopyHtmlCallback(CopyHtmlCallback cb) { m_copyHtmlCallback = cb; }
     void SetDarkModeCallback(DarkModeCallback cb) { m_darkModeCallback = cb; }
     // Fires after a page navigation finished loading (JS reported "pageLoaded")
@@ -119,6 +121,7 @@ private:
     ZoomChangeCallback m_zoomChangeCallback;
     SaveAsHtmlCallback m_saveAsHtmlCallback;
     BiDiCallback m_bidiCallback;
+    AutoShowCallback m_autoShowCallback;
     CopyHtmlCallback m_copyHtmlCallback;
     DarkModeCallback m_darkModeCallback;
     PageReadyCallback m_pageReadyCallback;

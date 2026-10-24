@@ -463,12 +463,13 @@ void WebView2Viewer::SetTheme(const std::wstring& themeName, const std::wstring&
     }
 }
 
-void WebView2Viewer::SyncUiState(bool bidiEnabled, int darkMode, int zoomPercent) {
+void WebView2Viewer::SyncUiState(bool bidiEnabled, int darkMode, int zoomPercent, bool autoShowPanel) {
     if (!m_isInitialized || !m_pWebView) return;
     std::wstringstream ss;
     ss << L"window._bidiEnabled = " << (bidiEnabled ? L"true" : L"false")
        << L"; window._darkMode = " << darkMode
-       << L"; window._zoomPercent = " << zoomPercent << L";";
+       << L"; window._zoomPercent = " << zoomPercent
+       << L"; window._autoShowPanel = " << (autoShowPanel ? L"true" : L"false") << L";";
     ExecuteScript(ss.str());
 }
 
@@ -596,6 +597,13 @@ void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
     if (message == L"toggleBiDi") {
         if (m_bidiCallback) {
             m_bidiCallback();
+        }
+        return;
+    }
+
+    if (message == L"toggleAutoShow") {
+        if (m_autoShowCallback) {
+            m_autoShowCallback();
         }
         return;
     }

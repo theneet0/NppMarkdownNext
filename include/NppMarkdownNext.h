@@ -24,6 +24,7 @@ public:
     void ZoomOut();
     void ZoomReset();
     void ToggleBiDi();
+    void ToggleAutoShowPanel();
     void SelectTheme(PreviewTheme theme, const std::wstring& beardedVariant = L"");
     void ShowAbout();
     void OpenSettings();
@@ -52,6 +53,9 @@ private:
     ~NppMarkdownNext() = default;
 
     bool CreatePanelWindow();
+    void SetPanelVisible(bool visible);
+    // Auto show/hide the panel by the active tab's extension (autoShowPanel)
+    void ApplyAutoShowPanel();
     void RequestRenderDebounced();
     // Returns false when rendering could not run yet (no Scintilla handle)
     bool ExecuteRender();
@@ -79,6 +83,8 @@ private:
     bool m_isNppReady = false;
     bool m_isPanelRegistered = false;
     bool m_isPanelVisible = false;
+    // User hid the panel by hand: auto-show stays off until Notepad++ restarts
+    bool m_userClosedPanel = false;
     bool m_isRenderPending = false;
     bool m_openSettingsPending = false;
     std::wstring m_lastRawContent;

@@ -53,6 +53,7 @@ void NppMarkdownNext::OnNppReady() {
     if (cmdBiDi > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdBiDi, (LPARAM)(m_config.isSmartBiDiEnabled ? TRUE : FALSE));
 
     SyncThemeMenuItems();
+    ApplyAutoShowPanel();
 }
 
 void NppMarkdownNext::SyncThemeMenuItems() {
@@ -170,7 +171,8 @@ bool NppMarkdownNext::CreatePanelWindow() {
         // Push settings state (BiDi / dark mode / zoom %) into the freshly
         // loaded page so the settings popover shows correct values.
         m_webViewViewer.SyncUiState(m_config.isSmartBiDiEnabled, m_config.darkModeOverride,
-                                    static_cast<int>(m_config.zoomLevel * 100.0f + 0.5f));
+                                    static_cast<int>(m_config.zoomLevel * 100.0f + 0.5f),
+                                    m_config.autoShowPanel);
         if (m_openSettingsPending) {
             m_openSettingsPending = false;
             m_webViewViewer.ExecuteScript(L"if (typeof openSettingsPopover === 'function') openSettingsPopover();");
@@ -288,6 +290,9 @@ bool NppMarkdownNext::CreatePanelWindow() {
         m_webViewViewer.SetBiDiCallback([this]() {
             ToggleBiDi();
         });
+        m_webViewViewer.SetAutoShowCallback([this]() {
+            ToggleAutoShowPanel();
+        });
         m_webViewViewer.SetCopyHtmlCallback([this]() {
             CopyRenderedHtml();
         });
@@ -316,7 +321,8 @@ bool NppMarkdownNext::CreatePanelWindow() {
             // Native Ctrl+wheel zoom never goes through SetZoom(), so echo the
             // state here or the popover's zoom label stays stale.
             m_webViewViewer.SyncUiState(m_config.isSmartBiDiEnabled, m_config.darkModeOverride,
-                                        static_cast<int>(m_config.zoomLevel * 100.0f + 0.5f));
+                                        static_cast<int>(m_config.zoomLevel * 100.0f + 0.5f),
+                                        m_config.autoShowPanel);
         });
         NppLog("Modern WebView2 engine initialized successfully");
     } else {
@@ -361,7 +367,9 @@ int NppMarkdownNext::GetScintillaFirstVisibleLine(HWND hSci) const {
 
 std::wstring NppMarkdownNext::GetCurrentBufferPath() const {
     wchar_t path[MAX_PATH] = { 0 };
-    SendMessage(m_nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, (WPARAM)-1, (LPARAM)path);
+    // NPPM_GETFULLPATHFROMBUFFERID needs a real buffer id; -1 returned "" and
+    // made every tab look like an unsaved (Markdown) one
+    SendMessage(m_nppData._nppHandle, NPPM_GETFULLCURRENTPATH, MAX_PATH, (LPARAM)path);
     return path;
 }
 
@@ -378,14 +386,8 @@ bool NppMarkdownNext::IsCurrentBufferMarkdown() const {
 void NppMarkdownNext::OpenSettings() {
     EnsurePanelRegistered();
     if (!m_isPanelVisible) {
-        m_isPanelVisible = true;
-        SendMessage(m_nppData._nppHandle, NPPM_DMMSHOW, 0, (LPARAM)m_hPanel);
-        int cmdId = GetPluginCmdId(CMD_TOGGLE_PANEL);
-        if (cmdId > 0) {
-            SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdId, (LPARAM)TRUE);
-        }
-        m_lastRawContent.clear();
-        ExecuteRender();
+        m_userClosedPanel = false;
+        SetPanelVisible(true);
     }
     if (!m_useWebView2) return;
     if (m_webViewViewer.IsPageReady()) {
@@ -397,32 +399,44 @@ void NppMarkdownNext::OpenSettings() {
 
 void NppMarkdownNext::TogglePanel() {
     NppLog("TogglePanel() enter, current isVisible=%d", (int)m_isPanelVisible);
-    bool wasRegistered = m_isPanelRegistered;
+    bool show = !m_isPanelRegistered || !m_isPanelVisible;
+    m_userClosedPanel = !show;
+    SetPanelVisible(show);
+    NppLog("TogglePanel() exit");
+}
+
+void NppMarkdownNext::SetPanelVisible(bool visible) {
+    // Registering a docking dialog shows it, so never register just to hide
+    if (!visible && !m_isPanelRegistered) return;
     EnsurePanelRegistered();
-    NppLog("TogglePanel() after EnsurePanelRegistered, m_hPanel=0x%p", m_hPanel);
-
-    if (!wasRegistered) {
-        m_isPanelVisible = true;
-    } else {
-        m_isPanelVisible = !m_isPanelVisible;
-    }
-
-    NppLog("TogglePanel() sending NPPM_DMMSHOW/HIDE: %s", m_isPanelVisible ? "NPPM_DMMSHOW" : "NPPM_DMMHIDE");
-    SendMessage(m_nppData._nppHandle, m_isPanelVisible ? NPPM_DMMSHOW : NPPM_DMMHIDE, 0, (LPARAM)m_hPanel);
-    NppLog("TogglePanel() NPPM_DMMSHOW/HIDE returned");
+    m_isPanelVisible = visible;
+    SendMessage(m_nppData._nppHandle, visible ? NPPM_DMMSHOW : NPPM_DMMHIDE, 0, (LPARAM)m_hPanel);
 
     int cmdId = GetPluginCmdId(CMD_TOGGLE_PANEL);
     if (cmdId > 0) {
-        SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdId, (LPARAM)(m_isPanelVisible ? TRUE : FALSE));
+        SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdId, (LPARAM)(visible ? TRUE : FALSE));
     }
 
-    if (m_isPanelVisible) {
-        NppLog("TogglePanel() calling ExecuteRender");
+    if (visible) {
         m_lastRawContent.clear();
         ExecuteRender();
-        NppLog("TogglePanel() ExecuteRender returned");
     }
-    NppLog("TogglePanel() exit");
+}
+
+void NppMarkdownNext::ApplyAutoShowPanel() {
+    if (!m_config.autoShowPanel) return;
+    // Unsaved tabs ("new 1") have no extension: keep the current panel state
+    if (GetCurrentBufferPath().find(L'\\') == std::wstring::npos) return;
+    bool isMarkdown = IsCurrentBufferMarkdown();
+    if (isMarkdown == m_isPanelVisible) return;
+    if (isMarkdown && m_userClosedPanel) return;
+    NppLog("ApplyAutoShowPanel: %s", isMarkdown ? "show" : "hide");
+    SetPanelVisible(isMarkdown);
+}
+
+void NppMarkdownNext::ToggleAutoShowPanel() {
+    m_config.autoShowPanel = !m_config.autoShowPanel;
+    m_config.Save(m_configPath);
 }
 
 void NppMarkdownNext::ToggleSyncWithCaret() {
@@ -747,7 +761,10 @@ void NppMarkdownNext::OnBufferActivated() {
     if (!m_isNppReady) return;
     NppLog("OnBufferActivated: visible=%d", (int)m_isPanelVisible);
 
-    if (m_isPanelVisible) {
+    // A panel that auto-show just opened has already rendered
+    bool wasVisible = m_isPanelVisible;
+    ApplyAutoShowPanel();
+    if (wasVisible && m_isPanelVisible) {
         m_lastRawContent.clear();
         m_lastScrolledCaretLine = -1;
         ExecuteRender();
@@ -791,6 +808,7 @@ LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wPara
             NMHDR* pnm = reinterpret_cast<NMHDR*>(lParam);
             if (pnm && pnm->code == DMN_CLOSE) {
                 self->m_isPanelVisible = false;
+                self->m_userClosedPanel = true;
                 int cmdId = GetPluginCmdId(CMD_TOGGLE_PANEL);
                 if (cmdId > 0) {
                     SendMessage(self->m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdId, FALSE);

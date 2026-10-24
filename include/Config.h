@@ -21,6 +21,7 @@ enum class PreviewTheme {
 
 struct PluginConfig {
     bool isPanelVisible = false;
+    bool autoShowPanel = true; // show panel on Markdown tabs, hide it on others
     bool syncWithCaret = true;
     bool showOutline = false;
     float zoomLevel = 1.0f;

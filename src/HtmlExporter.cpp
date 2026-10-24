@@ -2630,6 +2630,7 @@ function refreshThemePopover() {
         html += themePopRow('Sync with caret', 'toggleSyncFromMenu(); refreshThemePopover();', !!window._syncEnabled, false);
         html += themePopRow('Outline / TOC', 'toggleTocFromMenu(); refreshThemePopover();', document.body.classList.contains('toc-open'), false);
         html += themePopRow('Smart BiDi', 'toggleBiDiFromMenu(); refreshThemePopover();', !!window._bidiEnabled, false);
+        html += themePopRow('Auto-show for Markdown', 'toggleAutoShowFromMenu(); refreshThemePopover();', !!window._autoShowPanel, false);
         html += themePopRow('Zoom: ' + zoomPercentLabel(), "openThemeView('zoom')", false, true);
         html += themePopRow('Copy HTML', 'copyHtmlFromMenu(); closeThemePopover();', false, false);
         html += themePopRow('Save HTML...', 'closeThemePopover(); saveAsHtmlFromMenu();', false, false);
@@ -2739,6 +2740,14 @@ function setZoomPercentFromMenu(percent) {
     } else {
         applyClientZoom(percent / 100);
     }
+}
+
+function toggleAutoShowFromMenu() {
+    window._autoShowPanel = !window._autoShowPanel;
+    if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage("toggleAutoShow");
+    }
+    showToast(window._autoShowPanel ? "Auto-show for Markdown enabled" : "Auto-show for Markdown disabled");
 }
 
 function toggleBiDiFromMenu() {

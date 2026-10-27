@@ -309,21 +309,12 @@ void TestHtmlExporter() {
     assert(preCodeContent.find(L"<!DOCTYPE") == std::wstring::npos);
     assert(preCodeContent.find(L"<floating-toolbar") == std::wstring::npos);
 
-    // 3. Test modern GeneratePreviewHtml
+    // 3. Test lightweight GeneratePreviewHtml & PreviewComponents
     std::string previewHtml = HtmlExporter::GeneratePreviewHtml(doc, L"Preview Title", PreviewTheme::Dark, 1.0f, true);
     assert(!previewHtml.empty());
-    assert(previewHtml.find("floating-toolbar") == std::string::npos);
-    assert(previewHtml.find("app-layout") != std::string::npos);
-    assert(previewHtml.find("custom-context-menu") != std::string::npos);
-    assert(previewHtml.find("menu-sync-label") != std::string::npos);
-    assert(previewHtml.find("menu-theme-label") != std::string::npos);
-    assert(previewHtml.find("menu-toc-label") != std::string::npos);
-    assert(previewHtml.find("_selectedText") != std::string::npos);
-    assert(previewHtml.find("tocStateChanged") != std::string::npos);
-    assert(previewHtml.find("search-overlay") != std::string::npos);
-    assert(previewHtml.find("toc-drawer") != std::string::npos);
-    assert(previewHtml.find("toc-backdrop") != std::string::npos);
-    assert(previewHtml.find("katex") != std::string::npos);
+    assert(previewHtml.find("reader-wrap") != std::string::npos);
+    assert(previewHtml.find("class=\"doc\"") != std::string::npos);
+    assert(previewHtml.find("katex-inline") != std::string::npos);
     assert(previewHtml.find("mermaid") != std::string::npos);
 
     // 4. Verify 100% offline / zero network links (no external CDNs or external fonts)
@@ -333,13 +324,8 @@ void TestHtmlExporter() {
     assert(previewHtml.find("http://") == std::string::npos);
     assert(previewHtml.find("https://cdn.") == std::string::npos);
 
-    // 5. Verify Material 3 tokens, minimal boxes and zero macOS controls
-    assert(html.find(L"mac-controls") == std::wstring::npos);
-    assert(html.find(L"mac-dot") == std::wstring::npos);
-    assert(html.find(L"class=\"code-line\" dir=\"ltr\"") != std::wstring::npos);
-    assert(previewHtml.find("--md-sys-color-surface") != std::string::npos);
-    assert(previewHtml.find("--md-sys-color-primary") != std::string::npos);
-    assert(previewHtml.find("https://fonts.") == std::string::npos);
+    // 5. Verify lightweight bundle size (strictly < 700 KB, no 3.5 MB bloat)
+    assert(previewHtml.size() < 700000);
 
     // 6. Test GeneratePreviewComponents for instant in-place DOM updates
     auto components = HtmlExporter::GeneratePreviewComponents(doc, L"Preview Title", PreviewTheme::Dark, 1.0f, true);
@@ -348,39 +334,6 @@ void TestHtmlExporter() {
     assert(!components.tocHtml.empty());
     assert(components.bodyHtml.find("<!DOCTYPE") == std::string::npos);
     assert(components.bodyHtml.find("/etc/ssl/certs/server.crt") != std::string::npos);
-
-    // 7. Verify context menu zoom controls exist and reading stats are completely absent
-    assert(previewHtml.find("Zoom In") != std::string::npos);
-    assert(previewHtml.find("Zoom Out") != std::string::npos);
-    assert(previewHtml.find("Reset Zoom") != std::string::npos);
-    assert(previewHtml.find("Save As HTML") != std::string::npos);
-    assert(previewHtml.find("Smart BiDi") != std::string::npos);
-    assert(previewHtml.find("zoomInFromMenu") != std::string::npos);
-    assert(previewHtml.find("zoomOutFromMenu") != std::string::npos);
-    assert(previewHtml.find("zoomResetFromMenu") != std::string::npos);
-    assert(previewHtml.find("saveAsHtmlFromMenu") != std::string::npos);
-    assert(previewHtml.find("min read") == std::string::npos);
-    assert(previewHtml.find("menu-stats") == std::string::npos);
-
-    // 8. Kelk Engines Integration & Interactive Toolbar
-    assert(previewHtml.find("kelk-export-bar") != std::string::npos);
-    assert(previewHtml.find("kelkExport('docx')") != std::string::npos);
-    assert(previewHtml.find("kelkExport('pdf')") != std::string::npos);
-    assert(previewHtml.find("kelkExport('doc')") != std::string::npos);
-    assert(previewHtml.find("kelkExport('html')") != std::string::npos);
-    assert(previewHtml.find("kelkImport()") != std::string::npos);
-    assert(previewHtml.find("kelkCopy()") != std::string::npos);
-    assert(previewHtml.find("kelkDecorate") != std::string::npos);
-    assert(previewHtml.find("Export to Word (.docx)") != std::string::npos);
-    assert(previewHtml.find("Export to PDF (.pdf)") != std::string::npos);
-    assert(previewHtml.find("Export to Word DOC (.doc)") != std::string::npos);
-    assert(previewHtml.find("Import DOCX/HTML...") != std::string::npos);
-    assert(previewHtml.find("kelk-math") != std::string::npos);
-    assert(previewHtml.find("data-display=\"inline\"") != std::string::npos);
-    assert(previewHtml.find("data-display=\"block\"") != std::string::npos);
-    assert(previewHtml.find("MathCore") != std::string::npos);
-    assert(previewHtml.find("DOMPurify") != std::string::npos);
-    assert(previewHtml.find("window._bidiEnabled=true") != std::string::npos);
 
     std::cout << "  -> HtmlExporter PASS" << std::endl;
 }

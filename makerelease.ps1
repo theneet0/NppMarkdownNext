@@ -8,7 +8,7 @@ $releaseDir = Join-Path $scriptDir "Release"
 if (Test-Path $releaseDir) { Remove-Item -Recurse -Force $releaseDir }
 New-Item -ItemType Directory -Path $releaseDir | Out-Null
 
-$version = "1.5.0"
+$version = "1.6.0"
 
 # Package x64
 $x64Dll = Join-Path $scriptDir "bin\NppMarkdownNext.dll"

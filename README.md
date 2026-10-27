@@ -1,36 +1,26 @@
-# NppMarkdownNext (Kelk Edition)
+# NppMarkdownNext (Kelk Reader Edition)
 
-NppMarkdownNext is a native Markdown live preview, multi-format export, and document import plugin for Notepad++. Refactored with the modern [Kelk](https://github.com/mohsen-1984/kelk) engine, it embeds Microsoft Edge WebView2 (Chromium) alongside high-fidelity offline builders to generate Word DOCX, PDF, MHTML DOC, and HTML documents directly from your Markdown notes, while offering a Direct2D/DirectWrite fallback engine for environments without WebView2.
+NppMarkdownNext is an ultra-lightweight native Markdown reader and live preview plugin for Notepad++, built on the core rendering engine of [Kelk](https://github.com/mohsen-1984/kelk). It embeds Microsoft Edge WebView2 (Chromium) to provide instant, high-performance rendering for GitHub Flavored Markdown (GFM) with first-class right-to-left (Persian, Arabic, Urdu, Hebrew) bidirectional support, syntax highlighting, and seamless Scintilla synchronization—with zero bloat.
 
 ## Key Features
 
-- **Kelk Multi-Engine Document Export**:
-  - **Microsoft Word (.docx)**: Compiles Markdown into native OpenXML Word documents with styled headings, blockquotes, code cards, GFM tables, and MathML equations.
-  - **PDF (.pdf)**: Generates standalone PDF documents with the embedded **Vazirmatn** font for crisp Latin, Arabic, and Persian typography.
-  - **Word 97-2003 (.doc)**: Generates self-contained MHTML Word documents formatted for instant editing in Microsoft Office.
-  - **Clean HTML (.html)**: Produces isolated offline HTML files with embedded styling.
-  - **Clipboard Copy**: Copies rendered HTML fragments directly to the system clipboard (`CF_HTML`) for seamless paste into email clients and word processors.
-- **Kelk Document Importer**:
-  - Imports Microsoft Word (`.docx`) and web documents (`.html`, `.htm`) directly into Notepad++, converting them into clean GitHub Flavored Markdown (GFM) via Kelk's `MarkdownImporter`.
-- **Advanced Kelk BiDiCore & BidiView**:
-  - Full Unicode script classification supporting Arabic, Persian, Urdu, Hebrew, Syriac, Thaana, N'Ko, Samaritan, Mandaic, Latin, Greek, Cyrillic, Armenian, and Georgian.
-  - Dynamic paragraph-level direction detection with Persian character normalization (Kaf/Yeh) and isolated bidirectional spans.
-- **Interactive Kelk Export Toolbar**:
-  - Floating export bar at the bottom of the preview panel with editable document stem name and 1-click export actions (`DOCX`, `PDF`, `HTML`, `DOC`, `Copy`, `Import`).
-- **Live Preview with Scintilla Synchronization**: Real-time rendering with debounced document parsing. Scrolling or moving the caret in Notepad++ automatically tracks the corresponding section in the preview, and clicking a heading or double-clicking any block jumps the editor caret to that source line.
-- **Bi-Directional Task Lists**: Interactive GFM task lists (`- [ ]` and `- [x]`). Clicking a checkbox in the preview toggles the bracket syntax directly in the Notepad++ buffer via Scintilla message dispatch.
-- **LaTeX / KaTeX Math**: Inline (`$...$`) and display (`$$...$$`) math parsed into KaTeX-compatible markup and rendered offline.
-- **Diagrams & Flowcharts**: Embedded offline rendering for Mermaid-compatible flowchart definitions (` ```mermaid `) using clean vector SVGs.
-- **Syntax Highlighting**: Built-in offline tokenization for common programming languages (C++, C, Python, JavaScript, TypeScript, Bash, Rust, Go, HTML, CSS, JSON, SQL, etc.).
-- **Theme Matching**: Synchronizes automatically with Notepad++ Dark Mode (`NPPM_ISDARKMODEENABLED`), with Bearded theme variations and custom theme popover.
-- **Outline & Search**: Slide-out Table of Contents drawer and in-page incremental search (`Ctrl+F`).
-- **100% Offline & Private**: Zero external CDN requests or remote web font dependencies; all scripts, fonts, and stylesheets are embedded directly in the binary.
+- **Ultra-Lightweight & Fast**: Streamlined reader shell (~300 KB HTML/JS/CSS bundle) that initializes instantly and operates with minimal memory footprint.
+- **Kelk BiDiCore & BidiView**: Flawless Persian, Arabic, Urdu, and Hebrew bidirectional layout with Unicode script classification, character normalization, and isolated code blocks.
+- **GFM & Extensions**:
+  - Headings, blockquotes, callout alerts (`[!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!هشدار]`).
+  - GFM Tables with alignment and responsive styling.
+  - Interactive Task Lists (`- [ ]`, `- [x]`) that synchronize directly with the Notepad++ editor buffer.
+  - Math expressions and Mermaid diagram containers.
+- **Real-Time Caret & Editor Synchronization**: Moving the editor caret scrolls the reader to the matching line. Double-clicking any element in the preview jumps the editor caret straight to the source line.
+- **Dark Mode & Theme Adaptation**: Seamlessly matches Notepad++ theme (Follow Notepad++, Light, Dark) without bloated third-party theme packs.
+- **Zero Network Dependencies**: 100% offline, private, and secure. Zero external font downloads or CDN tracking requests.
+- **Export & Clipboard**: 1-click "Save As HTML" and "Copy Rendered HTML" to clipboard.
 
 ## Requirements
 
 - **Operating System**: Windows 10, Windows 11, or Windows Server 2019+ (x64, x86, or ARM64).
 - **Host Editor**: Notepad++ 8.x or later.
-- **Runtime**: Microsoft Edge WebView2 Evergreen Runtime (included by default in Windows 10/11). If WebView2 is not detected, the plugin falls back to its internal Direct2D 1.1 / DirectWrite hardware-accelerated renderer.
+- **Runtime**: Microsoft Edge WebView2 Runtime (pre-installed on Windows 10/11).
 
 ## Installation
 
@@ -99,8 +89,8 @@ NppMarkdownNext is written in native C++ using the standard Win32 API and Scinti
 - **Scintilla Notification Loop**: Hooks `SCN_MODIFIED` and `SCN_UPDATEUI` to observe buffer edits. To maintain responsiveness on large files, buffer checks verify the active file's extension before triggering debounced rendering (250 ms delay). Micro-caret movements that stay on the same line are filtered out before sending IPC messages.
 - **AST Parser (`MarkdownParser`)**: Single-pass recursive tokenization into structured blocks (headers, lists, tables, blockquotes, code blocks, alerts, horizontal rules). The inline tokenizer handles bold/italic boundary markers, intra-word snake_case protection (e.g. `foo_bar_baz`), multi-backtick spans, and pipe escaping in table cells.
 - **BiDi Processing (`BiDiEngine`)**: Analyzes text direction based on the first strong directional character, isolates directional text in code lines with `<bdi>` and directional CSS markers, and normalizes Arabic Yeh/Kaf characters to Persian equivalents.
-- **WebView2 Viewer (`WebView2Viewer`)**: Hosts `ICoreWebView2Controller` and `ICoreWebView2`. Uses JSON-free IPC string messaging (`toggleCheckbox:<line>`, `jumpToLine:<line>`, `toggleTheme`, `toggleSync`) for bidirectional communication between the web environment and the native Win32 window.
-- **Direct2D Fallback (`MarkdownRenderer`)**: Uses Direct2D 1.1 and DirectWrite text layouts with RTL reading direction (`DWRITE_READING_DIRECTION_RIGHT_TO_LEFT`) and locale-specific formatters (`fa-ir`) to provide clean native rendering without requiring WebView2 runtimes.
+- **WebView2 Viewer (`WebView2Viewer`)**: Hosts `ICoreWebView2Controller` and `ICoreWebView2`. Uses efficient JSON messaging (`render`, `scrollToLine`, `setTheme`, `setBiDi`) and direct message dispatch (`jumpToLine:<line>`, `toggleCheckbox:<line>`) between the Kelk web environment and the native Win32 window.
+- **Kelk Core Bundle (`KelkBundle.inc`)**: Lightweight compilation of Marked.js, DOMPurify, Highlight.js, and Kelk's BiDiCore/BidiView direction engine, fitting under 300 KB for lightning-fast loads.
 
 ## Building from Source
 

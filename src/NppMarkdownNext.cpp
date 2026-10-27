@@ -10,9 +10,10 @@
 #include <fstream>
 #include <sstream>
 
+extern "C" int GetPluginCmdId(int index);
+
 namespace {
 const wchar_t* s_panelClassName = L"NppMarkdownNextWindowClass";
-const wchar_t* s_renderCanvasClassName = L"NppMarkdownCanvasWindowClass";
 }
 
 NppMarkdownNext& NppMarkdownNext::Instance() {
@@ -24,7 +25,6 @@ void NppMarkdownNext::Init(HINSTANCE hInst, NppData nppData) {
     m_hInst = hInst;
     m_nppData = nppData;
 
-    // Load config path from Notepad++ plugin config directory
     wchar_t configDir[MAX_PATH] = { 0 };
     if (m_nppData._nppHandle) {
         SendMessage(m_nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)configDir);
@@ -36,21 +36,13 @@ void NppMarkdownNext::Init(HINSTANCE hInst, NppData nppData) {
     m_config.Load(m_configPath);
     m_config.isPanelVisible = false;
     m_isPanelVisible = false;
-    m_config.showOutline = false;
-
-    // CRITICAL: We do NOT call CreatePanelWindow() or send NPPM_DMMREGASDCKDLG here!
-    // Docking registration must only occur on NPPN_READY or on-demand, after Notepad++
-    // has completed its main window creation, pluginsManager initialization, and getFuncsArray.
 }
 
 void NppMarkdownNext::OnNppReady() {
     m_isNppReady = true;
 
-    // Synchronize initial menu check states using allocated command IDs
     int cmdCaret = GetPluginCmdId(CMD_SYNC_CARET);
     if (cmdCaret > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdCaret, (LPARAM)(m_config.syncWithCaret ? TRUE : FALSE));
-    int cmdOutline = GetPluginCmdId(CMD_TOGGLE_OUTLINE);
-    if (cmdOutline > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdOutline, (LPARAM)(m_config.showOutline ? TRUE : FALSE));
     int cmdBiDi = GetPluginCmdId(CMD_TOGGLE_BIDI);
     if (cmdBiDi > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdBiDi, (LPARAM)(m_config.isSmartBiDiEnabled ? TRUE : FALSE));
 
@@ -59,47 +51,17 @@ void NppMarkdownNext::OnNppReady() {
 }
 
 void NppMarkdownNext::SyncThemeMenuItems() {
-    struct ThemeCmd { PreviewTheme theme; int cmdId; };
-    ThemeCmd themeCmds[] = {
-        { PreviewTheme::FollowNpp, CMD_THEME_FOLLOW_NPP },
-        { PreviewTheme::Light, CMD_THEME_LIGHT },
-        { PreviewTheme::Dark, CMD_THEME_DARK },
-        { PreviewTheme::Sepia, CMD_THEME_SEPIA },
-        { PreviewTheme::Monokai, CMD_THEME_MONOKAI },
-        { PreviewTheme::Dracula, CMD_THEME_DRACULA },
-        { PreviewTheme::SolarizedLight, CMD_THEME_SOLARIZED_LIGHT },
-        { PreviewTheme::SolarizedDark, CMD_THEME_SOLARIZED_DARK },
-        { PreviewTheme::Nord, CMD_THEME_NORD },
-        { PreviewTheme::GitHubLight, CMD_THEME_GITHUB_LIGHT },
-        { PreviewTheme::GitHubDark, CMD_THEME_GITHUB_DARK },
-        { PreviewTheme::VSCodeDark, CMD_THEME_VSCODE_DARK },
-    };
-    for (auto& tc : themeCmds) {
-        int cmdId = GetPluginCmdId(tc.cmdId);
-        if (cmdId > 0) {
-            SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdId,
-                        (LPARAM)(m_config.theme == tc.theme ? TRUE : FALSE));
-        }
-    }
-
-    // Bearded: the plain entry means the classic variation, the Gold entry its own variation
-    int cmdBearded = GetPluginCmdId(CMD_THEME_BEARDED);
-    if (cmdBearded > 0) {
-        bool checked = (m_config.theme == PreviewTheme::Bearded) && m_config.beardedVariant.empty();
-        SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdBearded, (LPARAM)(checked ? TRUE : FALSE));
-    }
-    int cmdBeardedGold = GetPluginCmdId(CMD_THEME_BEARDED_GOLD);
-    if (cmdBeardedGold > 0) {
-        bool checked = (m_config.theme == PreviewTheme::Bearded) && (m_config.beardedVariant == L"gold-d-raynh");
-        SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdBeardedGold, (LPARAM)(checked ? TRUE : FALSE));
-    }
+    int cmdFollow = GetPluginCmdId(CMD_THEME_FOLLOW_NPP);
+    if (cmdFollow > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdFollow, (LPARAM)(m_config.theme == ReaderTheme::FollowNpp ? TRUE : FALSE));
+    int cmdLight = GetPluginCmdId(CMD_THEME_LIGHT);
+    if (cmdLight > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdLight, (LPARAM)(m_config.theme == ReaderTheme::Light ? TRUE : FALSE));
+    int cmdDark = GetPluginCmdId(CMD_THEME_DARK);
+    if (cmdDark > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdDark, (LPARAM)(m_config.theme == ReaderTheme::Dark ? TRUE : FALSE));
 }
 
 void NppMarkdownNext::EnsurePanelRegistered() {
-    NppLog("EnsurePanelRegistered() called, registered=%d", (int)m_isPanelRegistered);
     if (m_isPanelRegistered) return;
     CreatePanelWindow();
-    NppLog("EnsurePanelRegistered() finished, registered=%d", (int)m_isPanelRegistered);
 }
 
 void NppMarkdownNext::Cleanup() {
@@ -111,7 +73,6 @@ void NppMarkdownNext::Cleanup() {
 }
 
 bool NppMarkdownNext::CreatePanelWindow() {
-    NppLog("CreatePanelWindow() start");
     if (m_isPanelRegistered && m_hPanel && IsWindow(m_hPanel)) {
         return true;
     }
@@ -123,12 +84,11 @@ bool NppMarkdownNext::CreatePanelWindow() {
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
     RegisterClassEx(&wc);
-    NppLog("RegisterClassEx completed");
 
     m_hPanel = CreateWindowEx(
         WS_EX_CONTROLPARENT,
         s_panelClassName,
-        L"Markdown Panel",
+        L"Markdown Reader (Kelk)",
         WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
         0, 0, 450, 700,
         m_nppData._nppHandle,
@@ -137,14 +97,10 @@ bool NppMarkdownNext::CreatePanelWindow() {
         this
     );
 
-    NppLog("CreateWindowEx completed, m_hPanel=0x%p", m_hPanel);
     if (!m_hPanel) return false;
 
-    // Setup docking data and register with Notepad++ FIRST
-    // Notepad++ reparents m_hPanel to IDC_CLIENT_TAB and sets WS_CHILD.
-    // This must occur before Direct2D render targets or child controls are created.
     m_tbData.hClient = m_hPanel;
-    m_tbData.pszName = L"Markdown Panel";
+    m_tbData.pszName = L"Markdown Reader (Kelk)";
     m_tbData.dlgID = CMD_TOGGLE_PANEL;
     m_tbData.uMask = DWS_DF_CONT_RIGHT | DWS_USEOWNDARKMODE;
     m_tbData.hIconTab = nullptr;
@@ -153,206 +109,75 @@ bool NppMarkdownNext::CreatePanelWindow() {
     m_tbData.iPrevCont = -1;
     m_tbData.pszModuleName = L"NppMarkdownNext.dll";
 
-    NppLog("Sending NPPM_DMMREGASDCKDLG, nppHandle=0x%p, tbData.hClient=0x%p", m_nppData._nppHandle, m_tbData.hClient);
     SendMessage(m_nppData._nppHandle, NPPM_DMMREGASDCKDLG, 0, (LPARAM)&m_tbData);
-    NppLog("NPPM_DMMREGASDCKDLG returned successfully");
     m_isPanelRegistered = true;
 
-    // Dark mode check from Notepad++
-    bool isDark = (EffectiveTheme() == PreviewTheme::Dark);
-
-    // Try initializing modern WebView2 (Chromium Evergreen) first
     wchar_t tempPath[MAX_PATH] = { 0 };
     GetTempPathW(MAX_PATH, tempPath);
     std::wstring userDataDir = std::wstring(tempPath) + L"NppMarkdownNext_WebView2";
 
-    // Fallbacks for the two silent startup failures:
-    //  - page becomes ready after an early render attempt -> re-render once loaded
-    //  - async WebView2 init fails -> switch to Direct2D instead of a blank panel
     m_webViewViewer.SetPageReadyCallback([this]() {
-        // Push settings state (BiDi / dark mode / zoom %) into the freshly
-        // loaded page so the settings popover shows correct values.
-        m_webViewViewer.SyncUiState(m_config.isSmartBiDiEnabled, m_config.darkModeOverride,
-                                    static_cast<int>(m_config.zoomLevel * 100.0f + 0.5f),
-                                    m_config.autoShowPanel);
-        if (m_openSettingsPending) {
-            m_openSettingsPending = false;
-            m_webViewViewer.ExecuteScript(L"if (typeof openSettingsPopover === 'function') openSettingsPopover();");
-        }
-        m_lastRawContent.clear();
-        if (!m_isPanelVisible) return;
-        NppLog("WebView2 page ready, re-rendering");
-        m_renderRetryCount = 0;
-        if (!ExecuteRender() && m_hPanel) {
-            SetTimer(m_hPanel, IDT_RENDER_RETRY, IDT_RENDER_RETRY_DELAY_MS, nullptr);
-        }
-    });
-    m_webViewViewer.SetInitFailedCallback([this]() {
-        if (!m_useWebView2) return;
-        NppLog("WebView2 async initialization failed, falling back to Direct2D");
-        m_useWebView2 = false;
-        m_renderer.Initialize(m_hPanel);
-        m_renderer.SetZoom(m_config.zoomLevel);
-        m_renderer.SetDarkMode(EffectiveTheme() == PreviewTheme::Dark);
-        m_lastRawContent.clear();
-        m_renderRetryCount = 0;
-        if (!ExecuteRender() && m_hPanel) {
-            SetTimer(m_hPanel, IDT_RENDER_RETRY, IDT_RENDER_RETRY_DELAY_MS, nullptr);
-        }
-    });
-    // Startup race guard: whatever order the panel-show / WebView2-init / buffer
-    // restore events arrive in, once the controller is usable we force a render.
-    // Without this a render that ran too early (empty buffer, viewer not ready)
-    // leaves a blank white panel until some later buffer event.
-    m_webViewViewer.SetInitCompletedCallback([this]() {
-        NppLog("WebView2 init completed, forceRender visible=%d", (int)m_isPanelVisible);
-        if (!m_isPanelVisible) return;
-        m_lastRawContent.clear();
-        m_renderRetryCount = 0;
-        if (!ExecuteRender() && m_hPanel) {
-            SetTimer(m_hPanel, IDT_RENDER_RETRY, IDT_RENDER_RETRY_DELAY_MS, nullptr);
+        NppLog("WebView2 page ready, executing initial render");
+        m_lastRawContentUtf8.clear();
+        if (m_isPanelVisible) {
+            ExecuteRender();
         }
     });
 
-    m_useWebView2 = m_webViewViewer.Initialize(m_hPanel, userDataDir);
-    NppLog("CreatePanelWindow: Initialize returned %d (useWebView2=%d)", (int)m_useWebView2, (int)m_useWebView2);
-    if (m_useWebView2) {
-        m_webViewViewer.SetTheme(ThemeClassName(EffectiveTheme()), CurrentThemeId());
-        m_webViewViewer.SetZoom(m_config.zoomLevel);
-        m_webViewViewer.SetCheckboxCallback([this](int lineIdx) {
-            HWND hSci = GetCurrentScintilla();
-            if (!hSci || lineIdx < 0) return;
-            int lineStart = static_cast<int>(SendMessage(hSci, SCI_POSITIONFROMLINE, lineIdx, 0));
-            int lineLen = static_cast<int>(SendMessage(hSci, SCI_LINELENGTH, lineIdx, 0));
-            if (lineLen > 0) {
-                std::string lineText(lineLen + 1, '\0');
-                SendMessage(hSci, SCI_GETLINE, lineIdx, (LPARAM)&lineText[0]);
-                lineText.resize(lineLen);
+    m_webViewViewer.SetCheckboxCallback([this](int lineIdx) {
+        HWND hSci = GetCurrentScintilla();
+        if (!hSci || lineIdx < 0) return;
+        int lineStart = static_cast<int>(SendMessage(hSci, SCI_POSITIONFROMLINE, lineIdx, 0));
+        int lineLen = static_cast<int>(SendMessage(hSci, SCI_LINELENGTH, lineIdx, 0));
+        if (lineLen > 0) {
+            std::string lineText(lineLen + 1, '\0');
+            SendMessage(hSci, SCI_GETLINE, lineIdx, (LPARAM)&lineText[0]);
+            lineText.resize(lineLen);
 
-                size_t uncheckedPos = lineText.find("[ ]");
-                if (uncheckedPos != std::string::npos) {
-                    SendMessage(hSci, SCI_SETSEL, lineStart + static_cast<int>(uncheckedPos), lineStart + static_cast<int>(uncheckedPos) + 3);
-                    SendMessage(hSci, SCI_REPLACESEL, 0, (LPARAM)"[x]");
-                } else {
-                    size_t checkedPos = lineText.find("[x]");
-                    if (checkedPos == std::string::npos) checkedPos = lineText.find("[X]");
-                    if (checkedPos != std::string::npos) {
-                        SendMessage(hSci, SCI_SETSEL, lineStart + static_cast<int>(checkedPos), lineStart + static_cast<int>(checkedPos) + 3);
-                        SendMessage(hSci, SCI_REPLACESEL, 0, (LPARAM)"[ ]");
-                    }
+            size_t uncheckedPos = lineText.find("[ ]");
+            if (uncheckedPos != std::string::npos) {
+                SendMessage(hSci, SCI_SETSEL, lineStart + static_cast<int>(uncheckedPos), lineStart + static_cast<int>(uncheckedPos) + 3);
+                SendMessage(hSci, SCI_REPLACESEL, 0, (LPARAM)"[x]");
+            } else {
+                size_t checkedPos = lineText.find("[x]");
+                if (checkedPos == std::string::npos) checkedPos = lineText.find("[X]");
+                if (checkedPos != std::string::npos) {
+                    SendMessage(hSci, SCI_SETSEL, lineStart + static_cast<int>(checkedPos), lineStart + static_cast<int>(checkedPos) + 3);
+                    SendMessage(hSci, SCI_REPLACESEL, 0, (LPARAM)"[ ]");
                 }
             }
-        });
-        m_webViewViewer.SetJumpToLineCallback([this](int lineIdx) {
-            HWND hSci = GetCurrentScintilla();
-            if (!hSci || lineIdx < 0) return;
-            SendMessage(hSci, SCI_ENSUREVISIBLE, lineIdx, 0);
-            SendMessage(hSci, SCI_GOTOLINE, lineIdx, 0);
-            SetFocus(hSci);
-        });
-        m_webViewViewer.SetSyncCallback([this]() {
-            ToggleSyncWithCaret();
-        });
-        m_webViewViewer.SetThemeCallback([this]() {
-            SelectTheme(EffectiveTheme() == PreviewTheme::Dark ? PreviewTheme::Light : PreviewTheme::Dark);
-        });
-        m_webViewViewer.SetSelectThemeCallback([this](const std::wstring& themeName) {
-            PreviewTheme theme = PreviewTheme::FollowNpp;
-            std::wstring beardedVariant;
-            const std::wstring beardedPrefix = L"bearded-v-";
-            if (themeName == L"light") theme = PreviewTheme::Light;
-            else if (themeName == L"dark") theme = PreviewTheme::Dark;
-            else if (themeName == L"sepia") theme = PreviewTheme::Sepia;
-            else if (themeName == L"monokai") theme = PreviewTheme::Monokai;
-            else if (themeName == L"dracula") theme = PreviewTheme::Dracula;
-            else if (themeName == L"solarized-light") theme = PreviewTheme::SolarizedLight;
-            else if (themeName == L"solarized-dark") theme = PreviewTheme::SolarizedDark;
-            else if (themeName == L"nord") theme = PreviewTheme::Nord;
-            else if (themeName == L"github-light") theme = PreviewTheme::GitHubLight;
-            else if (themeName == L"github-dark") theme = PreviewTheme::GitHubDark;
-            else if (themeName == L"vscode-dark") theme = PreviewTheme::VSCodeDark;
-            else if (themeName.rfind(beardedPrefix, 0) == 0) {
-                theme = PreviewTheme::Bearded;
-                beardedVariant = themeName.substr(beardedPrefix.length());
-            }
-            else if (themeName == L"bearded") theme = PreviewTheme::Bearded;
-            SelectTheme(theme, beardedVariant);
-        });
-        m_webViewViewer.SetTocCallback([this](bool isOpen) {
-            m_config.showOutline = isOpen;
-            m_config.Save(m_configPath);
-            int cmdOutline = GetPluginCmdId(CMD_TOGGLE_OUTLINE);
-            if (cmdOutline > 0) {
-                SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdOutline, (LPARAM)(isOpen ? TRUE : FALSE));
-            }
-        });
-        m_webViewViewer.SetSaveAsHtmlCallback([this]() {
-            SaveAsHtml();
-        });
-        m_webViewViewer.SetSaveExportFileCallback([this](const std::string& fmt, const std::string& name, const std::string& b64) {
-            OnSaveExportFile(fmt, name, b64);
-        });
-        m_webViewViewer.SetImportMarkdownCallback([this](const std::string& md) {
-            OnImportMarkdownReceived(md);
-        });
-        m_webViewViewer.SetTriggerImportCallback([this]() {
-            ImportDocx();
-        });
-        m_webViewViewer.SetExportDocxCallback([this]() {
-            ExportDocx();
-        });
-        m_webViewViewer.SetExportPdfCallback([this]() {
-            ExportPdf();
-        });
-        m_webViewViewer.SetExportDocCallback([this]() {
-            ExportDoc();
-        });
-        m_webViewViewer.SetBiDiCallback([this]() {
-            ToggleBiDi();
-        });
-        m_webViewViewer.SetAutoShowCallback([this]() {
-            ToggleAutoShowPanel();
-        });
-        m_webViewViewer.SetCopyHtmlCallback([this]() {
-            CopyRenderedHtml();
-        });
-        m_webViewViewer.SetDarkModeCallback([this](int mode) {
-            if (mode < -1 || mode > 1) mode = -1;
-            if (mode == m_config.darkModeOverride) return;
-            m_config.darkModeOverride = mode;
-            m_config.Save(m_configPath);
-            SelectTheme(m_config.theme, m_config.beardedVariant);
-        });
-        m_webViewViewer.SetZoomInCallback([this]() {
-            ZoomIn();
-        });
-        m_webViewViewer.SetZoomOutCallback([this]() {
-            ZoomOut();
-        });
-        m_webViewViewer.SetZoomResetCallback([this]() {
-            ZoomReset();
-        });
-        m_webViewViewer.SetZoomChangeCallback([this](float factor) {
-            m_config.zoomLevel = factor;
-            if (m_config.zoomLevel < 0.3f) m_config.zoomLevel = 0.3f;
-            if (m_config.zoomLevel > 3.0f) m_config.zoomLevel = 3.0f;
-            m_config.Save(m_configPath);
-            m_renderer.SetZoom(m_config.zoomLevel);
-            // Native Ctrl+wheel zoom never goes through SetZoom(), so echo the
-            // state here or the popover's zoom label stays stale.
-            m_webViewViewer.SyncUiState(m_config.isSmartBiDiEnabled, m_config.darkModeOverride,
-                                        static_cast<int>(m_config.zoomLevel * 100.0f + 0.5f),
-                                        m_config.autoShowPanel);
-        });
-        NppLog("Modern WebView2 engine initialized successfully");
-    } else {
-        // Fallback to Direct2D Renderer
-        NppLog("Initializing Direct2D Fallback Renderer");
-        m_renderer.Initialize(m_hPanel);
-        m_renderer.SetZoom(m_config.zoomLevel);
-        m_renderer.SetDarkMode(isDark);
-        NppLog("Direct2D Fallback Renderer initialized");
-    }
+        }
+    });
+
+    m_webViewViewer.SetJumpToLineCallback([this](int lineIdx) {
+        HWND hSci = GetCurrentScintilla();
+        if (!hSci || lineIdx < 0) return;
+        SendMessage(hSci, SCI_ENSUREVISIBLE, lineIdx, 0);
+        SendMessage(hSci, SCI_GOTOLINE, lineIdx, 0);
+        SetFocus(hSci);
+    });
+
+    m_webViewViewer.SetSyncCallback([this]() {
+        ToggleSyncWithCaret();
+    });
+
+    m_webViewViewer.SetThemeCallback([this]() {
+        SetTheme(IsDarkThemeEffective() ? ReaderTheme::Light : ReaderTheme::Dark);
+    });
+
+    m_webViewViewer.SetBiDiCallback([this]() {
+        ToggleBiDi();
+    });
+
+    m_webViewViewer.SetZoomChangeCallback([this](float factor) {
+        m_config.zoomLevel = factor;
+        if (m_config.zoomLevel < 0.3f) m_config.zoomLevel = 0.3f;
+        if (m_config.zoomLevel > 3.0f) m_config.zoomLevel = 3.0f;
+        m_config.Save(m_configPath);
+    });
+
+    m_webViewViewer.Initialize(m_hPanel, userDataDir);
+    m_webViewViewer.SetZoom(m_config.zoomLevel);
 
     return true;
 }
@@ -380,15 +205,8 @@ int NppMarkdownNext::GetScintillaCaretLine(HWND hSci) const {
     return static_cast<int>(SendMessage(hSci, SCI_LINEFROMPOSITION, pos, 0));
 }
 
-int NppMarkdownNext::GetScintillaFirstVisibleLine(HWND hSci) const {
-    if (!hSci) return 0;
-    return static_cast<int>(SendMessage(hSci, SCI_GETFIRSTVISIBLELINE, 0, 0));
-}
-
 std::wstring NppMarkdownNext::GetCurrentBufferPath() const {
     wchar_t path[MAX_PATH] = { 0 };
-    // NPPM_GETFULLPATHFROMBUFFERID needs a real buffer id; -1 returned "" and
-    // made every tab look like an unsaved (Markdown) one
     SendMessage(m_nppData._nppHandle, NPPM_GETFULLCURRENTPATH, MAX_PATH, (LPARAM)path);
     return path;
 }
@@ -403,30 +221,13 @@ bool NppMarkdownNext::IsCurrentBufferMarkdown() const {
     return m_config.IsExtensionSupported(ext);
 }
 
-void NppMarkdownNext::OpenSettings() {
-    EnsurePanelRegistered();
-    if (!m_isPanelVisible) {
-        m_userClosedPanel = false;
-        SetPanelVisible(true);
-    }
-    if (!m_useWebView2) return;
-    if (m_webViewViewer.IsPageReady()) {
-        m_webViewViewer.ExecuteScript(L"if (typeof openSettingsPopover === 'function') openSettingsPopover();");
-    } else {
-        m_openSettingsPending = true;
-    }
-}
-
 void NppMarkdownNext::TogglePanel() {
-    NppLog("TogglePanel() enter, current isVisible=%d", (int)m_isPanelVisible);
     bool show = !m_isPanelRegistered || !m_isPanelVisible;
     m_userClosedPanel = !show;
     SetPanelVisible(show);
-    NppLog("TogglePanel() exit");
 }
 
 void NppMarkdownNext::SetPanelVisible(bool visible) {
-    // Registering a docking dialog shows it, so never register just to hide
     if (!visible && !m_isPanelRegistered) return;
     EnsurePanelRegistered();
     m_isPanelVisible = visible;
@@ -438,25 +239,25 @@ void NppMarkdownNext::SetPanelVisible(bool visible) {
     }
 
     if (visible) {
-        m_lastRawContent.clear();
+        RECT rc;
+        GetClientRect(m_hPanel, &rc);
+        m_webViewViewer.Resize(0, 0, rc.right - rc.left, rc.bottom - rc.top);
+        m_webViewViewer.SetVisible(true);
+        m_lastRawContentUtf8.clear();
         ExecuteRender();
     }
 }
 
 void NppMarkdownNext::ApplyAutoShowPanel() {
     if (!m_config.autoShowPanel) return;
-    // Unsaved tabs ("new 1") have no extension: keep the current panel state
     if (GetCurrentBufferPath().find(L'\\') == std::wstring::npos) return;
     bool isMarkdown = IsCurrentBufferMarkdown();
-    if (isMarkdown == m_isPanelVisible) return;
-    if (isMarkdown && m_userClosedPanel) return;
-    NppLog("ApplyAutoShowPanel: %s", isMarkdown ? "show" : "hide");
-    SetPanelVisible(isMarkdown);
-}
-
-void NppMarkdownNext::ToggleAutoShowPanel() {
-    m_config.autoShowPanel = !m_config.autoShowPanel;
-    m_config.Save(m_configPath);
+    if (isMarkdown && !m_isPanelVisible && !m_userClosedPanel) {
+        SetPanelVisible(true);
+    } else if (!isMarkdown && m_isPanelVisible) {
+        SetPanelVisible(false);
+        m_userClosedPanel = false;
+    }
 }
 
 void NppMarkdownNext::ToggleSyncWithCaret() {
@@ -466,181 +267,31 @@ void NppMarkdownNext::ToggleSyncWithCaret() {
     if (cmdCaret > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdCaret, (LPARAM)(m_config.syncWithCaret ? TRUE : FALSE));
 }
 
-void NppMarkdownNext::ToggleOutline() {
-    m_config.showOutline = !m_config.showOutline;
+void NppMarkdownNext::ToggleBiDi() {
+    m_config.isSmartBiDiEnabled = !m_config.isSmartBiDiEnabled;
     m_config.Save(m_configPath);
-    if (m_useWebView2) {
-        if (m_config.showOutline) {
-            m_webViewViewer.ExecuteScript(L"if (typeof openToc === 'function') openToc();");
-        } else {
-            m_webViewViewer.ExecuteScript(L"if (typeof closeToc === 'function') closeToc();");
-        }
-    }
-    int cmdOutline = GetPluginCmdId(CMD_TOGGLE_OUTLINE);
-    if (cmdOutline > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdOutline, (LPARAM)(m_config.showOutline ? TRUE : FALSE));
-
-    // Trigger window resize to arrange canvas and outline
-    if (m_hPanel) {
-        RECT rc;
-        GetClientRect(m_hPanel, &rc);
-        SendMessage(m_hPanel, WM_SIZE, 0, MAKELPARAM(rc.right - rc.left, rc.bottom - rc.top));
-    }
+    int cmdBiDi = GetPluginCmdId(CMD_TOGGLE_BIDI);
+    if (cmdBiDi > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdBiDi, (LPARAM)(m_config.isSmartBiDiEnabled ? TRUE : FALSE));
+    m_webViewViewer.SetBiDi(m_config.isSmartBiDiEnabled);
 }
 
-void NppMarkdownNext::CopyRenderedHtml() {
-    std::wstring title = L"Markdown Preview";
-    HtmlExporter::CopyToClipboard(m_hPanel, m_currentDoc, title, m_config.theme, m_config.beardedVariant);
+bool NppMarkdownNext::IsDarkThemeEffective() const {
+    if (m_config.theme == ReaderTheme::Dark) return true;
+    if (m_config.theme == ReaderTheme::Light) return false;
+    // Follow Notepad++
+    return SendMessage(m_nppData._nppHandle, NPPM_ISDARKMODEENABLED, 0, 0) != 0;
 }
 
-void NppMarkdownNext::SaveAsHtml() {
-    wchar_t fileName[MAX_PATH] = L"export.html";
-    OPENFILENAMEW ofn = { sizeof(OPENFILENAMEW) };
-    ofn.hwndOwner = m_hPanel;
-    ofn.lpstrFilter = L"HTML Files (*.html;*.htm)\0*.html;*.htm\0All Files (*.*)\0*.*\0";
-    ofn.lpstrFile = fileName;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
-    ofn.lpstrDefExt = L"html";
-
-    if (GetSaveFileNameW(&ofn)) {
-        HtmlExporter::SaveToFile(fileName, m_currentDoc, L"Markdown Export", m_config.theme, m_config.beardedVariant);
-    }
+void NppMarkdownNext::SetTheme(ReaderTheme theme) {
+    m_config.theme = theme;
+    m_config.Save(m_configPath);
+    SyncThemeMenuItems();
+    m_webViewViewer.SetTheme(IsDarkThemeEffective());
 }
 
-void NppMarkdownNext::ExportDocx() {
-    if (m_useWebView2 && m_webViewViewer.IsPageReady()) {
-        m_webViewViewer.ExecuteScript(L"if (typeof window.kelkExport === 'function') window.kelkExport('docx');");
-    } else {
-        MessageBoxW(m_nppData._nppHandle, L"Preview engine is initializing. Please try again in a moment.", L"Kelk Word DOCX Export", MB_OK | MB_ICONINFORMATION);
-    }
-}
-
-void NppMarkdownNext::ExportPdf() {
-    if (m_useWebView2 && m_webViewViewer.IsPageReady()) {
-        m_webViewViewer.ExecuteScript(L"if (typeof window.kelkExport === 'function') window.kelkExport('pdf');");
-    } else {
-        MessageBoxW(m_nppData._nppHandle, L"Preview engine is initializing. Please try again in a moment.", L"Kelk PDF Export", MB_OK | MB_ICONINFORMATION);
-    }
-}
-
-void NppMarkdownNext::ExportDoc() {
-    if (m_useWebView2 && m_webViewViewer.IsPageReady()) {
-        m_webViewViewer.ExecuteScript(L"if (typeof window.kelkExport === 'function') window.kelkExport('doc');");
-    } else {
-        MessageBoxW(m_nppData._nppHandle, L"Preview engine is initializing. Please try again in a moment.", L"Kelk Word DOC Export", MB_OK | MB_ICONINFORMATION);
-    }
-}
-
-void NppMarkdownNext::ImportDocx() {
-    wchar_t openPath[MAX_PATH] = { 0 };
-    OPENFILENAMEW ofn = { sizeof(OPENFILENAMEW) };
-    ofn.hwndOwner = m_hPanel ? m_hPanel : m_nppData._nppHandle;
-    ofn.lpstrFilter = L"Word & HTML Documents (*.docx;*.html;*.htm;*.doc)\0*.docx;*.html;*.htm;*.doc\0All Files (*.*)\0*.*\0";
-    ofn.lpstrFile = openPath;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
-
-    if (GetOpenFileNameW(&ofn)) {
-        std::ifstream in(openPath, std::ios::binary);
-        if (!in.is_open()) {
-            MessageBoxW(m_nppData._nppHandle, L"Failed to open selected file.", L"Import Error", MB_OK | MB_ICONERROR);
-            return;
-        }
-        in.seekg(0, std::ios::end);
-        std::streamsize fileSize = in.tellg();
-        in.seekg(0, std::ios::beg);
-
-        if (fileSize <= 0) return;
-
-        std::vector<uint8_t> buffer(static_cast<size_t>(fileSize));
-        in.read(reinterpret_cast<char*>(buffer.data()), fileSize);
-        in.close();
-
-        if (buffer.empty()) return;
-
-        std::string b64 = BiDiEngine::Base64Encode(buffer);
-        std::wstring pathStr(openPath);
-        std::wstring ext = PathFindExtensionW(openPath);
-        std::string extUtf8 = BiDiEngine::WideToUtf8(ext);
-
-        if (m_useWebView2 && m_webViewViewer.IsPageReady()) {
-            std::wstringstream script;
-            script << L"if (typeof window.kelkImportBase64 === 'function') { window.kelkImportBase64('"
-                   << BiDiEngine::Utf8ToWide(extUtf8) << L"', '"
-                   << BiDiEngine::Utf8ToWide(b64) << L"'); }";
-            m_webViewViewer.ExecuteScript(script.str());
-        } else {
-            MessageBoxW(m_nppData._nppHandle, L"Preview engine is initializing. Please try again in a moment.", L"Import Document", MB_OK | MB_ICONINFORMATION);
-        }
-    }
-}
-
-void NppMarkdownNext::OnSaveExportFile(const std::string& format, const std::string& filename, const std::string& base64Data) {
-    if (base64Data.empty()) return;
-    std::vector<uint8_t> fileBytes = BiDiEngine::Base64Decode(base64Data);
-    if (fileBytes.empty()) return;
-
-    std::wstring defaultName = BiDiEngine::Utf8ToWide(filename);
-    if (defaultName.empty()) {
-        defaultName = L"document." + BiDiEngine::Utf8ToWide(format);
-    }
-
-    wchar_t savePath[MAX_PATH] = { 0 };
-    wcscpy_s(savePath, defaultName.c_str());
-
-    OPENFILENAMEW ofn = { sizeof(OPENFILENAMEW) };
-    ofn.hwndOwner = m_hPanel ? m_hPanel : m_nppData._nppHandle;
-
-    const wchar_t* filter = nullptr;
-    std::wstring defExt = BiDiEngine::Utf8ToWide(format);
-    if (format == "docx") {
-        filter = L"Word Document (*.docx)\0*.docx\0All Files (*.*)\0*.*\0";
-    } else if (format == "pdf") {
-        filter = L"PDF Document (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0";
-    } else if (format == "doc") {
-        filter = L"Word 97-2003 Document (*.doc)\0*.doc\0All Files (*.*)\0*.*\0";
-    } else if (format == "html") {
-        filter = L"HTML Document (*.html;*.htm)\0*.html;*.htm\0All Files (*.*)\0*.*\0";
-    } else {
-        filter = L"All Files (*.*)\0*.*\0";
-    }
-
-    ofn.lpstrFilter = filter;
-    ofn.lpstrFile = savePath;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
-    ofn.lpstrDefExt = defExt.c_str();
-
-    if (GetSaveFileNameW(&ofn)) {
-        std::ofstream out(savePath, std::ios::binary);
-        if (out.is_open()) {
-            out.write(reinterpret_cast<const char*>(fileBytes.data()), fileBytes.size());
-            out.close();
-            std::wstring msg = L"Successfully exported to:\n" + std::wstring(savePath);
-            MessageBoxW(m_nppData._nppHandle, msg.c_str(), L"Kelk Export Complete", MB_OK | MB_ICONINFORMATION);
-        } else {
-            MessageBoxW(m_nppData._nppHandle, L"Failed to write file to disk.", L"Export Error", MB_OK | MB_ICONERROR);
-        }
-    }
-}
-
-void NppMarkdownNext::OnImportMarkdownReceived(const std::string& markdownUtf8) {
-    HWND hSci = GetCurrentScintilla();
-    if (!hSci || markdownUtf8.empty()) return;
-
-    int choice = MessageBoxW(
-        m_nppData._nppHandle,
-        L"Word/HTML document successfully converted to Markdown!\n\nDo you want to replace the current editor buffer?\nClick 'Yes' to replace all, or 'No' to insert at cursor position.",
-        L"Kelk Markdown Importer",
-        MB_YESNOCANCEL | MB_ICONQUESTION
-    );
-
-    if (choice == IDYES) {
-        SendMessage(hSci, SCI_SETTEXT, 0, (LPARAM)markdownUtf8.c_str());
-        ExecuteRender();
-    } else if (choice == IDNO) {
-        SendMessage(hSci, SCI_REPLACESEL, 0, (LPARAM)markdownUtf8.c_str());
-        ExecuteRender();
+void NppMarkdownNext::OnDarkModeChanged() {
+    if (m_config.theme == ReaderTheme::FollowNpp) {
+        m_webViewViewer.SetTheme(IsDarkThemeEffective());
     }
 }
 
@@ -648,143 +299,75 @@ void NppMarkdownNext::ZoomIn() {
     m_config.zoomLevel += 0.1f;
     if (m_config.zoomLevel > 3.0f) m_config.zoomLevel = 3.0f;
     m_config.Save(m_configPath);
-    if (m_useWebView2) {
-        m_webViewViewer.SetZoom(m_config.zoomLevel);
-    } else {
-        m_renderer.SetZoom(m_config.zoomLevel);
-        if (m_hPanel) InvalidateRect(m_hPanel, nullptr, FALSE);
-    }
+    m_webViewViewer.SetZoom(m_config.zoomLevel);
 }
 
 void NppMarkdownNext::ZoomOut() {
     m_config.zoomLevel -= 0.1f;
-    if (m_config.zoomLevel < 0.4f) m_config.zoomLevel = 0.4f;
+    if (m_config.zoomLevel < 0.3f) m_config.zoomLevel = 0.3f;
     m_config.Save(m_configPath);
-    if (m_useWebView2) {
-        m_webViewViewer.SetZoom(m_config.zoomLevel);
-    } else {
-        m_renderer.SetZoom(m_config.zoomLevel);
-        if (m_hPanel) InvalidateRect(m_hPanel, nullptr, FALSE);
-    }
+    m_webViewViewer.SetZoom(m_config.zoomLevel);
 }
 
 void NppMarkdownNext::ZoomReset() {
     m_config.zoomLevel = 1.0f;
     m_config.Save(m_configPath);
-    if (m_useWebView2) {
-        m_webViewViewer.SetZoom(m_config.zoomLevel);
-    } else {
-        m_renderer.SetZoom(m_config.zoomLevel);
-        if (m_hPanel) InvalidateRect(m_hPanel, nullptr, FALSE);
-    }
+    m_webViewViewer.SetZoom(m_config.zoomLevel);
 }
 
-void NppMarkdownNext::ToggleBiDi() {
-    m_config.isSmartBiDiEnabled = !m_config.isSmartBiDiEnabled;
-    m_config.Save(m_configPath);
-    int cmdBiDi = GetPluginCmdId(CMD_TOGGLE_BIDI);
-    if (cmdBiDi > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdBiDi, (LPARAM)(m_config.isSmartBiDiEnabled ? TRUE : FALSE));
-    ExecuteRender();
+void NppMarkdownNext::CopyRenderedHtml() {
+    HWND hSci = GetCurrentScintilla();
+    if (!hSci) return;
+    std::string textUtf8 = GetScintillaText(hSci);
+    std::wstring wideText = BiDiEngine::Utf8ToWide(textUtf8);
+    MarkdownDocument doc = MarkdownParser::Parse(wideText);
+    std::wstring docTitle = PathFindFileNameW(GetCurrentBufferPath().c_str());
+    if (docTitle.empty()) docTitle = L"Markdown Preview";
+
+    HtmlExporter::CopyToClipboard(m_hPanel ? m_hPanel : m_nppData._nppHandle, doc, docTitle,
+                                  IsDarkThemeEffective() ? ReaderTheme::Dark : ReaderTheme::Light);
 }
 
-PreviewTheme NppMarkdownNext::EffectiveTheme() const {
-    if (m_config.theme != PreviewTheme::FollowNpp) return m_config.theme;
-    bool isNppDark = SendMessage(m_nppData._nppHandle, NPPM_ISDARKMODEENABLED, 0, 0) != 0;
-    bool isDark = (m_config.darkModeOverride == 1) || (m_config.darkModeOverride == -1 && isNppDark);
-    return isDark ? PreviewTheme::Dark : PreviewTheme::Light;
-}
+void NppMarkdownNext::SaveAsHtml() {
+    HWND hSci = GetCurrentScintilla();
+    if (!hSci) return;
+    std::string textUtf8 = GetScintillaText(hSci);
+    std::wstring wideText = BiDiEngine::Utf8ToWide(textUtf8);
+    MarkdownDocument doc = MarkdownParser::Parse(wideText);
 
-std::wstring NppMarkdownNext::ThemeClassName(PreviewTheme theme) const {
-    switch (theme) {
-        case PreviewTheme::Dark: return L"dark";
-        case PreviewTheme::Sepia: return L"sepia";
-        case PreviewTheme::Monokai: return L"monokai";
-        case PreviewTheme::Dracula: return L"dracula";
-        case PreviewTheme::SolarizedLight: return L"solarized-light";
-        case PreviewTheme::SolarizedDark: return L"solarized-dark";
-        case PreviewTheme::Nord: return L"nord";
-        case PreviewTheme::GitHubLight: return L"github-light";
-        case PreviewTheme::GitHubDark: return L"github-dark";
-        case PreviewTheme::VSCodeDark: return L"vscode-dark";
-        case PreviewTheme::Bearded:
-            if (m_config.beardedVariant.empty()) return L"bearded";
-            return L"bearded-v-" + m_config.beardedVariant;
-        default: return L"";
+    wchar_t fileName[MAX_PATH] = L"export.html";
+    OPENFILENAMEW ofn = { sizeof(OPENFILENAMEW) };
+    ofn.hwndOwner = m_hPanel ? m_hPanel : m_nppData._nppHandle;
+    ofn.lpstrFilter = L"HTML Document (*.html;*.htm)\0*.html;*.htm\0All Files (*.*)\0*.*\0";
+    ofn.lpstrFile = fileName;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+    ofn.lpstrDefExt = L"html";
+
+    if (GetSaveFileNameW(&ofn)) {
+        HtmlExporter::SaveToFile(fileName, doc, L"Markdown Export",
+                                 IsDarkThemeEffective() ? ReaderTheme::Dark : ReaderTheme::Light);
     }
-}
-
-std::wstring NppMarkdownNext::CurrentThemeId() const {
-    switch (m_config.theme) {
-        case PreviewTheme::FollowNpp: return L"follow";
-        case PreviewTheme::Light: return L"light";
-        case PreviewTheme::Dark: return L"dark";
-        case PreviewTheme::Sepia: return L"sepia";
-        case PreviewTheme::Monokai: return L"monokai";
-        case PreviewTheme::Dracula: return L"dracula";
-        case PreviewTheme::SolarizedLight: return L"solarized-light";
-        case PreviewTheme::SolarizedDark: return L"solarized-dark";
-        case PreviewTheme::Nord: return L"nord";
-        case PreviewTheme::GitHubLight: return L"github-light";
-        case PreviewTheme::GitHubDark: return L"github-dark";
-        case PreviewTheme::VSCodeDark: return L"vscode-dark";
-        case PreviewTheme::Bearded:
-            if (m_config.beardedVariant.empty()) return L"bearded";
-            return L"bearded-v-" + m_config.beardedVariant;
-        default: return L"";
-    }
-}
-
-void NppMarkdownNext::SelectTheme(PreviewTheme theme, const std::wstring& beardedVariant) {
-    m_config.theme = theme;
-    // Variant ids are generated as [a-z0-9-]; drop anything else from config/JS input
-    std::wstring variant;
-    if (theme == PreviewTheme::Bearded) {
-        for (wchar_t ch : beardedVariant) {
-            if ((ch >= L'a' && ch <= L'z') || (ch >= L'0' && ch <= L'9') || ch == L'-') variant.push_back(ch);
-        }
-    }
-    m_config.beardedVariant = variant;
-    NppLog("SelectTheme: theme=%d variant=%s", static_cast<int>(theme),
-           BiDiEngine::WideToUtf8(variant).c_str());
-    m_config.Save(m_configPath);
-    SyncThemeMenuItems();
-
-    PreviewTheme effective = EffectiveTheme();
-    bool isDark = (effective == PreviewTheme::Dark);
-
-    if (m_useWebView2) {
-        m_webViewViewer.SetTheme(ThemeClassName(effective), CurrentThemeId());
-    }
-
-    m_renderer.SetDarkMode(isDark);
-    if (m_hPanel) {
-        InvalidateRect(m_hPanel, nullptr, TRUE);
-    }
-
-    ExecuteRender();
 }
 
 void NppMarkdownNext::ShowAbout() {
     const wchar_t* aboutMsg =
-        L"NppMarkdownNext (Kelk Modern Engine Edition)\n"
-        L"Version 1.5.0 (x64 / x86 / ARM64)\n\n"
-        L"Next-generation native Markdown live preview panel for Notepad++.\n\n"
+        L"NppMarkdownNext (Kelk Reader Edition)\n"
+        L"Version 1.6.0 (x64 / x86 / ARM64)\n\n"
+        L"Ultra-lightweight native Markdown live reader panel for Notepad++ based on Kelk.\n\n"
         L"Features:\n"
-        L"  • Kelk Multi-Engine Core: DOCX, PDF, MHTML DOC, and HTML Builders\n"
-        L"  • Kelk DOCX / HTML Importer to Scintilla buffer\n"
-        L"  • Kelk BiDiCore & BidiView Multi-script Direction Isolation\n"
-        L"  • Embedded Vazirmatn Font for Flawless PDF/DOCX Arabic & Persian\n"
-        L"  • Dual Engine: Chromium WebView2 + Direct2D Fallback\n"
-        L"  • Material Design 3 Minimal Typography & Theming\n"
-        L"  • Minimal Vector SVG Context Menu & Overlays\n"
-        L"  • GFM Tables, Task Lists, Syntax Highlighting & 1-Click Copy\n"
-        L"  • LaTeX / KaTeX Math & Offline Mermaid Diagrams\n"
-        L"  • Live Caret & Scrollbar Synchronization\n"
-        L"  • Responsive Table of Contents & In-Page Search\n\n"
-        L"Author: theneet0\n"
+        L"  • Pure Kelk Markdown Reader Core (GFM Tables, Task Lists, Code Blocks)\n"
+        L"  • Kelk BiDiCore & BidiView: Flawless Right-to-Left (Persian, Arabic, Urdu, Hebrew)\n"
+        L"  • System Font Rendering (Vazirmatn / Sahel / Segoe UI)\n"
+        L"  • Native Chromium WebView2 with zero bloat (300 KB reader shell)\n"
+        L"  • Light / Dark mode sync with Notepad++\n"
+        L"  • Interactive Task Checkboxes & Caret Sync\n"
+        L"  • Double-click to jump to editor line\n"
+        L"  • 100% Offline with zero external dependencies\n\n"
+        L"Based on Kelk (https://github.com/mohsen-1984/kelk)\n"
         L"Licensed under the MIT License";
 
-    MessageBox(m_nppData._nppHandle, aboutMsg, L"About Markdown Next", MB_OK | MB_ICONINFORMATION);
+    MessageBox(m_nppData._nppHandle, aboutMsg, L"About Markdown Reader", MB_OK | MB_ICONINFORMATION);
 }
 
 void NppMarkdownNext::RequestRenderDebounced() {
@@ -795,86 +378,27 @@ void NppMarkdownNext::RequestRenderDebounced() {
 
 bool NppMarkdownNext::ExecuteRender() {
     HWND hSci = GetCurrentScintilla();
-    NppLog("ExecuteRender: hSci=%p visible=%d wv2=%d ready=%d",
-           (void*)hSci, (int)m_isPanelVisible, (int)m_useWebView2,
-           (int)m_webViewViewer.IsPageReady());
     if (!hSci) return false;
 
     std::string utf8Content = GetScintillaText(hSci);
-    std::wstring wideContent = BiDiEngine::Utf8ToWide(utf8Content);
-    NppLog("ExecuteRender: contentBytes=%u cacheWide=%u",
-           (unsigned)utf8Content.size(), (unsigned)m_lastRawContent.size());
+    int caretLine = m_config.syncWithCaret ? GetScintillaCaretLine(hSci) : -1;
 
-    if (wideContent == m_lastRawContent) {
-        NppLog("ExecuteRender: cache hit, caret-sync only");
-        // Only sync caret position if text didn't change
-        if (m_config.syncWithCaret) {
-            int line = GetScintillaCaretLine(hSci);
-            if (m_useWebView2) {
-                m_webViewViewer.ScrollToLine(line);
-            } else {
-                m_renderer.ScrollToSourceLine(line);
-            }
+    if (utf8Content == m_lastRawContentUtf8) {
+        if (m_config.syncWithCaret && caretLine >= 0) {
+            m_webViewViewer.ScrollToLine(caretLine);
         }
         return true;
     }
 
-    m_lastRawContent = wideContent;
-
-    // Parse Document
-    m_currentDoc = MarkdownParser::Parse(wideContent);
+    m_lastRawContentUtf8 = utf8Content;
 
     std::wstring currentPath = GetCurrentBufferPath();
     std::wstring docTitle = PathFindFileNameW(currentPath.c_str());
-    if (docTitle.empty()) docTitle = L"Markdown Preview";
+    if (docTitle.empty()) docTitle = L"Markdown Reader";
 
-    PreviewTheme effective = EffectiveTheme();
+    bool isDark = IsDarkThemeEffective();
 
-    if (m_useWebView2) {
-        auto components = HtmlExporter::GeneratePreviewComponents(
-            m_currentDoc,
-            docTitle,
-            effective,
-            m_config.zoomLevel,
-            m_config.syncWithCaret,
-            m_config.darkModeOverride,
-            m_config.beardedVariant
-        );
-
-        if (m_webViewViewer.IsPageReady()) {
-            std::string titleUtf8 = BiDiEngine::WideToUtf8(docTitle);
-            if (!m_webViewViewer.UpdateContent(components.bodyHtml, components.tocHtml, titleUtf8,
-                                               ThemeClassName(effective))) {
-                NppLog("ExecuteRender: UpdateContent failed, full navigation");
-                m_webViewViewer.SetHtmlContent(components.fullHtml);
-            }
-        } else {
-            NppLog("ExecuteRender: page not ready, full SetHtmlContent len=%u",
-                   (unsigned)components.fullHtml.size());
-            m_webViewViewer.SetHtmlContent(components.fullHtml);
-        }
-
-        if (m_config.syncWithCaret) {
-            int line = GetScintillaCaretLine(hSci);
-            m_webViewViewer.ScrollToLine(line);
-        }
-    } else {
-        // Layout in Renderer
-        RECT rc;
-        GetClientRect(m_hPanel, &rc);
-        float clientW = static_cast<float>(rc.right - rc.left);
-        m_renderer.SetDocument(m_currentDoc);
-        m_renderer.Layout(clientW);
-
-        // Sync scroll with current position
-        if (m_config.syncWithCaret) {
-            int line = GetScintillaCaretLine(hSci);
-            m_renderer.ScrollToSourceLine(line);
-        }
-
-        InvalidateRect(m_hPanel, nullptr, FALSE);
-    }
-
+    m_webViewViewer.UpdateMarkdown(utf8Content, docTitle, isDark, m_config.isSmartBiDiEnabled, caretLine);
     return true;
 }
 
@@ -892,42 +416,24 @@ void NppMarkdownNext::OnNotification(SCNotification* notifyCode) {
                 int line = GetScintillaCaretLine(hSci);
                 if (line != m_lastScrolledCaretLine) {
                     m_lastScrolledCaretLine = line;
-                    if (m_useWebView2) {
-                        m_webViewViewer.ScrollToLine(line);
-                    } else {
-                        m_renderer.ScrollToSourceLine(line);
-                    }
+                    m_webViewViewer.ScrollToLine(line);
                 }
             }
         }
     }
 }
 
-void NppMarkdownNext::OnDarkModeChanged() {
+void NppMarkdownNext::OnBufferActivated() {
     if (!m_isNppReady) return;
-    PreviewTheme effective = EffectiveTheme();
-    bool isDark = (effective == PreviewTheme::Dark);
-    if (m_useWebView2) {
-        m_webViewViewer.SetTheme(ThemeClassName(effective), CurrentThemeId());
-    }
-    m_renderer.SetDarkMode(isDark);
-    if (m_hPanel) {
-        InvalidateRect(m_hPanel, nullptr, TRUE);
+    ApplyAutoShowPanel();
+    if (m_isPanelVisible) {
+        m_lastRawContentUtf8.clear();
+        ExecuteRender();
     }
 }
 
-void NppMarkdownNext::OnBufferActivated() {
-    if (!m_isNppReady) return;
-    NppLog("OnBufferActivated: visible=%d", (int)m_isPanelVisible);
-
-    // A panel that auto-show just opened has already rendered
-    bool wasVisible = m_isPanelVisible;
-    ApplyAutoShowPanel();
-    if (wasVisible && m_isPanelVisible) {
-        m_lastRawContent.clear();
-        m_lastScrolledCaretLine = -1;
-        ExecuteRender();
-    }
+void NppMarkdownNext::OnDocModified() {
+    RequestRenderDebounced();
 }
 
 LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -944,21 +450,18 @@ LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wPara
 
     switch (msg) {
         case WM_SHOWWINDOW: {
-            NppLog("PanelWndProc WM_SHOWWINDOW wp=%d", (int)wParam);
             self->m_isPanelVisible = (wParam != FALSE);
             int cmdId = GetPluginCmdId(CMD_TOGGLE_PANEL);
             if (cmdId > 0) {
                 SendMessage(self->m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdId, (LPARAM)(self->m_isPanelVisible ? TRUE : FALSE));
             }
             if (self->m_isPanelVisible) {
-                self->m_lastRawContent.clear();
-                self->m_renderRetryCount = 0;
-                // Startup race: Scintilla may not be reachable yet - retry on a timer
-                bool ok = self->ExecuteRender();
-                NppLog("WM_SHOWWINDOW(TRUE) render=%d", (int)ok);
-                if (!ok) {
-                    SetTimer(hwnd, IDT_RENDER_RETRY, IDT_RENDER_RETRY_DELAY_MS, nullptr);
-                }
+                RECT rc;
+                GetClientRect(hwnd, &rc);
+                self->m_webViewViewer.Resize(0, 0, rc.right - rc.left, rc.bottom - rc.top);
+                self->m_webViewViewer.SetVisible(true);
+                self->m_lastRawContentUtf8.clear();
+                self->ExecuteRender();
             }
             return 0;
         }
@@ -976,21 +479,11 @@ LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wPara
             }
             break;
         }
+
         case WM_TIMER: {
             if (wParam == IDT_RENDER_DEBOUNCE) {
                 KillTimer(hwnd, IDT_RENDER_DEBOUNCE);
                 self->ExecuteRender();
-                return 0;
-            }
-            if (wParam == IDT_RENDER_RETRY) {
-                KillTimer(hwnd, IDT_RENDER_RETRY);
-                bool ok = self->ExecuteRender();
-                NppLog("IDT_RENDER_RETRY try=%d ok=%d", (int)self->m_renderRetryCount, (int)ok);
-                if (!ok && ++self->m_renderRetryCount < 100) {
-                    SetTimer(hwnd, IDT_RENDER_RETRY, IDT_RENDER_RETRY_DELAY_MS, nullptr);
-                } else {
-                    self->m_renderRetryCount = 0;
-                }
                 return 0;
             }
             break;
@@ -999,66 +492,21 @@ LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wPara
         case WM_SIZE: {
             UINT width = LOWORD(lParam);
             UINT height = HIWORD(lParam);
-
-            if (self->m_useWebView2) {
-                self->m_webViewViewer.Resize(0, 0, width, height);
-            } else {
-                self->m_renderer.Resize(width, height);
-            }
+            self->m_webViewViewer.Resize(0, 0, width, height);
             return 0;
         }
 
         case WM_PAINT: {
             PAINTSTRUCT ps;
             BeginPaint(hwnd, &ps);
-            if (!self->m_useWebView2) {
-                self->m_renderer.Render();
-            }
             EndPaint(hwnd, &ps);
             return 0;
         }
 
-        case WM_MOUSEWHEEL: {
-            if (!self->m_useWebView2) {
-                int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-                bool isCtrl = (LOWORD(wParam) & MK_CONTROL) != 0;
-                if (isCtrl) {
-                    if (delta > 0) self->ZoomIn();
-                    else self->ZoomOut();
-                } else {
-                    self->m_renderer.ScrollBy(-delta / 2);
-                }
-            }
+        case WM_DESTROY: {
+            self->m_webViewViewer.Close();
             return 0;
         }
-
-        case WM_MOUSEMOVE: {
-            if (!self->m_useWebView2) {
-                int x = LOWORD(lParam);
-                int y = HIWORD(lParam);
-                if (y >= 0 && self->m_renderer.OnMouseMove(x, y)) {
-                    InvalidateRect(hwnd, nullptr, FALSE);
-                }
-            }
-            return 0;
-        }
-
-        case WM_LBUTTONDOWN: {
-            if (!self->m_useWebView2) {
-                int x = LOWORD(lParam);
-                int y = HIWORD(lParam);
-                if (y >= 0) {
-                    HWND hSci = self->GetCurrentScintilla();
-                    if (self->m_renderer.OnLButtonDown(x, y, hSci)) {
-                        InvalidateRect(hwnd, nullptr, FALSE);
-                    }
-                }
-            }
-            return 0;
-        }
-
-        case WM_ERASEBKGND:
-            return 1; // Prevent flicker
     }
 
     return DefWindowProc(hwnd, msg, wParam, lParam);

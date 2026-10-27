@@ -75,6 +75,9 @@ $wv2Header = Join-Path $wv2PkgDir "build\native\include\WebView2.h"
 $wv2Loader64 = Join-Path $wv2PkgDir "build\native\x64\WebView2Loader.dll"
 $wv2Loader32 = Join-Path $wv2PkgDir "build\native\x86\WebView2Loader.dll"
 $wv2LoaderArm64 = Join-Path $wv2PkgDir "build\native\arm64\WebView2Loader.dll"
+$wv2Lib64 = Join-Path $wv2PkgDir "build\native\x64\WebView2LoaderStatic.lib"
+$wv2Lib32 = Join-Path $wv2PkgDir "build\native\x86\WebView2LoaderStatic.lib"
+$wv2LibArm64 = Join-Path $wv2PkgDir "build\native\arm64\WebView2LoaderStatic.lib"
 
 if (-not (Test-Path $wv2Header) -or -not (Test-Path $wv2Loader64) -or -not (Test-Path $wv2Loader32) -or -not (Test-Path $wv2LoaderArm64)) {
     Write-Host ">>> Restoring Microsoft.Web.WebView2 v$wv2Version..." -ForegroundColor Cyan
@@ -146,7 +149,6 @@ $pluginSources = @(
     (Join-Path $scriptDir "src\Main.cpp"),
     (Join-Path $scriptDir "src\NppMarkdownNext.cpp"),
     (Join-Path $scriptDir "src\WebView2Viewer.cpp"),
-    (Join-Path $scriptDir "src\MarkdownRenderer.cpp"),
     (Join-Path $scriptDir "src\MarkdownParser.cpp"),
     (Join-Path $scriptDir "src\BiDiEngine.cpp"),
     (Join-Path $scriptDir "src\SyntaxHighlighter.cpp"),
@@ -156,7 +158,7 @@ $pluginSources = @(
 )
 
 # shell32: ShellExecuteW (external link handling in WebView2Viewer)
-$libs = @("-ld2d1", "-ldwrite", "-luser32", "-lgdi32", "-lcomctl32", "-lshlwapi", "-lole32", "-luuid", "-lcomdlg32", "-lshell32")
+$libs = @("-luser32", "-lgdi32", "-lcomctl32", "-lshlwapi", "-lole32", "-luuid", "-lcomdlg32", "-lshell32")
 
 & $clang64 -shared -std=c++23 -O3 -static -municode -I"$scriptDir\include" -I"$wv2Include" $pluginSources $libs -o "$dllPath64"
 if ($LASTEXITCODE -ne 0) {
@@ -183,7 +185,6 @@ if (Get-Command $clang32 -ErrorAction SilentlyContinue) {
         (Join-Path $scriptDir "src\Main.cpp"),
         (Join-Path $scriptDir "src\NppMarkdownNext.cpp"),
         (Join-Path $scriptDir "src\WebView2Viewer.cpp"),
-        (Join-Path $scriptDir "src\MarkdownRenderer.cpp"),
         (Join-Path $scriptDir "src\MarkdownParser.cpp"),
         (Join-Path $scriptDir "src\BiDiEngine.cpp"),
         (Join-Path $scriptDir "src\SyntaxHighlighter.cpp"),
@@ -216,7 +217,6 @@ if (Get-Command $clangArm64 -ErrorAction SilentlyContinue) {
         (Join-Path $scriptDir "src\Main.cpp"),
         (Join-Path $scriptDir "src\NppMarkdownNext.cpp"),
         (Join-Path $scriptDir "src\WebView2Viewer.cpp"),
-        (Join-Path $scriptDir "src\MarkdownRenderer.cpp"),
         (Join-Path $scriptDir "src\MarkdownParser.cpp"),
         (Join-Path $scriptDir "src\BiDiEngine.cpp"),
         (Join-Path $scriptDir "src\SyntaxHighlighter.cpp"),

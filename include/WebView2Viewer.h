@@ -3,9 +3,7 @@
 #include <windows.h>
 #include <string>
 #include <functional>
-#include <memory>
 
-// Forward declarations for WebView2 interfaces
 struct ICoreWebView2Environment;
 struct ICoreWebView2Controller;
 struct ICoreWebView2;
@@ -14,38 +12,19 @@ class WebView2Viewer {
 public:
     using CheckboxCallback = std::function<void(int lineNo)>;
     using JumpToLineCallback = std::function<void(int lineNo)>;
-    using NavigationCallback = std::function<void(const std::wstring& url)>;
     using SyncCallback = std::function<void()>;
     using ThemeCallback = std::function<void()>;
-    using SelectThemeCallback = std::function<void(const std::wstring& themeName)>;
-    using TocCallback = std::function<void(bool isOpen)>;
-    using ZoomInCallback = std::function<void()>;
-    using ZoomOutCallback = std::function<void()>;
-    using ZoomResetCallback = std::function<void()>;
-    using ZoomChangeCallback = std::function<void(float factor)>;
-    using SaveAsHtmlCallback = std::function<void()>;
     using BiDiCallback = std::function<void()>;
-    using AutoShowCallback = std::function<void()>;
-    using CopyHtmlCallback = std::function<void()>;
-    using DarkModeCallback = std::function<void(int mode)>;
+    using ZoomChangeCallback = std::function<void(float factor)>;
     using PageReadyCallback = std::function<void()>;
     using InitFailedCallback = std::function<void()>;
-    using InitCompletedCallback = std::function<void()>;
-    using SaveExportFileCallback = std::function<void(const std::string& format, const std::string& filename, const std::string& base64Data)>;
-    using ImportMarkdownCallback = std::function<void(const std::string& markdownUtf8)>;
-    using TriggerImportCallback = std::function<void()>;
-    using ExportDocxCallback = std::function<void()>;
-    using ExportPdfCallback = std::function<void()>;
-    using ExportDocCallback = std::function<void()>;
 
     WebView2Viewer();
     ~WebView2Viewer();
 
-    // Check if WebView2 runtime / loader is available
     static bool IsAvailable();
-
-    // Initialize WebView2 inside the specified parent HWND
     bool Initialize(HWND hParentWnd, const std::wstring& userDataDir);
+    void Close();
 
     // Window management
     void Resize(int x, int y, int width, int height);
@@ -54,102 +33,58 @@ public:
     bool IsPageReady() const { return m_isInitialized && m_pageReady; }
 
     // Content updates
-    void SetHtmlContent(const std::string& htmlUtf8);
-    bool UpdateContent(const std::string& bodyHtml, const std::string& tocHtml, const std::string& title = "", const std::wstring& themeClass = L"");
-    void ExecuteScript(const std::wstring& script);
-
-    // Visual settings
-    // themeName = body class to apply ("" for light); themeId = canonical picker id
-    // (kept in window._themeId so the theme popover checkmarks stay in sync)
-    void SetTheme(const std::wstring& themeName, const std::wstring& themeId = L"");
+    bool UpdateMarkdown(const std::string& markdownUtf8, const std::wstring& title, bool isDark, bool isBiDi, int caretLine = -1);
+    void ScrollToLine(int line);
+    void SetTheme(bool isDark);
+    void SetBiDi(bool isBiDi);
     void SetZoom(float zoomFactor);
-    // Injects client settings state (BiDi / dark mode / zoom % / auto-show) into the page
-    void SyncUiState(bool bidiEnabled, int darkMode, int zoomPercent, bool autoShowPanel);
+    void ExecuteScript(const std::wstring& script);
 
     // Callbacks
     void SetCheckboxCallback(CheckboxCallback cb) { m_checkboxCallback = cb; }
     void SetJumpToLineCallback(JumpToLineCallback cb) { m_jumpToLineCallback = cb; }
-    void SetNavigationCallback(NavigationCallback cb) { m_navCallback = cb; }
     void SetSyncCallback(SyncCallback cb) { m_syncCallback = cb; }
     void SetThemeCallback(ThemeCallback cb) { m_themeCallback = cb; }
-    void SetSelectThemeCallback(SelectThemeCallback cb) { m_selectThemeCallback = cb; }
-    void SetTocCallback(TocCallback cb) { m_tocCallback = cb; }
-    void SetZoomInCallback(ZoomInCallback cb) { m_zoomInCallback = cb; }
-    void SetZoomOutCallback(ZoomOutCallback cb) { m_zoomOutCallback = cb; }
-    void SetZoomResetCallback(ZoomResetCallback cb) { m_zoomResetCallback = cb; }
-    void SetZoomChangeCallback(ZoomChangeCallback cb) { m_zoomChangeCallback = cb; }
-    void SetSaveAsHtmlCallback(SaveAsHtmlCallback cb) { m_saveAsHtmlCallback = cb; }
-    void SetSaveExportFileCallback(SaveExportFileCallback cb) { m_saveExportFileCallback = cb; }
-    void SetImportMarkdownCallback(ImportMarkdownCallback cb) { m_importMarkdownCallback = cb; }
-    void SetTriggerImportCallback(TriggerImportCallback cb) { m_triggerImportCallback = cb; }
-    void SetExportDocxCallback(ExportDocxCallback cb) { m_exportDocxCallback = cb; }
-    void SetExportPdfCallback(ExportPdfCallback cb) { m_exportPdfCallback = cb; }
-    void SetExportDocCallback(ExportDocCallback cb) { m_exportDocCallback = cb; }
     void SetBiDiCallback(BiDiCallback cb) { m_bidiCallback = cb; }
-    void SetAutoShowCallback(AutoShowCallback cb) { m_autoShowCallback = cb; }
-    void SetCopyHtmlCallback(CopyHtmlCallback cb) { m_copyHtmlCallback = cb; }
-    void SetDarkModeCallback(DarkModeCallback cb) { m_darkModeCallback = cb; }
-    // Fires after a page navigation finished loading (JS reported "pageLoaded")
+    void SetZoomChangeCallback(ZoomChangeCallback cb) { m_zoomChangeCallback = cb; }
     void SetPageReadyCallback(PageReadyCallback cb) { m_pageReadyCallback = cb; }
-    // Fires when async WebView2 environment/controller creation fails;
-    // the owner should fall back to the Direct2D renderer.
     void SetInitFailedCallback(InitFailedCallback cb) { m_initFailedCallback = cb; }
-    // Fires once the WebView2 controller is usable (after any pending HTML
-    // was flushed) - the owner should force a render so a startup race can
-    // never leave the panel blank.
-    void SetInitCompletedCallback(InitCompletedCallback cb) { m_initCompletedCallback = cb; }
-
-    // Actions
-    void ScrollToLine(int line);
-    void PrintToPdf(const std::wstring& pdfPath);
-
-    // Close and release
-    void Close();
 
 private:
+    void OnEnvironmentCreated(HRESULT result, ICoreWebView2Environment* env);
+    void OnControllerCreated(HRESULT result, ICoreWebView2Controller* controller);
+    void OnWebMessageReceived(const std::wstring& message);
+    void NotifyInitFailed();
+
     HWND m_hParent = nullptr;
-    HMODULE m_hLoaderModule = nullptr;
     bool m_isInitialized = false;
     bool m_isInitializing = false;
     bool m_pageReady = false;
-    std::wstring m_themeClass;
-    float m_zoom = 1.0f;
-    std::string m_pendingHtml;
 
     ICoreWebView2Environment* m_pEnvironment = nullptr;
     ICoreWebView2Controller* m_pController = nullptr;
     ICoreWebView2* m_pWebView = nullptr;
+    HMODULE m_hLoaderModule = nullptr;
+
+    float m_zoom = 1.0f;
+    bool m_currentDark = false;
+    bool m_currentBiDi = true;
+
+    struct PendingRender {
+        bool valid = false;
+        std::string markdown;
+        std::wstring title;
+        bool isDark = false;
+        bool isBiDi = true;
+        int caretLine = -1;
+    } m_pendingRender;
 
     CheckboxCallback m_checkboxCallback;
     JumpToLineCallback m_jumpToLineCallback;
-    NavigationCallback m_navCallback;
     SyncCallback m_syncCallback;
     ThemeCallback m_themeCallback;
-    SelectThemeCallback m_selectThemeCallback;
-    TocCallback m_tocCallback;
-    ZoomInCallback m_zoomInCallback;
-    ZoomOutCallback m_zoomOutCallback;
-    ZoomResetCallback m_zoomResetCallback;
-    ZoomChangeCallback m_zoomChangeCallback;
-    SaveAsHtmlCallback m_saveAsHtmlCallback;
-    SaveExportFileCallback m_saveExportFileCallback;
-    ImportMarkdownCallback m_importMarkdownCallback;
-    TriggerImportCallback m_triggerImportCallback;
-    ExportDocxCallback m_exportDocxCallback;
-    ExportPdfCallback m_exportPdfCallback;
-    ExportDocCallback m_exportDocCallback;
     BiDiCallback m_bidiCallback;
-    AutoShowCallback m_autoShowCallback;
-    CopyHtmlCallback m_copyHtmlCallback;
-    DarkModeCallback m_darkModeCallback;
+    ZoomChangeCallback m_zoomChangeCallback;
     PageReadyCallback m_pageReadyCallback;
     InitFailedCallback m_initFailedCallback;
-    InitCompletedCallback m_initCompletedCallback;
-
-    void NotifyInitFailed();
-
-    // Internal initialization completion
-    void OnEnvironmentCreated(HRESULT result, ICoreWebView2Environment* env);
-    void OnControllerCreated(HRESULT result, ICoreWebView2Controller* controller);
-    void OnWebMessageReceived(const std::wstring& message);
 };

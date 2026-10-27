@@ -1,18 +1,12 @@
 #include "../include/WebView2Viewer.h"
 #include "../include/BiDiEngine.h"
 #include "../include/NppLog.h"
+#include "KelkBundle.inc"
 #include <initguid.h>
 #include <WebView2.h>
 #include <shlwapi.h>
 #include <shellapi.h>
 #include <sstream>
-
-typedef HRESULT (STDAPICALLTYPE *CreateCoreWebView2EnvironmentWithOptionsFn)(
-    PCWSTR browserExecutableFolder,
-    PCWSTR userDataFolder,
-    ICoreWebView2EnvironmentOptions* environmentOptions,
-    ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler* environment_created_handler
-);
 
 namespace {
 
@@ -146,6 +140,41 @@ public:
     }
 };
 
+std::wstring EscapeJsonString(const std::string& utf8Str) {
+    if (utf8Str.empty()) return L"";
+    std::wstring wide = BiDiEngine::Utf8ToWide(utf8Str);
+
+    std::wstringstream ss;
+    for (wchar_t ch : wide) {
+        switch (ch) {
+            case L'\\': ss << L"\\\\"; break;
+            case L'\"': ss << L"\\\""; break;
+            case L'\b': ss << L"\\b"; break;
+            case L'\f': ss << L"\\f"; break;
+            case L'\n': ss << L"\\n"; break;
+            case L'\r': ss << L"\\r"; break;
+            case L'\t': ss << L"\\t"; break;
+            default:
+                if (ch < 0x20) {
+                    wchar_t buf[7];
+                    swprintf_s(buf, L"\\u%04x", (unsigned int)ch);
+                    ss << buf;
+                } else {
+                    ss << ch;
+                }
+                break;
+        }
+    }
+    return ss.str();
+}
+
+typedef HRESULT (STDAPICALLTYPE *CreateCoreWebView2EnvironmentWithOptionsFn)(
+    PCWSTR browserExecutableFolder,
+    PCWSTR userDataFolder,
+    ICoreWebView2EnvironmentOptions* environmentOptions,
+    ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler* environment_created_handler
+);
+
 std::wstring GetModuleDir() {
     wchar_t path[MAX_PATH] = { 0 };
     HMODULE hMod = nullptr;
@@ -165,7 +194,6 @@ WebView2Viewer::~WebView2Viewer() {
 }
 
 bool WebView2Viewer::IsAvailable() {
-    // Check if WebView2Loader.dll can be found
     std::wstring modDir = GetModuleDir();
     std::wstring loaderPath = modDir + L"\\WebView2Loader.dll";
     if (PathFileExistsW(loaderPath.c_str())) return true;
@@ -173,10 +201,34 @@ bool WebView2Viewer::IsAvailable() {
     return false;
 }
 
+void WebView2Viewer::Close() {
+    if (m_pWebView) {
+        m_pWebView->Release();
+        m_pWebView = nullptr;
+    }
+    if (m_pController) {
+        m_pController->Close();
+        m_pController->Release();
+        m_pController = nullptr;
+    }
+    if (m_pEnvironment) {
+        m_pEnvironment->Release();
+        m_pEnvironment = nullptr;
+    }
+    if (m_hLoaderModule) {
+        FreeLibrary(m_hLoaderModule);
+        m_hLoaderModule = nullptr;
+    }
+    m_isInitialized = false;
+    m_isInitializing = false;
+    m_pageReady = false;
+}
+
 bool WebView2Viewer::Initialize(HWND hParentWnd, const std::wstring& userDataDir) {
     if (m_isInitialized || m_isInitializing) return true;
     m_hParent = hParentWnd;
     m_isInitializing = true;
+    m_pageReady = false;
 
     std::wstring modDir = GetModuleDir();
     std::wstring loaderPath = modDir + L"\\WebView2Loader.dll";
@@ -187,6 +239,7 @@ bool WebView2Viewer::Initialize(HWND hParentWnd, const std::wstring& userDataDir
     if (!m_hLoaderModule) {
         NppLog("WebView2 Initialize: WebView2Loader.dll not found (tried %ls)", loaderPath.c_str());
         m_isInitializing = false;
+        NotifyInitFailed();
         return false;
     }
 
@@ -196,15 +249,16 @@ bool WebView2Viewer::Initialize(HWND hParentWnd, const std::wstring& userDataDir
     if (!pfnCreate) {
         NppLog("WebView2 Initialize: CreateCoreWebView2EnvironmentWithOptions export missing");
         m_isInitializing = false;
+        NotifyInitFailed();
         return false;
     }
 
-    // Prepare user data directory in %TEMP%\NppMarkdownPanel_WebView2
+    // Prepare user data directory in %TEMP%\NppMarkdownNext_WebView2
     std::wstring targetUserData = userDataDir;
     if (targetUserData.empty()) {
         wchar_t tempPath[MAX_PATH] = { 0 };
         GetTempPathW(MAX_PATH, tempPath);
-        targetUserData = std::wstring(tempPath) + L"NppMarkdownPanel_WebView2";
+        targetUserData = std::wstring(tempPath) + L"NppMarkdownNext_WebView2";
     }
     CreateDirectoryW(targetUserData.c_str(), nullptr);
 
@@ -220,11 +274,18 @@ bool WebView2Viewer::Initialize(HWND hParentWnd, const std::wstring& userDataDir
     if (FAILED(hr)) {
         NppLog("WebView2 Initialize: CreateEnvironment hr=0x%08X", (unsigned)hr);
         m_isInitializing = false;
+        NotifyInitFailed();
         return false;
     }
-    NppLog("WebView2 Initialize: async environment creation started, userData=%ls", targetUserData.c_str());
 
+    NppLog("WebView2 Initialize: started, userData=%ls", targetUserData.c_str());
     return true;
+}
+
+void WebView2Viewer::NotifyInitFailed() {
+    if (m_initFailedCallback) {
+        m_initFailedCallback();
+    }
 }
 
 void WebView2Viewer::OnEnvironmentCreated(HRESULT result, ICoreWebView2Environment* env) {
@@ -260,16 +321,18 @@ void WebView2Viewer::OnControllerCreated(HRESULT result, ICoreWebView2Controller
     m_pController = controller;
     m_pController->AddRef();
 
-    // Resize to fit parent client rect
-    RECT rc;
-    GetClientRect(m_hParent, &rc);
+    // Immediately resize to fit parent window bounds
+    RECT rc = { 0, 0, 450, 700 };
+    if (m_hParent && IsWindow(m_hParent)) {
+        GetClientRect(m_hParent, &rc);
+    }
     m_pController->put_Bounds(rc);
     m_pController->put_IsVisible(TRUE);
 
     HRESULT coreHr = m_pController->get_CoreWebView2(&m_pWebView);
     NppLog("OnControllerCreated: get_CoreWebView2 hr=0x%08X web=%p", (unsigned)coreHr, (void*)m_pWebView);
     if (SUCCEEDED(coreHr) && m_pWebView) {
-        // Disable default browser context menu so our modern custom HTML context menu takes over
+        // Disable default browser context menus so our clean reader experience takes over
         ICoreWebView2Settings* settings = nullptr;
         if (SUCCEEDED(m_pWebView->get_Settings(&settings)) && settings) {
             settings->put_AreDefaultContextMenusEnabled(FALSE);
@@ -294,7 +357,7 @@ void WebView2Viewer::OnControllerCreated(HRESULT result, ICoreWebView2Controller
         m_pWebView->add_WebMessageReceived(msgHandler, &msgToken);
         msgHandler->Release();
 
-        // Register NavigationStarting handler to open external links in default browser
+        // Register NavigationStarting handler to open external links in system browser
         EventRegistrationToken navToken;
         auto* navHandler = new NavigationStartingHandler(
             [this](ICoreWebView2* sender, ICoreWebView2NavigationStartingEventArgs* args) -> HRESULT {
@@ -314,10 +377,10 @@ void WebView2Viewer::OnControllerCreated(HRESULT result, ICoreWebView2Controller
         m_pWebView->add_NavigationStarting(navHandler, &navToken);
         navHandler->Release();
 
-        // Register ZoomFactorChanged handler to sync native browser zoom (e.g. Ctrl+Wheel / pinch)
+        // Register ZoomFactorChanged handler
         EventRegistrationToken zoomToken;
         auto* zoomHandler = new ZoomFactorChangedHandler(
-            [this](ICoreWebView2Controller* sender, IUnknown* /*args*/) -> HRESULT {
+            [this](ICoreWebView2Controller* sender, IUnknown*) -> HRESULT {
                 if (sender) {
                     double factor = 1.0;
                     if (SUCCEEDED(sender->get_ZoomFactor(&factor))) {
@@ -334,25 +397,15 @@ void WebView2Viewer::OnControllerCreated(HRESULT result, ICoreWebView2Controller
         zoomHandler->Release();
 
         m_isInitialized = true;
-
-        // Apply pending settings
         SetZoom(m_zoom);
 
-        // Navigate to pending HTML if present
-        NppLog("OnControllerCreated: ready, pendingHtmlBytes=%u", (unsigned)m_pendingHtml.size());
-        if (!m_pendingHtml.empty()) {
-            SetHtmlContent(m_pendingHtml);
-            m_pendingHtml.clear();
-        }
+        // Navigate to the lightweight Kelk reader shell HTML (~300 KB)
+        std::wstring wideShell = BiDiEngine::Utf8ToWide(s_kelkReaderShellHtml);
+        HRESULT navHr = m_pWebView->NavigateToString(wideShell.c_str());
+        NppLog("OnControllerCreated: NavigateToString(%u bytes) hr=0x%08X",
+               (unsigned)wideShell.size() * 2, (unsigned)navHr);
     } else {
         NotifyInitFailed();
-        return;
-    }
-
-    // Tell the owner the engine is usable so it can force a render even when
-    // no pending HTML existed (startup ordering race - blank panel otherwise)
-    if (m_initCompletedCallback) {
-        m_initCompletedCallback();
     }
 }
 
@@ -369,69 +422,34 @@ void WebView2Viewer::SetVisible(bool visible) {
     }
 }
 
-namespace {
-std::wstring EscapeJsonWide(const std::string& utf8Str) {
-    if (utf8Str.empty()) return L"";
-    std::wstring wide = BiDiEngine::Utf8ToWide(utf8Str);
-
-    std::wstringstream ss;
-    for (wchar_t ch : wide) {
-        switch (ch) {
-            case L'\\': ss << L"\\\\"; break;
-            case L'\"': ss << L"\\\""; break;
-            case L'\b': ss << L"\\b"; break;
-            case L'\f': ss << L"\\f"; break;
-            case L'\n': ss << L"\\n"; break;
-            case L'\r': ss << L"\\r"; break;
-            case L'\t': ss << L"\\t"; break;
-            default:
-                if (ch < 0x20) {
-                    wchar_t buf[7];
-                    swprintf_s(buf, L"\\u%04x", (unsigned int)ch);
-                    ss << buf;
-                } else {
-                    ss << ch;
-                }
-                break;
-        }
-    }
-    return ss.str();
-}
-} // namespace
-
-void WebView2Viewer::SetHtmlContent(const std::string& htmlUtf8) {
-    if (!m_isInitialized || !m_pWebView) {
-        NppLog("SetHtmlContent: engine not ready, queue pending (%u bytes)", (unsigned)htmlUtf8.size());
-        m_pendingHtml = htmlUtf8;
-        return;
-    }
-
-    m_pageReady = false;
-    std::wstring wideHtml = BiDiEngine::Utf8ToWide(htmlUtf8);
-    if (!wideHtml.empty()) {
-        HRESULT hr = m_pWebView->NavigateToString(wideHtml.c_str());
-        NppLog("SetHtmlContent: NavigateToString(%u bytes) hr=0x%08X",
-               (unsigned)htmlUtf8.size(), (unsigned)hr);
-    } else {
-        NppLog("SetHtmlContent: EMPTY html, no navigation!");
+void WebView2Viewer::SetZoom(float zoomFactor) {
+    m_zoom = zoomFactor;
+    if (m_pController) {
+        m_pController->put_ZoomFactor(static_cast<double>(zoomFactor));
     }
 }
 
-bool WebView2Viewer::UpdateContent(const std::string& bodyHtml, const std::string& tocHtml, const std::string& title, const std::wstring& themeClass) {
-    if (!m_isInitialized || !m_pWebView || !m_pageReady) {
-        NppLog("UpdateContent: rejected (init=%d web=%d pageReady=%d)",
-               (int)m_isInitialized, (int)(m_pWebView != nullptr), (int)m_pageReady);
-        return false;
+void WebView2Viewer::SetTheme(bool isDark) {
+    m_currentDark = isDark;
+    if (m_pageReady && m_pWebView) {
+        std::wstring msg = L"{\"type\":\"setTheme\",\"isDark\":" + std::wstring(isDark ? L"true" : L"false") + L"}";
+        m_pWebView->PostWebMessageAsJson(msg.c_str());
     }
+}
 
-    std::wstringstream json;
-    json << L"{\"type\":\"updateContent\",\"body\":\"" << EscapeJsonWide(bodyHtml)
-         << L"\",\"toc\":\"" << EscapeJsonWide(tocHtml)
-         << L"\",\"title\":\"" << EscapeJsonWide(title)
-         << L"\",\"themeClass\":\"" << EscapeJsonWide(BiDiEngine::WideToUtf8(themeClass)) << L"\"}";
+void WebView2Viewer::SetBiDi(bool isBiDi) {
+    m_currentBiDi = isBiDi;
+    if (m_pageReady && m_pWebView) {
+        std::wstring msg = L"{\"type\":\"setBiDi\",\"isBiDi\":" + std::wstring(isBiDi ? L"true" : L"false") + L"}";
+        m_pWebView->PostWebMessageAsJson(msg.c_str());
+    }
+}
 
-    HRESULT hr = m_pWebView->PostWebMessageAsJson(json.str().c_str());
-    return SUCCEEDED(hr);
+void WebView2Viewer::ScrollToLine(int line) {
+    if (m_pageReady && m_pWebView && line >= 0) {
+        std::wstring msg = L"{\"type\":\"scrollToLine\",\"line\":" + std::to_wstring(line) + L"}";
+        m_pWebView->PostWebMessageAsJson(msg.c_str());
+    }
 }
 
 void WebView2Viewer::ExecuteScript(const std::wstring& script) {
@@ -440,73 +458,47 @@ void WebView2Viewer::ExecuteScript(const std::wstring& script) {
     }
 }
 
-void WebView2Viewer::SetTheme(const std::wstring& themeName, const std::wstring& themeId) {
-    m_themeClass = themeName;
-    if (m_isInitialized) {
-        std::wstringstream ss;
-        ss << L"(function(){var t=['dark','sepia','monokai','dracula','solarized-light','solarized-dark',"
-              L"'nord','github-light','github-dark','vscode-dark','bearded'];"
-              L"t.forEach(function(c){document.body.classList.remove(c);});"
-              // Bearded variations carry their own class (bearded-v-<id>)
-              L"var cls=document.body.className.split(/\\s+/);"
-              L"for(var i=0;i<cls.length;i++){if(cls[i].indexOf('bearded-v-')===0){document.body.classList.remove(cls[i]);}}";
-        if (!themeName.empty()) {
-            ss << L"document.body.classList.add('" << themeName << L"');";
-        }
-        if (themeId.empty()) {
-            ss << L"window._themeId=null;";
-        } else {
-            ss << L"window._themeId='" << themeId << L"';";
-        }
-        ss << L"if (window.onThemeChanged) window.onThemeChanged();})();";
-        ExecuteScript(ss.str());
-    }
-}
+bool WebView2Viewer::UpdateMarkdown(const std::string& markdownUtf8, const std::wstring& title, bool isDark, bool isBiDi, int caretLine) {
+    m_currentDark = isDark;
+    m_currentBiDi = isBiDi;
 
-void WebView2Viewer::SyncUiState(bool bidiEnabled, int darkMode, int zoomPercent, bool autoShowPanel) {
-    if (!m_isInitialized || !m_pWebView) return;
-    std::wstringstream ss;
-    ss << L"window._bidiEnabled = " << (bidiEnabled ? L"true" : L"false")
-       << L"; window._darkMode = " << darkMode
-       << L"; window._zoomPercent = " << zoomPercent
-       << L"; window._autoShowPanel = " << (autoShowPanel ? L"true" : L"false") << L";";
-    ExecuteScript(ss.str());
-}
+    if (!m_isInitialized || !m_pWebView || !m_pageReady) {
+        NppLog("UpdateMarkdown: queued pending (init=%d web=%d ready=%d bytes=%u)",
+               (int)m_isInitialized, (int)(m_pWebView != nullptr), (int)m_pageReady, (unsigned)markdownUtf8.size());
+        m_pendingRender.valid = true;
+        m_pendingRender.markdown = markdownUtf8;
+        m_pendingRender.title = title;
+        m_pendingRender.isDark = isDark;
+        m_pendingRender.isBiDi = isBiDi;
+        m_pendingRender.caretLine = caretLine;
+        return false;
+    }
 
-void WebView2Viewer::SetZoom(float zoomFactor) {
-    m_zoom = zoomFactor;
-    if (m_pController) {
-        m_pController->put_ZoomFactor(static_cast<double>(zoomFactor));
-    }
-    if (m_isInitialized) {
-        // Keep window._zoomPercent current for the settings popover zoom label
-        std::wstringstream ss;
-        ss << L"window._zoomPercent = " << static_cast<int>(zoomFactor * 100.0f + 0.5f) << L";";
-        ExecuteScript(ss.str());
-    }
-}
+    std::wstringstream json;
+    json << L"{\"type\":\"render\""
+         << L",\"markdown\":\"" << EscapeJsonString(markdownUtf8) << L"\""
+         << L",\"title\":\"" << EscapeJsonString(BiDiEngine::WideToUtf8(title)) << L"\""
+         << L",\"isDark\":" << (isDark ? L"true" : L"false")
+         << L",\"isBiDi\":" << (isBiDi ? L"true" : L"false")
+         << L",\"caretLine\":" << caretLine
+         << L"}";
 
-void WebView2Viewer::ScrollToLine(int line) {
-    if (m_isInitialized) {
-        std::wstringstream ss;
-        ss << L"if (window.scrollToSourceLine) { window.scrollToSourceLine(" << line << L"); }";
-        ExecuteScript(ss.str());
-    }
-}
-
-void WebView2Viewer::PrintToPdf(const std::wstring& pdfPath) {
-    if (m_isInitialized) {
-        ExecuteScript(L"window.print();");
-    }
+    HRESULT hr = m_pWebView->PostWebMessageAsJson(json.str().c_str());
+    NppLog("UpdateMarkdown: PostWebMessageAsJson hr=0x%08X (bytes=%u)", (unsigned)hr, (unsigned)markdownUtf8.size());
+    return SUCCEEDED(hr);
 }
 
 void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
-    // Trace every bridge message: a silently dropped selectTheme/click path
-    // leaves no other fingerprint in the file log.
-    NppLog("OnWebMessageReceived: %.160s", BiDiEngine::WideToUtf8(message.substr(0, 160)).c_str());
+    NppLog("OnWebMessageReceived: %ls", message.c_str());
+
     if (message == L"pageLoaded") {
-        NppLog("OnWebMessageReceived: pageLoaded (pageReady 0 -> 1)");
         m_pageReady = true;
+        NppLog("OnWebMessageReceived: pageLoaded, applying pending renders");
+        if (m_pendingRender.valid) {
+            UpdateMarkdown(m_pendingRender.markdown, m_pendingRender.title,
+                           m_pendingRender.isDark, m_pendingRender.isBiDi, m_pendingRender.caretLine);
+            m_pendingRender.valid = false;
+        }
         if (m_pageReadyCallback) {
             m_pageReadyCallback();
         }
@@ -515,8 +507,7 @@ void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
 
     const std::wstring prefixCheckbox = L"toggleCheckbox:";
     if (message.find(prefixCheckbox) == 0) {
-        std::wstring lineStr = message.substr(prefixCheckbox.length());
-        int line = _wtoi(lineStr.c_str());
+        int line = _wtoi(message.substr(prefixCheckbox.length()).c_str());
         if (m_checkboxCallback) {
             m_checkboxCallback(line);
         }
@@ -525,8 +516,7 @@ void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
 
     const std::wstring prefixJump = L"jumpToLine:";
     if (message.find(prefixJump) == 0) {
-        std::wstring lineStr = message.substr(prefixJump.length());
-        int line = _wtoi(lineStr.c_str());
+        int line = _wtoi(message.substr(prefixJump.length()).c_str());
         if (m_jumpToLineCallback) {
             m_jumpToLineCallback(line);
         }
@@ -534,256 +524,17 @@ void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
     }
 
     if (message == L"toggleSync") {
-        if (m_syncCallback) {
-            m_syncCallback();
-        }
+        if (m_syncCallback) m_syncCallback();
         return;
     }
 
-    if (message == L"toggleTheme") {
-        if (m_themeCallback) {
-            m_themeCallback();
-        }
-        return;
-    }
-
-    const std::wstring prefixSelectTheme = L"selectTheme:";
-    if (message.find(prefixSelectTheme) == 0) {
-        std::wstring themeName = message.substr(prefixSelectTheme.length());
-        if (m_selectThemeCallback) {
-            m_selectThemeCallback(themeName);
-        }
-        return;
-    }
-
-    const std::wstring prefixToc = L"tocStateChanged:";
-    if (message.find(prefixToc) == 0) {
-        std::wstring stateStr = message.substr(prefixToc.length());
-        bool isOpen = (stateStr == L"true");
-        if (m_tocCallback) {
-            m_tocCallback(isOpen);
-        }
-        return;
-    }
-
-    if (message == L"zoomIn") {
-        if (m_zoomInCallback) {
-            m_zoomInCallback();
-        }
-        return;
-    }
-
-    if (message == L"zoomOut") {
-        if (m_zoomOutCallback) {
-            m_zoomOutCallback();
-        }
-        return;
-    }
-
-    if (message == L"zoomReset") {
-        if (m_zoomResetCallback) {
-            m_zoomResetCallback();
-        }
-        return;
-    }
-
-    if (message == L"saveAsHtml") {
-        if (m_saveAsHtmlCallback) {
-            m_saveAsHtmlCallback();
-        }
+    if (message == L"toggleDark") {
+        if (m_themeCallback) m_themeCallback();
         return;
     }
 
     if (message == L"toggleBiDi") {
-        if (m_bidiCallback) {
-            m_bidiCallback();
-        }
+        if (m_bidiCallback) m_bidiCallback();
         return;
-    }
-
-    if (message == L"toggleAutoShow") {
-        if (m_autoShowCallback) {
-            m_autoShowCallback();
-        }
-        return;
-    }
-
-    if (message == L"copyHtml") {
-        if (m_copyHtmlCallback) {
-            m_copyHtmlCallback();
-        }
-        return;
-    }
-
-    const std::wstring prefixDarkMode = L"darkMode:";
-    if (message.find(prefixDarkMode) == 0) {
-        int mode = _wtoi(message.substr(prefixDarkMode.length()).c_str());
-        if (m_darkModeCallback) {
-            m_darkModeCallback(mode);
-        }
-        return;
-    }
-
-    const std::wstring prefixZoomChange = L"zoomChange:";
-    if (message.find(prefixZoomChange) == 0) {
-        std::wstring factorStr = message.substr(prefixZoomChange.length());
-        float factor = static_cast<float>(_wtof(factorStr.c_str()));
-        if (factor >= 0.3f && factor <= 3.0f) {
-            SetZoom(factor);
-            if (m_zoomChangeCallback) {
-                m_zoomChangeCallback(factor);
-            }
-        }
-        return;
-    }
-
-    if (message == L"exportDocx") {
-        if (m_exportDocxCallback) m_exportDocxCallback();
-        return;
-    }
-    if (message == L"exportPdf") {
-        if (m_exportPdfCallback) m_exportPdfCallback();
-        return;
-    }
-    if (message == L"exportDoc") {
-        if (m_exportDocCallback) m_exportDocCallback();
-        return;
-    }
-    if (message == L"importDocx") {
-        if (m_triggerImportCallback) m_triggerImportCallback();
-        return;
-    }
-
-    const std::wstring prefixSaveExport = L"saveExportFile:";
-    if (message.find(prefixSaveExport) == 0) {
-        std::string raw = BiDiEngine::WideToUtf8(message.substr(prefixSaveExport.length()));
-        size_t p1 = raw.find(':');
-        if (p1 != std::string::npos) {
-            std::string fmt = raw.substr(0, p1);
-            size_t p2 = raw.find(':', p1 + 1);
-            if (p2 != std::string::npos) {
-                std::string fname = raw.substr(p1 + 1, p2 - p1 - 1);
-                std::string b64 = raw.substr(p2 + 1);
-                if (m_saveExportFileCallback) {
-                    m_saveExportFileCallback(fmt, fname, b64);
-                }
-            }
-        }
-        return;
-    }
-
-    const std::wstring prefixImportResult = L"importMarkdownResult:";
-    if (message.find(prefixImportResult) == 0) {
-        std::string md = BiDiEngine::WideToUtf8(message.substr(prefixImportResult.length()));
-        if (m_importMarkdownCallback) {
-            m_importMarkdownCallback(md);
-        }
-        return;
-    }
-
-    // Check for JSON-formatted Kelk messages
-    if (!message.empty() && message.front() == L'{') {
-        std::string jsonStr = BiDiEngine::WideToUtf8(message);
-        if (jsonStr.find("\"saveExportFile\"") != std::string::npos) {
-            auto extractField = [&](const std::string& key) -> std::string {
-                size_t p = jsonStr.find("\"" + key + "\":");
-                if (p == std::string::npos) return "";
-                p = jsonStr.find("\"", p + key.length() + 2);
-                if (p == std::string::npos) return "";
-                size_t endP = jsonStr.find("\"", p + 1);
-                if (endP == std::string::npos) return "";
-                return jsonStr.substr(p + 1, endP - p - 1);
-            };
-            std::string fmt = extractField("format");
-            std::string fname = extractField("filename");
-            std::string b64 = extractField("data");
-            if (m_saveExportFileCallback) {
-                m_saveExportFileCallback(fmt, fname, b64);
-            }
-            return;
-        }
-        if (jsonStr.find("\"importMarkdownResult\"") != std::string::npos) {
-            auto extractField = [&](const std::string& key) -> std::string {
-                size_t p = jsonStr.find("\"" + key + "\":");
-                if (p == std::string::npos) return "";
-                p = jsonStr.find("\"", p + key.length() + 2);
-                if (p == std::string::npos) return "";
-                size_t endP = jsonStr.find("\"", p + 1);
-                if (endP == std::string::npos) return "";
-                return jsonStr.substr(p + 1, endP - p - 1);
-            };
-            std::string b64 = extractField("base64");
-            if (!b64.empty()) {
-                std::vector<uint8_t> decoded = BiDiEngine::Base64Decode(b64);
-                if (!decoded.empty()) {
-                    std::string md(decoded.begin(), decoded.end());
-                    if (m_importMarkdownCallback) {
-                        m_importMarkdownCallback(md);
-                    }
-                    return;
-                }
-            }
-            size_t p = jsonStr.find("\"text\":");
-            if (p != std::string::npos) {
-                p = jsonStr.find("\"", p + 6);
-                if (p != std::string::npos) {
-                    size_t endP = jsonStr.rfind("\"");
-                    if (endP != std::string::npos && endP > p) {
-                        std::string rawMd = jsonStr.substr(p + 1, endP - p - 1);
-                        std::string unescaped;
-                        unescaped.reserve(rawMd.size());
-                        for (size_t i = 0; i < rawMd.size(); i++) {
-                            if (rawMd[i] == '\\' && i + 1 < rawMd.size()) {
-                                char next = rawMd[i + 1];
-                                if (next == 'n') { unescaped.push_back('\n'); i++; }
-                                else if (next == 'r') { unescaped.push_back('\r'); i++; }
-                                else if (next == 't') { unescaped.push_back('\t'); i++; }
-                                else if (next == '"') { unescaped.push_back('"'); i++; }
-                                else if (next == '\\') { unescaped.push_back('\\'); i++; }
-                                else { unescaped.push_back(next); i++; }
-                            } else {
-                                unescaped.push_back(rawMd[i]);
-                            }
-                        }
-                        if (m_importMarkdownCallback) {
-                            m_importMarkdownCallback(unescaped);
-                        }
-                    }
-                }
-            }
-            return;
-        }
-    }
-}
-
-void WebView2Viewer::NotifyInitFailed() {
-    if (m_isInitialized) return;
-    NppLog("NotifyInitFailed: firing initFailedCallback");
-    if (m_initFailedCallback) {
-        m_initFailedCallback();
-    }
-}
-
-void WebView2Viewer::Close() {
-    m_isInitialized = false;
-    m_isInitializing = false;
-    m_pageReady = false;
-
-    if (m_pWebView) {
-        m_pWebView->Release();
-        m_pWebView = nullptr;
-    }
-    if (m_pController) {
-        m_pController->Close();
-        m_pController->Release();
-        m_pController = nullptr;
-    }
-    if (m_pEnvironment) {
-        m_pEnvironment->Release();
-        m_pEnvironment = nullptr;
-    }
-    if (m_hLoaderModule) {
-        FreeLibrary(m_hLoaderModule);
-        m_hLoaderModule = nullptr;
     }
 }

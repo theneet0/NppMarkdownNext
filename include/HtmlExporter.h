@@ -5,6 +5,8 @@
 #include "MarkdownParser.h"
 #include "Config.h"
 
+using PreviewTheme = ReaderTheme;
+
 struct PreviewComponents {
     std::string fullHtml;
     std::string bodyHtml;
@@ -13,7 +15,6 @@ struct PreviewComponents {
 
 class HtmlExporter {
 public:
-    // Generate full interactive HTML for WebView2 preview with modern floating UI, TOC, and Search
     static std::string GeneratePreviewHtml(
         const MarkdownDocument& doc,
         const std::wstring& title,
@@ -24,7 +25,6 @@ public:
         const std::wstring& beardedVariant = L""
     );
 
-    // Generate preview components for instant in-place DOM updates (zero-latency preview)
     static PreviewComponents GeneratePreviewComponents(
         const MarkdownDocument& doc,
         const std::wstring& title,
@@ -35,7 +35,6 @@ public:
         const std::wstring& beardedVariant = L""
     );
 
-    // Standalone export to HTML file
     static std::wstring ExportToHtml(const MarkdownDocument& doc, const std::wstring& title, PreviewTheme theme, const std::wstring& beardedVariant = L"");
     static bool SaveToFile(const std::wstring& filePath, const MarkdownDocument& doc, const std::wstring& title, PreviewTheme theme, const std::wstring& beardedVariant = L"");
     static bool CopyToClipboard(HWND hwndOwner, const MarkdownDocument& doc, const std::wstring& title, PreviewTheme theme, const std::wstring& beardedVariant = L"");

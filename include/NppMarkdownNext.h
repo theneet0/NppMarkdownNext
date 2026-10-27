@@ -4,8 +4,8 @@
 #include "PluginInterface.h"
 #include "Docking.h"
 #include "Config.h"
-#include "MarkdownRenderer.h"
 #include "WebView2Viewer.h"
+#include "MarkdownParser.h"
 
 class NppMarkdownNext {
 public:
@@ -17,23 +17,14 @@ public:
     // Menu Command Handlers
     void TogglePanel();
     void ToggleSyncWithCaret();
-    void ToggleOutline();
-    void CopyRenderedHtml();
-    void SaveAsHtml();
-    void ExportDocx();
-    void ExportPdf();
-    void ExportDoc();
-    void ImportDocx();
-    void OnSaveExportFile(const std::string& format, const std::string& filename, const std::string& base64Data);
-    void OnImportMarkdownReceived(const std::string& markdownUtf8);
+    void ToggleBiDi();
+    void SetTheme(ReaderTheme theme);
     void ZoomIn();
     void ZoomOut();
     void ZoomReset();
-    void ToggleBiDi();
-    void ToggleAutoShowPanel();
-    void SelectTheme(PreviewTheme theme, const std::wstring& beardedVariant = L"");
+    void CopyRenderedHtml();
+    void SaveAsHtml();
     void ShowAbout();
-    void OpenSettings();
 
     // Notepad++ Notifications
     void OnNppReady();
@@ -52,7 +43,6 @@ public:
     HWND GetCurrentScintilla() const;
     std::string GetScintillaText(HWND hSci) const;
     int GetScintillaCaretLine(HWND hSci) const;
-    int GetScintillaFirstVisibleLine(HWND hSci) const;
 
 private:
     NppMarkdownNext() = default;
@@ -60,15 +50,10 @@ private:
 
     bool CreatePanelWindow();
     void SetPanelVisible(bool visible);
-    // Auto show/hide the panel by the active tab's extension (autoShowPanel)
     void ApplyAutoShowPanel();
     void RequestRenderDebounced();
-    // Returns false when rendering could not run yet (no Scintilla handle)
     bool ExecuteRender();
-    PreviewTheme EffectiveTheme() const;
-    std::wstring ThemeClassName(PreviewTheme theme) const;
-    // Canonical theme id as used by the in-preview picker (window._themeId)
-    std::wstring CurrentThemeId() const;
+    bool IsDarkThemeEffective() const;
     std::wstring GetCurrentBufferPath() const;
     bool IsCurrentBufferMarkdown() const;
 
@@ -81,21 +66,13 @@ private:
 
     PluginConfig m_config;
     std::wstring m_configPath;
-    MarkdownRenderer m_renderer;
     WebView2Viewer m_webViewViewer;
     MarkdownDocument m_currentDoc;
 
-    bool m_useWebView2 = true;
     bool m_isNppReady = false;
     bool m_isPanelRegistered = false;
     bool m_isPanelVisible = false;
-    // User hid the panel by hand: auto-show stays off until Notepad++ restarts
     bool m_userClosedPanel = false;
-    bool m_isRenderPending = false;
-    bool m_openSettingsPending = false;
-    std::wstring m_lastRawContent;
+    std::string m_lastRawContentUtf8;
     int m_lastScrolledCaretLine = -1;
-    int m_renderRetryCount = 0;
 };
-
-extern "C" int GetPluginCmdId(int index);

@@ -93,6 +93,13 @@ void TestBiDiEngine() {
     std::vector<uint8_t> decodedData = BiDiEngine::Base64Decode(b64);
     assert(decodedData == binData);
 
+    std::string testUtf8WithZwnj = "متن فارسی با نیم‌فاصله و فرمول $E = mc^2$ و نقل‌قول: \"تست\"";
+    std::vector<uint8_t> utf8Bytes(testUtf8WithZwnj.begin(), testUtf8WithZwnj.end());
+    std::string b64Utf8 = BiDiEngine::Base64Encode(utf8Bytes);
+    std::vector<uint8_t> decodedUtf8 = BiDiEngine::Base64Decode(b64Utf8);
+    std::string roundtripUtf8(decodedUtf8.begin(), decodedUtf8.end());
+    assert(roundtripUtf8 == testUtf8WithZwnj);
+
     std::cout << "  -> BiDiEngine PASS" << std::endl;
 }
 
@@ -368,6 +375,12 @@ void TestHtmlExporter() {
     assert(previewHtml.find("Export to PDF (.pdf)") != std::string::npos);
     assert(previewHtml.find("Export to Word DOC (.doc)") != std::string::npos);
     assert(previewHtml.find("Import DOCX/HTML...") != std::string::npos);
+    assert(previewHtml.find("kelk-math") != std::string::npos);
+    assert(previewHtml.find("data-display=\"inline\"") != std::string::npos);
+    assert(previewHtml.find("data-display=\"block\"") != std::string::npos);
+    assert(previewHtml.find("MathCore") != std::string::npos);
+    assert(previewHtml.find("DOMPurify") != std::string::npos);
+    assert(previewHtml.find("window._bidiEnabled=true") != std::string::npos);
 
     std::cout << "  -> HtmlExporter PASS" << std::endl;
 }

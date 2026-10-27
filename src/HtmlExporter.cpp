@@ -1676,15 +1676,22 @@ window.kelkImportBase64 = async function(ext, base64) {
             var imp = MarkdownImporter.create();
             var r = await imp.fromDocx(bytes.buffer);
             md = r.markdown;
-        } else if (extLower === ".html" || extLower === ".htm") {
+        } else if (extLower === ".html" || extLower === ".htm" || extLower === ".doc") {
             var decoder = new TextDecoder("utf-8");
             var html = decoder.decode(bytes);
             var imp = MarkdownImporter.create();
             md = imp.fromHtml(html).markdown;
         }
         if (md && window.chrome && window.chrome.webview) {
+            var utf8Bytes = new TextEncoder().encode(md);
+            var binStr = "";
+            for (var bi = 0; bi < utf8Bytes.length; bi++) {
+                binStr += String.fromCharCode(utf8Bytes[bi]);
+            }
+            var b64Md = btoa(binStr);
             window.chrome.webview.postMessage(JSON.stringify({
                 type: "importMarkdownResult",
+                base64: b64Md,
                 text: md
             }));
             if (typeof showToast === 'function') showToast("Document imported to Markdown!", "success");
@@ -1821,7 +1828,7 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
                         if (k > 0) mathCode += L"\n";
                         mathCode += block.codeLines[k];
                     }
-                    bodyStream << L"<span class=\"katex-math\" data-tex=\"" << EscapeHtml(mathCode) << L"\">$$" << EscapeHtml(mathCode) << L"$$</span>\n";
+                    bodyStream << L"<span class=\"kelk-math katex-math\" data-display=\"block\" data-tex=\"" << EscapeHtml(mathCode) << L"\">$$" << EscapeHtml(mathCode) << L"$$</span>\n";
                     bodyStream << L"</div>\n";
                 } else {
                     std::wstring langDisplay = block.codeLanguage.empty() ? L"TEXT" : block.codeLanguage;
@@ -2241,6 +2248,9 @@ function renderLocalMath() {
         if (tex) {
             el.innerHTML = texToMathML(tex, false);
             el.classList.add("katex");
+            el.classList.add("kelk-math");
+            el.setAttribute("data-display", "inline");
+            if (!el.hasAttribute("data-tex")) el.setAttribute("data-tex", tex);
         }
     });
 
@@ -2251,6 +2261,9 @@ function renderLocalMath() {
         if (tex) {
             el.innerHTML = texToMathML(tex, true);
             el.classList.add("katex");
+            el.classList.add("kelk-math");
+            el.setAttribute("data-display", "block");
+            if (!el.hasAttribute("data-tex")) el.setAttribute("data-tex", tex);
         }
     });
 
@@ -2282,7 +2295,9 @@ function renderLocalMath() {
                         frag.appendChild(document.createTextNode(text.substring(lastIdx, m.index)));
                     }
                     var span = document.createElement("div");
-                    span.className = "katex-display katex";
+                    span.className = "kelk-math katex-display katex";
+                    span.setAttribute("data-display", "block");
+                    span.setAttribute("data-tex", m[1]);
                     span.innerHTML = texToMathML(m[1], true);
                     frag.appendChild(span);
                     lastIdx = m.index + m[0].length;
@@ -2309,7 +2324,9 @@ function renderLocalMath() {
                     frag.appendChild(document.createTextNode(text.substring(lastIdx, matchStart)));
                 }
                 var span = document.createElement("span");
-                span.className = "katex-inline katex";
+                span.className = "kelk-math katex-inline katex";
+                span.setAttribute("data-display", "inline");
+                span.setAttribute("data-tex", m[1]);
                 span.innerHTML = texToMathML(m[1], false);
                 frag.appendChild(span);
                 lastIdx = matchStart + (m[0][0] !== '$' ? m[0].length - 1 : m[0].length);
@@ -3455,6 +3472,8 @@ if (window.chrome && window.chrome.webview) {
         if (data && data.type === "updateContent") {
             if (typeof data.title === "string" && data.title) {
                 document.title = data.title;
+                var stem = document.getElementById("nb-stem");
+                if (stem) stem.value = data.title;
             }
             if (typeof data.themeClass === "string") {
                 applyThemeClass(data.themeClass === "" ? 'light' : data.themeClass);
@@ -3483,7 +3502,7 @@ if (window.chrome && window.chrome.webview) {
 )HTML";
     // Bearded variation list for the theme picker submenu (generated data)
     html << "<script>window.BEARDED_VARIANTS=" << s_beardedVariantsJs << ";</script>\n";
-    html << "<script>window._zoomPercent=" << static_cast<int>(zoomLevel*100+0.5) << ";window._darkMode=" << darkModeOverride << ";</script>\n";
+    html << "<script>window._bidiEnabled=true;window._zoomPercent=" << static_cast<int>(zoomLevel*100+0.5) << ";window._darkMode=" << darkModeOverride << ";</script>\n";
     html << "</body>\n</html>\n";
 
     return PreviewComponents{ html.str(), bodyHtmlUtf8, tocHtmlUtf8 };
@@ -3599,7 +3618,7 @@ std::wstring HtmlExporter::InlinesToHtml(const std::vector<MarkdownSpan>& inline
                 break;
             }
             case InlineStyleType::InlineMath:
-                ss << L"<span class=\"katex-inline\" dir=\"ltr\" data-tex=\""
+                ss << L"<span class=\"kelk-math katex-inline\" data-display=\"inline\" dir=\"ltr\" data-tex=\""
                    << EscapeHtml(span.text) << L"\"><bdi dir=\"ltr\">$"
                    << EscapeHtml(span.text) << L"$</bdi></span>";
                 break;

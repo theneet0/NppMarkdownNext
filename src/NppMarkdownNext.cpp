@@ -535,7 +535,7 @@ void NppMarkdownNext::ImportDocx() {
     wchar_t openPath[MAX_PATH] = { 0 };
     OPENFILENAMEW ofn = { sizeof(OPENFILENAMEW) };
     ofn.hwndOwner = m_hPanel ? m_hPanel : m_nppData._nppHandle;
-    ofn.lpstrFilter = L"Word & HTML Documents (*.docx;*.html;*.htm)\0*.docx;*.html;*.htm\0All Files (*.*)\0*.*\0";
+    ofn.lpstrFilter = L"Word & HTML Documents (*.docx;*.html;*.htm;*.doc)\0*.docx;*.html;*.htm;*.doc\0All Files (*.*)\0*.*\0";
     ofn.lpstrFile = openPath;
     ofn.nMaxFile = MAX_PATH;
     ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
@@ -591,7 +591,7 @@ void NppMarkdownNext::OnSaveExportFile(const std::string& format, const std::str
     OPENFILENAMEW ofn = { sizeof(OPENFILENAMEW) };
     ofn.hwndOwner = m_hPanel ? m_hPanel : m_nppData._nppHandle;
 
-    std::wstring filter;
+    const wchar_t* filter = nullptr;
     std::wstring defExt = BiDiEngine::Utf8ToWide(format);
     if (format == "docx") {
         filter = L"Word Document (*.docx)\0*.docx\0All Files (*.*)\0*.*\0";
@@ -605,7 +605,7 @@ void NppMarkdownNext::OnSaveExportFile(const std::string& format, const std::str
         filter = L"All Files (*.*)\0*.*\0";
     }
 
-    ofn.lpstrFilter = filter.c_str();
+    ofn.lpstrFilter = filter;
     ofn.lpstrFile = savePath;
     ofn.nMaxFile = MAX_PATH;
     ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;

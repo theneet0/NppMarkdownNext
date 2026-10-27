@@ -703,6 +703,26 @@ void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
             return;
         }
         if (jsonStr.find("\"importMarkdownResult\"") != std::string::npos) {
+            auto extractField = [&](const std::string& key) -> std::string {
+                size_t p = jsonStr.find("\"" + key + "\":");
+                if (p == std::string::npos) return "";
+                p = jsonStr.find("\"", p + key.length() + 2);
+                if (p == std::string::npos) return "";
+                size_t endP = jsonStr.find("\"", p + 1);
+                if (endP == std::string::npos) return "";
+                return jsonStr.substr(p + 1, endP - p - 1);
+            };
+            std::string b64 = extractField("base64");
+            if (!b64.empty()) {
+                std::vector<uint8_t> decoded = BiDiEngine::Base64Decode(b64);
+                if (!decoded.empty()) {
+                    std::string md(decoded.begin(), decoded.end());
+                    if (m_importMarkdownCallback) {
+                        m_importMarkdownCallback(md);
+                    }
+                    return;
+                }
+            }
             size_t p = jsonStr.find("\"text\":");
             if (p != std::string::npos) {
                 p = jsonStr.find("\"", p + 6);

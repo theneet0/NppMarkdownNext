@@ -1205,6 +1205,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 })(typeof window !== 'undefined' ? window : this);
 
 
+/* === purify.min_3.4.16.js === */
+/*! @license DOMPurify 3.4.16 | (c) Cure53 and other contributors | Released under the Apache license 2.0 and Mozilla Public License 2.0 | github.com/cure53/DOMPurify/blob/3.4.16/LICENSE */
+(function(e,t){typeof exports==`object`&&typeof module<`u`?module.exports=t():typeof define==`function`&&define.amd?define([],t):(e=typeof globalThis<`u`?globalThis:e||self,e.DOMPurify=t())})(this,function(){"use strict";function e(e,t){this.v=e,this.k=t}function t(e,t){(t==null||t>e.length)&&(t=e.length);for(var n=0,r=Array(t);n<t;n++)r[n]=e[n];return r}function n(e){if(Array.isArray(e))return e}function r(e,t){var n=e==null?null:typeof Symbol<`u`&&e[Symbol.iterator]||e[`@@iterator`];if(n!=null){var r,i,a,o,s=[],c=!0,l=!1;try{if(a=(n=n.call(e)).next,t===0){if(Object(n)!==n)return;c=!1}else for(;!(c=(r=a.call(n)).done)&&(s.push(r.value),s.length!==t);c=!0);}catch(e){l=!0,i=e}finally{try{if(!c&&n.return!=null&&(o=n.return(),Object(o)!==o))return}finally{if(l)throw i}}return s}}function i(){throw TypeError(`Invalid attempt to destructure non-iterable instance.
+In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`)}
+/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */
+function a(e,t){return n(e)||r(e,t)||o(e,t)||i()}function o(e,n){if(e){if(typeof e==`string`)return t(e,n);var r={}.toString.call(e).slice(8,-1);return r===`Object`&&e.constructor&&(r=e.constructor.name),r===`Map`||r===`Set`?Array.from(e):r===`Arguments`||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(r)?t(e,n):void 0}}function s(t){var n,r;function i(n,r){try{var o=t[n](r),s=o.value,c=s instanceof e;Promise.resolve(c?s.v:s).then(function(e){if(c){var r=n===`return`&&s.k?n:`next`;if(!s.k||e.done)return i(r,e);e=t[r](e).value}a(!!o.done,e)},function(e){i(`throw`,e)})}catch(e){a(2,e)}}function a(e,t){e===2?n.reject(t):n.resolve({value:t,done:e}),(n=n.next)?i(n.key,n.arg):r=null}this._invoke=function(e,t){return new Promise(function(a,o){var s={key:e,arg:t,resolve:a,reject:o,next:null};r?r=r.next=s:(n=r=s,i(e,t))})},typeof t.return!=`function`&&(this.return=void 0)}s.prototype[typeof Symbol==`function`&&Symbol.asyncIterator||`@@asyncIterator`]=function(){return this},s.prototype.next=function(e){return this._invoke(`next`,e)},s.prototype.throw=function(e){return this._invoke(`throw`,e)},s.prototype.return=function(e){return this._invoke(`return`,e)};let c=Object.entries,l=Object.setPrototypeOf,u=Object.isFrozen,d=Object.getPrototypeOf,f=Object.getOwnPropertyDescriptor,p=Object.freeze,m=Object.seal,h=Object.create,ee=typeof Reflect<`u`&&Reflect,g=ee.apply,te=ee.construct;p||(p=function(e){return e}),m||(m=function(e){return e}),g||(g=function(e,t){var n=[...arguments].slice(2);return e.apply(t,n)}),te||(te=function(e){return new e(...[...arguments].slice(1))});let _=T(Array.prototype.forEach);Array.prototype.indexOf;let ne=T(Array.prototype.lastIndexOf),re=T(Array.prototype.pop),ie=T(Array.prototype.push);Array.prototype.slice;let ae=T(Array.prototype.splice),v=Array.isArray,oe=T(String.prototype.toLowerCase),se=T(String.prototype.toString),ce=T(String.prototype.match),le=T(String.prototype.replace),ue=T(String.prototype.indexOf),de=T(String.prototype.trim),fe=T(Number.prototype.toString),y=T(Boolean.prototype.toString),b=typeof BigInt>`u`?null:T(BigInt.prototype.toString),pe=typeof Symbol>`u`?null:T(Symbol.prototype.toString),x=T(Object.prototype.hasOwnProperty),S=T(Object.prototype.toString),C=T(RegExp.prototype.test),w=E(TypeError);function T(e){return function(t){t instanceof RegExp&&(t.lastIndex=0);var n=[...arguments].slice(1);return g(e,t,n)}}function E(e){return function(){return te(e,[...arguments])}}function D(e,t){let n=arguments.length>2&&arguments[2]!==void 0?arguments[2]:oe;if(l&&l(e,null),!v(t))return e;let r=t.length;for(;r--;){let i=t[r];if(typeof i==`string`){let e=n(i);e!==i&&(u(t)||(t[r]=e),i=e)}e[i]=!0}return e}function me(e){for(let t=0;t<e.length;t++)x(e,t)||(e[t]=null);return e}function O(e){let t=h(null);for(let r of c(e)){var n=a(r,2);let i=n[0],o=n[1];x(e,i)&&(t[i]=v(o)?me(o):o&&typeof o==`object`&&o.constructor===Object?O(o):o)}return t}function he(e){switch(typeof e){case`string`:return e;case`number`:return fe(e);case`boolean`:return y(e);case`bigint`:return b?b(e):`0`;case`symbol`:return pe?pe(e):`Symbol()`;case`undefined`:return S(e);case`function`:case`object`:{if(e===null)return S(e);let t=e,n=k(t,`toString`);if(typeof n==`function`){let e=n(t);return typeof e==`string`?e:S(e)}return S(e)}default:return S(e)}}function k(e,t){for(;e!==null;){let n=f(e,t);if(n){if(n.get)return T(n.get);if(typeof n.value==`function`)return T(n.value)}e=d(e)}function n(){return null}return n}function ge(e){try{return C(e,``),!0}catch(e){return!1}}let _e=p(/* @__PURE__ */ `a.abbr.acronym.address.area.article.aside.audio.b.bdi.bdo.big.blink.blockquote.body.br.button.canvas.caption.center.cite.code.col.colgroup.content.data.datalist.dd.decorator.del.details.dfn.dialog.dir.div.dl.dt.element.em.fieldset.figcaption.figure.font.footer.form.h1.h2.h3.h4.h5.h6.head.header.hgroup.hr.html.i.img.input.ins.kbd.label.legend.li.main.map.mark.marquee.menu.menuitem.meter.nav.nobr.ol.optgroup.option.output.p.picture.pre.progress.q.rp.rt.ruby.s.samp.search.section.select.shadow.slot.small.source.spacer.span.strike.strong.style.sub.summary.sup.table.tbody.td.template.textarea.tfoot.th.thead.time.tr.track.tt.u.ul.var.video.wbr`.split(`.`)),ve=p(/* @__PURE__ */ `svg.a.altglyph.altglyphdef.altglyphitem.animatecolor.animatemotion.animatetransform.circle.clippath.defs.desc.ellipse.enterkeyhint.exportparts.filter.font.g.glyph.glyphref.hkern.image.inputmode.line.lineargradient.marker.mask.metadata.mpath.part.path.pattern.polygon.polyline.radialgradient.rect.stop.style.switch.symbol.text.textpath.title.tref.tspan.view.vkern`.split(`.`)),ye=p([`feBlend`,`feColorMatrix`,`feComponentTransfer`,`feComposite`,`feConvolveMatrix`,`feDiffuseLighting`,`feDisplacementMap`,`feDistantLight`,`feDropShadow`,`feFlood`,`feFuncA`,`feFuncB`,`feFuncG`,`feFuncR`,`feGaussianBlur`,`feImage`,`feMerge`,`feMergeNode`,`feMorphology`,`feOffset`,`fePointLight`,`feSpecularLighting`,`feSpotLight`,`feTile`,`feTurbulence`]),be=p([`animate`,`color-profile`,`cursor`,`discard`,`font-face`,`font-face-format`,`font-face-name`,`font-face-src`,`font-face-uri`,`foreignobject`,`hatch`,`hatchpath`,`mesh`,`meshgradient`,`meshpatch`,`meshrow`,`missing-glyph`,`script`,`set`,`solidcolor`,`unknown`,`use`]),xe=p(/* @__PURE__ */ `math.menclose.merror.mfenced.mfrac.mglyph.mi.mlabeledtr.mmultiscripts.mn.mo.mover.mpadded.mphantom.mroot.mrow.ms.mspace.msqrt.mstyle.msub.msup.msubsup.mtable.mtd.mtext.mtr.munder.munderover.mprescripts`.split(`.`)),Se=p([`maction`,`maligngroup`,`malignmark`,`mlongdiv`,`mscarries`,`mscarry`,`msgroup`,`mstack`,`msline`,`msrow`,`semantics`,`annotation`,`annotation-xml`,`mprescripts`,`none`]),Ce=p([`#text`]),we=p(/* @__PURE__ */ `accept.action.align.alt.autocapitalize.autocomplete.autopictureinpicture.autoplay.background.bgcolor.border.capture.cellpadding.cellspacing.checked.cite.class.clear.color.cols.colspan.command.commandfor.controls.controlslist.coords.crossorigin.datetime.decoding.default.dir.disabled.disablepictureinpicture.disableremoteplayback.download.draggable.enctype.enterkeyhint.exportparts.face.for.headers.height.hidden.high.href.hreflang.id.inert.inputmode.integrity.ismap.kind.label.lang.list.loading.loop.low.max.maxlength.media.method.min.minlength.multiple.muted.name.nonce.noshade.novalidate.nowrap.open.optimum.part.pattern.placeholder.playsinline.popover.popovertarget.popovertargetaction.poster.preload.pubdate.radiogroup.readonly.rel.required.rev.reversed.role.rows.rowspan.spellcheck.scope.selected.shape.size.sizes.slot.span.srclang.start.src.srcset.step.style.summary.tabindex.title.translate.type.usemap.valign.value.width.wrap.xmlns`.split(`.`)),Te=p(/* @__PURE__ */ `accent-height.accumulate.additive.alignment-baseline.amplitude.ascent.attributename.attributetype.azimuth.basefrequency.baseline-shift.begin.bias.by.class.clip.clippathunits.clip-path.clip-rule.color.color-interpolation.color-interpolation-filters.color-profile.color-rendering.cx.cy.d.dx.dy.diffuseconstant.direction.display.divisor.dominant-baseline.dur.edgemode.elevation.end.exponent.fill.fill-opacity.fill-rule.filter.filterunits.flood-color.flood-opacity.font-family.font-size.font-size-adjust.font-stretch.font-style.font-variant.font-weight.fx.fy.g1.g2.glyph-name.glyphref.gradientunits.gradienttransform.height.href.id.image-rendering.in.in2.intercept.k.k1.k2.k3.k4.kerning.keypoints.keysplines.keytimes.lang.lengthadjust.letter-spacing.kernelmatrix.kernelunitlength.lighting-color.local.marker-end.marker-mid.marker-start.markerheight.markerunits.markerwidth.maskcontentunits.maskunits.max.mask.mask-type.media.method.mode.min.name.numoctaves.offset.operator.opacity.order.orient.orientation.origin.overflow.paint-order.path.pathlength.patterncontentunits.patterntransform.patternunits.pointer-events.points.preservealpha.preserveaspectratio.primitiveunits.r.rx.ry.radius.refx.refy.repeatcount.repeatdur.restart.result.rotate.scale.seed.shape-rendering.slope.specularconstant.specularexponent.spreadmethod.startoffset.stddeviation.stitchtiles.stop-color.stop-opacity.stroke-dasharray.stroke-dashoffset.stroke-linecap.stroke-linejoin.stroke-miterlimit.stroke-opacity.stroke.stroke-width.style.surfacescale.systemlanguage.tabindex.tablevalues.targetx.targety.transform.transform-origin.text-anchor.text-decoration.text-orientation.text-rendering.textlength.type.u1.u2.unicode.values.vector-effect.viewbox.visibility.version.vert-adv-y.vert-origin-x.vert-origin-y.width.word-spacing.wrap.writing-mode.xchannelselector.ychannelselector.x.x1.x2.xmlns.y.y1.y2.z.zoomandpan`.split(`.`)),Ee=p(/* @__PURE__ */ `accent.accentunder.align.bevelled.close.columnalign.columnlines.columnspacing.columnspan.denomalign.depth.dir.display.displaystyle.encoding.fence.frame.height.href.id.largeop.length.linethickness.lquote.lspace.mathbackground.mathcolor.mathsize.mathvariant.maxsize.minsize.movablelimits.notation.numalign.open.rowalign.rowlines.rowspacing.rowspan.rspace.rquote.scriptlevel.scriptminsize.scriptsizemultiplier.selection.separator.separators.stretchy.subscriptshift.supscriptshift.symmetric.voffset.width.xmlns`.split(`.`)),De=p([`xlink:href`,`xml:id`,`xlink:title`,`xml:space`,`xmlns:xlink`]),Oe=m(/{{[\w\W]*|^[\w\W]*}}/g),ke=m(/<%[\w\W]*|^[\w\W]*%>/g),Ae=m(/\${[\w\W]*/g),je=m(/^data-[\-\w.\u00B7-\uFFFF]+$/),Me=m(/^aria-[\-\w]+$/),Ne=m(/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i),Pe=m(/^(?:\w+script|data):/i),Fe=m(/[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g),Ie=m(/^html$/i),Le=m(/^[a-z][.\w]*(-[.\w]+)+$/i),Re=m(/<[/\w!]/g),ze=m(/<[/\w]/g),Be=m(/<\/no(script|embed|frames)/i),Ve=m(/\/>/i),A={element:1,attribute:2,text:3,cdataSection:4,entityReference:5,entityNode:6,processingInstruction:7,comment:8,document:9,documentType:10,documentFragment:11,notation:12},j=[`style`,`script`,`xmp`,`iframe`,`noembed`,`noframes`,`plaintext`,`noscript`],He=p(D({},j)),Ue=function(){let e={};return _(j,t=>{e[t]=m(RegExp(`</`+t+`(?=[\\t\\n\\f\\r />])`,`i`))}),p(e)}(),We=function(){return typeof window>`u`?null:window},Ge=function(e,t){if(typeof e!=`object`||typeof e.createPolicy!=`function`)return null;let n=null,r=`data-tt-policy-suffix`;t&&t.hasAttribute(r)&&(n=t.getAttribute(r));let i=`dompurify`+(n?`#`+n:``);try{return e.createPolicy(i,{createHTML(e){return e},createScriptURL(e){return e}})}catch(e){return console.warn(`TrustedTypes policy `+i+` could not be created.`),null}},Ke=function(){return{afterSanitizeAttributes:[],afterSanitizeElements:[],afterSanitizeShadowDOM:[],beforeSanitizeAttributes:[],beforeSanitizeElements:[],beforeSanitizeShadowDOM:[],uponSanitizeAttribute:[],uponSanitizeElement:[],uponSanitizeShadowNode:[]}},M=function(e,t,n,r){return x(e,t)&&v(e[t])?D(r.base?O(r.base):{},e[t],r.transform):n},qe=function(e,t,n){let r=x(e,t)?e[t]:void 0;return r&&typeof r==`object`?O(r):n()};function Je(){let e=arguments.length>0&&arguments[0]!==void 0?arguments[0]:We(),t=e=>Je(e);if(t.version=`3.4.16`,t.removed=[],!e||!e.document||e.document.nodeType!==A.document||!e.Element)return t.isSupported=!1,t;let n=e.document,r=n,i=r.currentScript;e.DocumentFragment;let a=e.HTMLTemplateElement,o=e.Node,s=e.Element,l=e.NodeFilter;e.NamedNodeMap===void 0&&(e.NamedNodeMap||e.MozNamedAttrMap),e.HTMLFormElement;let u=e.DOMParser,d=e.trustedTypes,f=s.prototype,ee=k(f,`cloneNode`),g=k(f,`remove`),te=k(f,`removeAttributeNode`),fe=k(f,`nextSibling`),y=k(f,`childNodes`),b=k(f,`parentNode`),pe=k(f,`shadowRoot`),S=k(f,`attributes`),T=o&&o.prototype?k(o.prototype,`nodeType`):null,E=o&&o.prototype?k(o.prototype,`nodeName`):null,me=o&&o.prototype?k(o.prototype,`ownerDocument`):null,j=function(e){return T?T(e):e.nodeType},Ye=function(e){return E?E(e):e.nodeName};if(typeof a==`function`){let e=n.createElement(`template`);e.content&&e.content.ownerDocument&&(n=e.content.ownerDocument)}let N,P=``,Xe,Ze=!1,Qe=0,$e=function(){if(Qe>0)throw w(`A configured TRUSTED_TYPES_POLICY callback (createHTML or createScriptURL) must not call DOMPurify.sanitize, as that causes infinite recursion. Do not pass a policy whose callbacks wrap DOMPurify as TRUSTED_TYPES_POLICY; see the "DOMPurify and Trusted Types" section of the README.`)},F=function(e){$e(),Qe++;try{return N.createHTML(e)}finally{Qe--}},et=function(e){$e(),Qe++;try{return N.createScriptURL(e)}finally{Qe--}},tt=function(){return Ze||(Xe=Ge(d,i),Ze=!0),Xe},nt=n,rt=nt.implementation,it=nt.createNodeIterator,at=nt.createDocumentFragment,ot=nt.getElementsByTagName,st=r.importNode,I=Ke();t.isSupported=typeof c==`function`&&typeof b==`function`&&rt&&rt.createHTMLDocument!==void 0;let ct=Oe,lt=ke,ut=Ae,dt=je,ft=Me,pt=Pe,mt=Fe,ht=Le,gt=Ne,L=null,_t=D({},[..._e,...ve,...ye,...xe,...Ce]),R=null,vt=D({},[...we,...Te,...Ee,...De]),z=Object.seal(h(null,{tagNameCheck:{writable:!0,configurable:!1,enumerable:!0,value:null},attributeNameCheck:{writable:!0,configurable:!1,enumerable:!0,value:null},allowCustomizedBuiltInElements:{writable:!0,configurable:!1,enumerable:!0,value:!1}})),yt=null,bt=null,B=Object.seal(h(null,{tagCheck:{writable:!0,configurable:!1,enumerable:!0,value:null},attributeCheck:{writable:!0,configurable:!1,enumerable:!0,value:null}})),xt=!0,St=!0,Ct=!1,wt=!0,V=!1,H=!0,U=!1,Tt=!1,Et=null,Dt=null,Ot=!1,W=!1,kt=!1,At=!1,jt=!0,Mt=!1,Nt=`user-content-`,Pt=!0,Ft=!1,G={},K=null,It=D({},/* @__PURE__ */ `annotation-xml.audio.colgroup.desc.foreignobject.head.iframe.math.mi.mn.mo.ms.mtext.noembed.noframes.noscript.plaintext.script.selectedcontent.style.svg.template.thead.title.video.xmp`.split(`.`)),Lt=null,Rt=D({},[`audio`,`video`,`img`,`source`,`image`,`track`]),zt=null,Bt=D({},[`alt`,`class`,`for`,`id`,`label`,`name`,`pattern`,`placeholder`,`role`,`summary`,`title`,`value`,`style`,`xmlns`]),Vt=`\u0068\u0074\u0074\u0070://www.w3.org/1998/Math/MathML`,Ht=`\u0068\u0074\u0074\u0070://www.w3.org/2000/svg`,q=`\u0068\u0074\u0074\u0070://www.w3.org/1999/xhtml`,J=q,Ut=!1,Wt=null,Gt=D({},[Vt,Ht,q],se),Kt=p([`mi`,`mo`,`mn`,`ms`,`mtext`]),qt=D({},Kt),Jt=p([`annotation-xml`]),Yt=D({},Jt),Xt=D({},[`title`,`style`,`font`,`a`,`script`]),Zt=null,Qt=[`application/xhtml+xml`,`text/html`],Y=null,$t=null,en=n.createElement(`form`),tn=function(e){return e instanceof RegExp||e instanceof Function},nn=function(){let e=arguments.length>0&&arguments[0]!==void 0?arguments[0]:{};if($t&&$t===e)return;(!e||typeof e!=`object`)&&(e={}),e=O(e),Zt=Qt.indexOf(e.PARSER_MEDIA_TYPE)===-1?`text/html`:e.PARSER_MEDIA_TYPE,Y=Zt===`application/xhtml+xml`?se:oe,L=M(e,`ALLOWED_TAGS`,_t,{transform:Y}),R=M(e,`ALLOWED_ATTR`,vt,{transform:Y}),Wt=M(e,`ALLOWED_NAMESPACES`,Gt,{transform:se}),zt=M(e,`ADD_URI_SAFE_ATTR`,Bt,{transform:Y,base:Bt}),Lt=M(e,`ADD_DATA_URI_TAGS`,Rt,{transform:Y,base:Rt}),K=M(e,`FORBID_CONTENTS`,It,{transform:Y}),yt=M(e,`FORBID_TAGS`,O({}),{transform:Y}),bt=M(e,`FORBID_ATTR`,O({}),{transform:Y}),G=x(e,`USE_PROFILES`)?e.USE_PROFILES&&typeof e.USE_PROFILES==`object`?O(e.USE_PROFILES):e.USE_PROFILES:!1,xt=e.ALLOW_ARIA_ATTR!==!1,St=e.ALLOW_DATA_ATTR!==!1,Ct=e.ALLOW_UNKNOWN_PROTOCOLS||!1,wt=e.ALLOW_SELF_CLOSE_IN_ATTR!==!1,V=e.SAFE_FOR_TEMPLATES||!1,H=e.SAFE_FOR_XML!==!1,U=e.WHOLE_DOCUMENT||!1,W=e.RETURN_DOM||!1,kt=e.RETURN_DOM_FRAGMENT||!1,At=e.RETURN_TRUSTED_TYPE||!1,Ot=e.FORCE_BODY||!1,jt=e.SANITIZE_DOM!==!1,Mt=e.SANITIZE_NAMED_PROPS||!1,Pt=e.KEEP_CONTENT!==!1,Ft=e.IN_PLACE||!1,gt=ge(e.ALLOWED_URI_REGEXP)?e.ALLOWED_URI_REGEXP:Ne,J=typeof e.NAMESPACE==`string`?e.NAMESPACE:q,qt=qe(e,`MATHML_TEXT_INTEGRATION_POINTS`,()=>D({},Kt)),Yt=qe(e,`HTML_INTEGRATION_POINTS`,()=>D({},Jt));let t=qe(e,`CUSTOM_ELEMENT_HANDLING`,()=>h(null));if(z=h(null),x(t,`tagNameCheck`)&&tn(t.tagNameCheck)&&(z.tagNameCheck=t.tagNameCheck),x(t,`attributeNameCheck`)&&tn(t.attributeNameCheck)&&(z.attributeNameCheck=t.attributeNameCheck),x(t,`allowCustomizedBuiltInElements`)&&typeof t.allowCustomizedBuiltInElements==`boolean`&&(z.allowCustomizedBuiltInElements=t.allowCustomizedBuiltInElements),m(z),V&&(St=!1),kt&&(W=!0),G&&(L=D({},Ce),R=h(null),G.html===!0&&(D(L,_e),D(R,we)),G.svg===!0&&(D(L,ve),D(R,Te),D(R,De)),G.svgFilters===!0&&(D(L,ye),D(R,Te),D(R,De)),G.mathMl===!0&&(D(L,xe),D(R,Ee),D(R,De))),B.tagCheck=null,B.attributeCheck=null,x(e,`ADD_TAGS`)&&(typeof e.ADD_TAGS==`function`?B.tagCheck=e.ADD_TAGS:v(e.ADD_TAGS)&&(L===_t&&(L=O(L)),D(L,e.ADD_TAGS,Y))),x(e,`ADD_ATTR`)&&(typeof e.ADD_ATTR==`function`?B.attributeCheck=e.ADD_ATTR:v(e.ADD_ATTR)&&(R===vt&&(R=O(R)),D(R,e.ADD_ATTR,Y))),x(e,`ADD_FORBID_CONTENTS`)&&v(e.ADD_FORBID_CONTENTS)&&(K===It&&(K=O(K)),D(K,e.ADD_FORBID_CONTENTS,Y)),Pt&&(L[`#text`]=!0),U&&D(L,[`html`,`head`,`body`]),L.table&&(D(L,[`tbody`]),delete yt.tbody),e.TRUSTED_TYPES_POLICY){if(typeof e.TRUSTED_TYPES_POLICY.createHTML!=`function`)throw w(`TRUSTED_TYPES_POLICY configuration option must provide a "createHTML" hook.`);if(typeof e.TRUSTED_TYPES_POLICY.createScriptURL!=`function`)throw w(`TRUSTED_TYPES_POLICY configuration option must provide a "createScriptURL" hook.`);let t=N;N=e.TRUSTED_TYPES_POLICY;try{P=F(``)}catch(e){throw N=t,e}}else e.TRUSTED_TYPES_POLICY===null?(N=void 0,P=``):(N===void 0&&(N=tt()),N&&typeof P==`string`&&(P=F(``)));p&&p(e),$t=e},rn=D({},[...ve,...ye,...be]),an=D({},[...xe,...Se]),on=function(e,t,n){return t.namespaceURI===q?e===`svg`:t.namespaceURI===Vt?e===`svg`&&(n===`annotation-xml`||qt[n]):!!rn[e]},sn=function(e,t,n){return t.namespaceURI===q?e===`math`:t.namespaceURI===Ht?e===`math`&&Yt[n]:!!an[e]},cn=function(e,t,n){return t.namespaceURI===Ht&&!Yt[n]||t.namespaceURI===Vt&&!qt[n]?!1:!an[e]&&(Xt[e]||!rn[e])},ln=function(e){let t=b(e);(!t||!t.tagName)&&(t={namespaceURI:J,tagName:`template`});let n=oe(e.tagName),r=oe(t.tagName);return Wt[e.namespaceURI]?e.namespaceURI===Ht?on(n,t,r):e.namespaceURI===Vt?sn(n,t,r):e.namespaceURI===q?cn(n,t,r):!!(Zt===`application/xhtml+xml`&&Wt[e.namespaceURI]):!1},X=function(e){ie(t.removed,{element:e});try{b(e).removeChild(e)}catch(t){if(g(e),!b(e))throw w(`a node selected for removal could not be detached from its tree and cannot be safely returned; refusing to sanitize in place`)}},un=function(e,t,n){try{te(e,t)}catch(t){try{e.removeAttribute(n)}catch(e){}}},dn=function(e){pn(e);let t=y(e);if(t){let e=[];_(t,t=>{ie(e,t)}),_(e,e=>{try{g(e)}catch(e){}})}let n=S(e);if(n)for(let t=n.length-1;t>=0;--t){let r=n[t],i=r&&r.name;typeof i==`string`&&un(e,r,i)}},Z=function(e,n,r){if(!r)try{r=n.getAttributeNode(e)}catch(e){r=null}ie(t.removed,{attribute:r||null,from:n});try{r?te(n,r):n.removeAttribute(e)}catch(t){try{n.removeAttribute(e)}catch(e){}}if(e===`is`){if(W||kt)try{X(n)}catch(e){}else try{n.setAttribute(e,``)}catch(e){}}},fn=function(e){let t=S(e);if(t)for(let n=t.length-1;n>=0;--n){let r=t[n],i=r&&r.name;typeof i!=`string`||R[Y(i)]||un(e,r,i)}},pn=function(e){let t=[e];for(;t.length>0;){let e=t.pop();j(e)===A.element&&fn(e);let n=y(e);if(n)for(let e=n.length-1;e>=0;--e)t.push(n[e])}},mn=function(e,t){return H?e===`patchsrc`||e===`for`&&t!==`label`&&t!==`output`:!1},hn=function(e){if(!H)return;let t=[e];for(;t.length>0;){let e=t.pop(),n=j(e);if(n===A.processingInstruction||n===A.comment&&C(ze,e.data)){try{g(e)}catch(e){}continue}if(n===A.element){let t=e,n=Y(Ye(e));try{t.hasAttribute&&t.hasAttribute(`patchsrc`)&&t.removeAttribute(`patchsrc`),t.hasAttribute&&t.hasAttribute(`for`)&&mn(`for`,n)&&t.removeAttribute(`for`)}catch(e){}}let r=y(e);if(r)for(let e=r.length-1;e>=0;--e)t.push(r[e])}},gn=function(e){let t=null,r=null;if(Ot)e=`<remove></remove>`+e;else{let t=ce(e,/^[\r\n\t ]+/);r=t&&t[0]}Zt===`application/xhtml+xml`&&J===q&&(e=`<html xmlns="\u0068\u0074\u0074\u0070://www.w3.org/1999/xhtml"><head></head><body>`+e+`</body></html>`);let i=N?F(e):e;if(J===q)try{t=new u().parseFromString(i,Zt)}catch(e){}if(!t||!t.documentElement){t=rt.createDocument(J,`template`,null);try{t.documentElement.innerHTML=Ut?P:i}catch(e){}}let a=t.body||t.documentElement;return e&&r&&a.insertBefore(n.createTextNode(r),a.childNodes[0]||null),J===q?ot.call(t,U?`html`:`body`)[0]:U?t.documentElement:a},_n=function(e){let t=me?me(e):e.ownerDocument;return it.call(t||e,e,l.SHOW_ELEMENT|l.SHOW_COMMENT|l.SHOW_TEXT|l.SHOW_PROCESSING_INSTRUCTION|l.SHOW_CDATA_SECTION,null)},vn=function(e){return e=le(e,ct,` `),e=le(e,lt,` `),e=le(e,ut,` `),e},yn=function(e){var t;e.normalize();let n=me?me(e):e.ownerDocument,r=it.call(n||e,e,l.SHOW_TEXT|l.SHOW_COMMENT|l.SHOW_CDATA_SECTION|l.SHOW_PROCESSING_INSTRUCTION,null),i=r.nextNode();for(;i;)i.data=vn(i.data),i=r.nextNode();let a=(t=e.querySelectorAll)==null?void 0:t.call(e,`template`);a&&_(a,e=>{xn(e.content)&&yn(e.content)})},bn=function(e){let t=E?E(e):null;return typeof t!=`string`||Y(t)!==`form`?!1:typeof e.nodeName!=`string`||typeof e.textContent!=`string`||typeof e.removeChild!=`function`||e.attributes!==S(e)||typeof e.removeAttribute!=`function`||typeof e.removeAttributeNode!=`function`||typeof e.getAttributeNode!=`function`||typeof e.setAttribute!=`function`||typeof e.namespaceURI!=`string`||typeof e.insertBefore!=`function`||typeof e.hasChildNodes!=`function`||e.nodeType!==T(e)||e.childNodes!==y(e)},xn=function(e){if(!T||typeof e!=`object`||!e)return!1;try{return T(e)===A.documentFragment}catch(e){return!1}},Sn=function(e){if(!T||typeof e!=`object`||!e)return!1;try{return typeof T(e)==`number`}catch(e){return!1}};function Q(e,n,r){e.length!==0&&_(e,e=>{e.call(t,n,r,$t)})}let Cn=function(e,t){return!!(H&&e.hasChildNodes()&&!Sn(e.firstElementChild)&&C(Re,e.textContent)&&C(Re,e.innerHTML)||H&&e.namespaceURI===q&&He[t]&&(Sn(e.firstElementChild)||typeof e.textContent==`string`&&C(Ue[t],e.textContent))||e.nodeType===A.processingInstruction||H&&e.nodeType===A.comment&&C(ze,e.data))},wn=function(e,t){return e instanceof RegExp?C(e,t):e instanceof Function&&!!e(t,...[...arguments].slice(2))},Tn=function(e,t,n){if(!yt[t]&&An(t)&&wn(z.tagNameCheck,t))return!1;if(Pt&&!K[t]){let t=b(e),r=y(e);if(r&&t){let i=r.length;for(let a=i-1;a>=0;--a){let i=e===n?ee(r[a],!0):r[a];t.insertBefore(i,fe(e))}}}return X(e),!0},En=function(e,t,n,r){return e.length===0?t:t===n||t===r?O(t):t},$=function(e,t){return e===t||b(e)!==null?!1:(Ft&&pn(e),!0)},Dn=function(e,n){if(Q(I.beforeSanitizeElements,e,null),$(e,n))return!0;if(bn(e))return X(e),!0;let r=Y(Ye(e));if(L=En(I.uponSanitizeElement,L,_t,Et),Q(I.uponSanitizeElement,e,{tagName:r,allowedTags:L}),$(e,n))return!0;if(Cn(e,r))return X(e),!0;if(yt[r]||!(B.tagCheck instanceof Function&&B.tagCheck(r))&&!L[r]){let t=Tn(e,r,n);return t===!1&&(Q(I.afterSanitizeElements,e,null),$(e,n))?!0:t}if(j(e)===A.element&&!ln(e)||(r===`noscript`||r===`noembed`||r===`noframes`)&&C(Be,e.innerHTML))return X(e),!0;if(V&&e.nodeType===A.text){let n=vn(e.textContent);e.textContent!==n&&(ie(t.removed,{element:e.cloneNode()}),e.textContent=n)}return Q(I.afterSanitizeElements,e,null),$(e,n)},On=function(e,t,r){if(bt[t]||mn(t,e)||jt&&(t===`id`||t===`name`)&&(r in n||r in en))return!1;let i=R[t]||B.attributeCheck instanceof Function&&B.attributeCheck(t,e);return St&&C(dt,t)||xt&&C(ft,t)?!0:i?zt[t]||C(gt,le(r,mt,``))||(t===`src`||t===`xlink:href`||t===`href`)&&e!==`script`&&ue(r,`data:`)===0&&Lt[e]||Ct&&!C(pt,le(r,mt,``))?!0:!r:An(e)&&wn(z.tagNameCheck,e)&&wn(z.attributeNameCheck,t,e)||t===`is`&&z.allowCustomizedBuiltInElements&&wn(z.tagNameCheck,r)},kn=D({},[`annotation-xml`,`color-profile`,`font-face`,`font-face-format`,`font-face-name`,`font-face-src`,`font-face-uri`,`missing-glyph`]),An=function(e){return!kn[oe(e)]&&C(ht,e)},jn=function(e,t,n,r){if(N&&typeof d==`object`&&typeof d.getAttributeType==`function`&&!n)switch(d.getAttributeType(e,t)){case`TrustedHTML`:return F(r);case`TrustedScriptURL`:return et(r)}return r},Mn=function(e,t,n,r){try{return n?e.setAttributeNS(n,t,r):e.setAttribute(t,r),!bn(e)||(X(e),!1)}catch(n){return Z(t,e),!1}},Nn=function(e,n){if(Q(I.beforeSanitizeAttributes,e,null),$(e,n))return;let r=e.attributes;if(!r||bn(e))return;R=En(I.uponSanitizeAttribute,R,vt,Dt);let i={attrName:``,attrValue:``,keepAttr:!0,allowedAttributes:R,forceKeepAttr:void 0},a=r.length,o=Y(e.nodeName);for(;a--;){let n=r[a],s=n.name,c=n.namespaceURI,l=n.value,u=Y(s),d=l,f=s===`value`?d:de(d),p=!1;if(i.attrName=u,i.attrValue=f,i.keepAttr=!0,i.forceKeepAttr=void 0,Q(I.uponSanitizeAttribute,e,i),f=i.attrValue,Mt&&(u===`id`||u===`name`)&&ue(f,Nt)!==0&&(Z(s,e,n),f=Nt+f,p=!0),H&&C(/((--!?|])>)|<\/(style|script|title|xmp|textarea|noscript|iframe|noembed|noframes)/i,f)){Z(s,e,n);continue}if(u===`attributename`&&ce(f,`href`)){Z(s,e,n);continue}if(!i.forceKeepAttr){if(!i.keepAttr){Z(s,e,n);continue}if(!wt&&C(Ve,f)){Z(s,e,n);continue}if(V&&(f=vn(f)),!On(o,u,f)){Z(s,e,n);continue}f=jn(o,u,c,f),f!==d&&Mn(e,s,c,f)&&p&&re(t.removed)}}Q(I.afterSanitizeAttributes,e,null),$(e,n)},Pn=function(e){let t=null,n=_n(e);for(Q(I.beforeSanitizeShadowDOM,e,null);t=n.nextNode();)if(Q(I.uponSanitizeShadowNode,t,null),Dn(t,e),Nn(t,e),xn(t.content)&&Pn(t.content),j(t)===A.element){let e=pe(t);xn(e)&&(Fn(e),Pn(e))}Q(I.afterSanitizeShadowDOM,e,null)},Fn=function(e){let t=[{node:e,shadow:null}];for(;t.length>0;){let e=t.pop();if(e.shadow){Pn(e.shadow);continue}let n=e.node,r=j(n)===A.element,i=y(n);if(i)for(let e=i.length-1;e>=0;--e)t.push({node:i[e],shadow:null});if(r){let e=E?E(n):null;if(typeof e==`string`&&Y(e)===`template`){let e=n.content;xn(e)&&t.push({node:e,shadow:null})}}if(r){let e=pe(n);xn(e)&&t.push({node:null,shadow:e},{node:e,shadow:null})}}};return t.sanitize=function(e){let n=arguments.length>1&&arguments[1]!==void 0?arguments[1]:{},i=null,a=null,o=null,s=null;if(Ut=!e,Ut&&(e=`<!-->`),typeof e!=`string`&&!Sn(e)&&(e=he(e),typeof e!=`string`))throw w(`dirty is not a string, aborting`);if(!t.isSupported)return e;Tt?(L=Et,R=Dt):nn(n),(I.uponSanitizeElement.length>0||I.uponSanitizeAttribute.length>0)&&(L=O(L)),I.uponSanitizeAttribute.length>0&&(R=O(R)),t.removed=[];let c=Ft&&typeof e!=`string`&&Sn(e);if(c){hn(e);let t=Ye(e);if(typeof t==`string`){let n=Y(t);if(!L[n]||yt[n])throw dn(e),w(`root node is forbidden and cannot be sanitized in-place`)}if(bn(e))throw dn(e),w(`root node is clobbered and cannot be sanitized in-place`);try{Fn(e)}catch(t){throw dn(e),t}}else if(Sn(e))i=gn(`<!---->`),a=i.ownerDocument.importNode(e,!0),a.nodeType===A.element&&a.nodeName===`BODY`||a.nodeName===`HTML`?i=a:i.appendChild(a),Fn(i);else{if(!W&&!V&&!U&&e.indexOf(`<`)===-1)return N&&At?F(e):e;if(i=gn(e),!i)return W?null:At?P:``}i&&Ot&&X(i.firstChild);let l=c?e:i;try{let e=_n(l);for(;o=e.nextNode();)Dn(o,l),Nn(o,l),xn(o.content)&&Pn(o.content)}catch(n){throw c&&(dn(e),_(t.removed,e=>{e.element&&pn(e.element)})),n}if(c){let n=!1;if(_(t.removed,t=>{t.element&&(t.element===e&&(n=!0),pn(t.element))}),n)throw w(`a node selected for removal could not be safely returned; refusing to sanitize in place`);return V&&yn(e),e}if(W){if(V&&yn(i),kt)for(s=at.call(i.ownerDocument);i.firstChild;)s.appendChild(i.firstChild);else s=i;return(R.shadowroot||R.shadowrootmode)&&(s=st.call(r,s,!0)),s}let u=U?i.outerHTML:i.innerHTML;return U&&L[`!doctype`]&&i.ownerDocument&&i.ownerDocument.doctype&&i.ownerDocument.doctype.name&&C(Ie,i.ownerDocument.doctype.name)&&(u=`<!DOCTYPE `+i.ownerDocument.doctype.name+`>
+`+u),V&&(u=vn(u)),N&&At?F(u):u},t.setConfig=function(){let e=arguments.length>0&&arguments[0]!==void 0?arguments[0]:{};nn(e),Tt=!0,Et=L,Dt=R},t.clearConfig=function(){$t=null,Tt=!1,Et=null,Dt=null,N=Xe,P=``},t.isValidAttribute=function(e,t,n){$t||nn({});let r=Y(e),i=Y(t);return On(r,i,n)},t.addHook=function(e,t){typeof t==`function`&&x(I,e)&&ie(I[e],t)},t.removeHook=function(e,t){if(x(I,e)){if(t!==void 0){let n=ne(I[e],t);return n===-1?void 0:ae(I[e],n,1)[0]}return re(I[e])}},t.removeHooks=function(e){x(I,e)&&(I[e]=[])},t.removeAllHooks=function(){I=Ke()},t}return Je()});
+//# sourceMappingURL=purify.min.js.map
+
 /* === mammoth.browser.min_1.12.3.js === */
 !function(f){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=f();else if("function"==typeof define&&define.amd)define([],f);else{var g;g="undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:this,g.mammoth=f()}}(function(){var define,module,exports;return function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a="function"==typeof require&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}for(var i="function"==typeof require&&require,o=0;o<r.length;o++)s(r[o]);return s}({1:[function(require,module,exports){function Files(){function read(uri){return promises.reject(new Error("could not open external image: '"+uri+"'\ncannot open linked files from a web browser"))}return{read:read}}var promises=require("../../lib/promises");exports.Files=Files},{"../../lib/promises":23}],2:[function(require,module,exports){function openZip(options){return options.arrayBuffer?promises.resolve(zipfile.openArrayBuffer(options.arrayBuffer)):promises.reject(new Error("Could not find file in options"))}var promises=require("../lib/promises"),zipfile=require("../lib/zipfile");exports.openZip=openZip},{"../lib/promises":23,"../lib/zipfile":40}],3:[function(require,module,exports){function DocumentConverter(options){return{convertToHtml:function(element){var comments=_.indexBy(element.type===documents.types.document?element.comments:[],"commentId"),conversion=new DocumentConversion(options,comments);return conversion.convertToHtml(element)}}}function DocumentConversion(options,comments){function convertToHtml(document){var messages=[],html=elementToHtml(document,messages,Object.create(null)),deferredNodes=[];walkHtml(html,function(node){"deferred"===node.type&&deferredNodes.push(node)});var deferredValues=Object.create(null);return promises.mapSeries(deferredNodes,function(deferred){return deferred.value().then(function(value){deferredValues[deferred.id]=value})}).then(function(){function replaceDeferred(nodes){return flatMap(nodes,function(node){return"deferred"===node.type?deferredValues[node.id]:node.children?[_.extend({},node,{children:replaceDeferred(node.children)})]:[node]})}var writer=writers.writer({prettyPrint:options.prettyPrint,outputFormat:options.outputFormat});return Html.write(writer,Html.simplify(replaceDeferred(html))),new results.Result(writer.asString(),messages)})}function convertElements(elements,messages,options){return flatMap(elements,function(element){return elementToHtml(element,messages,options)})}function elementToHtml(element,messages,options){if(!options)throw new Error("options not set");var handler=elementConverters[element.type];return handler?handler(element,messages,options):[]}function convertParagraph(element,messages,options){return htmlPathForParagraph(element,messages).wrap(function(){var content=convertElements(element.children,messages,options);return ignoreEmptyParagraphs?content:[Html.forceWrite].concat(content)})}function htmlPathForParagraph(element,messages){var style=findStyle(element);return style?style.to:(element.styleId&&messages.push(unrecognisedStyleWarning("paragraph",element)),defaultParagraphStyle)}function convertRun(run,messages,options){var nodes=function(){return convertElements(run.children,messages,options)},paths=[];if(null!==run.highlight){var path=findHtmlPath({type:"highlight",color:run.highlight});path&&paths.push(path)}run.isSmallCaps&&paths.push(findHtmlPathForRunProperty("smallCaps")),run.isAllCaps&&paths.push(findHtmlPathForRunProperty("allCaps")),run.isStrikethrough&&paths.push(findHtmlPathForRunProperty("strikethrough","s")),run.isUnderline&&paths.push(findHtmlPathForRunProperty("underline")),run.verticalAlignment===documents.verticalAlignment.subscript&&paths.push(htmlPaths.element("sub",{},{fresh:!1})),run.verticalAlignment===documents.verticalAlignment.superscript&&paths.push(htmlPaths.element("sup",{},{fresh:!1})),run.isItalic&&paths.push(findHtmlPathForRunProperty("italic","em")),run.isBold&&paths.push(findHtmlPathForRunProperty("bold","strong"));var stylePath=htmlPaths.empty,style=findStyle(run);return style?stylePath=style.to:run.styleId&&messages.push(unrecognisedStyleWarning("run",run)),paths.push(stylePath),paths.forEach(function(path){nodes=path.wrap.bind(path,nodes)}),nodes()}function findHtmlPathForRunProperty(elementType,defaultTagName){var path=findHtmlPath({type:elementType});return path?path:defaultTagName?htmlPaths.element(defaultTagName,{},{fresh:!1}):htmlPaths.empty}function findHtmlPath(element,defaultPath){var style=findStyle(element);return style?style.to:defaultPath}function findStyle(element){for(var i=0;i<styleMap.length;i++)if(styleMap[i].from.matches(element))return styleMap[i]}function recoveringConvertImage(convertImage){return function(image,messages){return promises.attempt(function(){return convertImage(image,messages)}).caught(function(error){return messages.push(results.error(error)),[]})}}function noteHtmlId(note){return referentHtmlId(note.noteType,note.noteId)}function noteRefHtmlId(note){return referenceHtmlId(note.noteType,note.noteId)}function referentHtmlId(referenceType,referenceId){return htmlId(referenceType+"-"+referenceId)}function referenceHtmlId(referenceType,referenceId){return htmlId(referenceType+"-ref-"+referenceId)}function htmlId(suffix){return idPrefix+suffix}function convertTable(element,messages,options){return findHtmlPath(element,defaultTablePath).wrap(function(){return convertTableChildren(element,messages,options)})}function convertTableChildren(element,messages,options){var bodyIndex=_.findIndex(element.children,function(child){return!child.type===documents.types.tableRow||!child.isHeader});-1===bodyIndex&&(bodyIndex=element.children.length);var children;if(0===bodyIndex)children=convertElements(element.children,messages,_.extend({},options,{isTableHeader:!1}));else{var headRows=convertElements(element.children.slice(0,bodyIndex),messages,_.extend({},options,{isTableHeader:!0})),bodyRows=convertElements(element.children.slice(bodyIndex),messages,_.extend({},options,{isTableHeader:!1}));children=[Html.freshElement("thead",{},headRows),Html.freshElement("tbody",{},bodyRows)]}return[Html.forceWrite].concat(children)}function convertTableRow(element,messages,options){var children=convertElements(element.children,messages,options);return[Html.freshElement("tr",{},[Html.forceWrite].concat(children))]}function convertTableCell(element,messages,options){var tagName=options.isTableHeader?"th":"td",children=convertElements(element.children,messages,options),attributes={};return 1!==element.colSpan&&(attributes.colspan=element.colSpan.toString()),1!==element.rowSpan&&(attributes.rowspan=element.rowSpan.toString()),[Html.freshElement(tagName,attributes,[Html.forceWrite].concat(children))]}function convertCommentReference(reference,messages,options){return findHtmlPath(reference,htmlPaths.ignore).wrap(function(){var comment=comments[reference.commentId],count=referencedComments.length+1,label="["+commentAuthorLabel(comment)+count+"]";return referencedComments.push({label:label,comment:comment}),[Html.freshElement("a",{href:"#"+referentHtmlId("comment",reference.commentId),id:referenceHtmlId("comment",reference.commentId)},[Html.text(label)])]})}function convertComment(referencedComment,messages,options){var label=referencedComment.label,comment=referencedComment.comment,body=convertElements(comment.body,messages,options).concat([Html.nonFreshElement("p",{},[Html.text(" "),Html.freshElement("a",{href:"#"+referenceHtmlId("comment",comment.commentId)},[Html.text("↑")])])]);return[Html.freshElement("dt",{id:referentHtmlId("comment",comment.commentId)},[Html.text("Comment "+label)]),Html.freshElement("dd",{},body)]}function convertBreak(element,messages,options){return htmlPathForBreak(element).wrap(function(){return[]})}function htmlPathForBreak(element){var style=findStyle(element);return style?style.to:"line"===element.breakType?htmlPaths.topLevelElement("br"):htmlPaths.empty}var noteNumber=1,noteReferences=[],referencedComments=[];options=_.extend({ignoreEmptyParagraphs:!0},options);var idPrefix=void 0===options.idPrefix?"":options.idPrefix,ignoreEmptyParagraphs=options.ignoreEmptyParagraphs,defaultParagraphStyle=htmlPaths.topLevelElement("p"),styleMap=options.styleMap||[],defaultTablePath=htmlPaths.elements([htmlPaths.element("table",{},{fresh:!0})]),elementConverters={document:function(document,messages,options){var children=convertElements(document.children,messages,options),notes=noteReferences.map(function(noteReference){return document.notes.resolve(noteReference)}),notesNodes=convertElements(notes,messages,options);return children.concat([Html.freshElement("ol",{},notesNodes),Html.freshElement("dl",{},flatMap(referencedComments,function(referencedComment){return convertComment(referencedComment,messages,options)}))])},paragraph:convertParagraph,run:convertRun,text:function(element,messages,options){return[Html.text(element.value)]},tab:function(element,messages,options){return[Html.text("	")]},hyperlink:function(element,messages,options){var href=element.anchor?"#"+htmlId(element.anchor):element.href,attributes={href:href};null!=element.targetFrame&&(attributes.target=element.targetFrame);var children=convertElements(element.children,messages,options);return[Html.nonFreshElement("a",attributes,children)]},checkbox:function(element){var attributes={type:"checkbox"};return element.checked&&(attributes.checked="checked"),[Html.freshElement("input",attributes)]},bookmarkStart:function(element,messages,options){var anchor=Html.freshElement("a",{id:htmlId(element.name)},[Html.forceWrite]);return[anchor]},noteReference:function(element,messages,options){noteReferences.push(element);var anchor=Html.freshElement("a",{href:"#"+noteHtmlId(element),id:noteRefHtmlId(element)},[Html.text("["+noteNumber++ +"]")]);return[Html.freshElement("sup",{},[anchor])]},note:function(element,messages,options){var children=convertElements(element.body,messages,options),backLink=Html.elementWithTag(htmlPaths.element("p",{},{fresh:!1}),[Html.text(" "),Html.freshElement("a",{href:"#"+noteRefHtmlId(element)},[Html.text("↑")])]),body=children.concat([backLink]);return Html.freshElement("li",{id:noteHtmlId(element)},body)},commentReference:convertCommentReference,comment:convertComment,image:deferredConversion(recoveringConvertImage(options.convertImage||images.dataUri)),table:convertTable,tableRow:convertTableRow,tableCell:convertTableCell,"break":convertBreak};return{convertToHtml:convertToHtml}}function deferredConversion(func){return function(element,messages,options){return[{type:"deferred",id:deferredId++,value:function(){return func(element,messages,options)}}]}}function unrecognisedStyleWarning(type,element){return results.warning("Unrecognised "+type+" style: '"+element.styleName+"' (Style ID: "+element.styleId+")")}function flatMap(values,func){return _.flatten(values.map(func),!0)}function walkHtml(nodes,callback){nodes.forEach(function(node){callback(node),node.children&&walkHtml(node.children,callback)})}var _=require("underscore"),promises=require("./promises"),documents=require("./documents"),htmlPaths=require("./styles/html-paths"),results=require("./results"),images=require("./images"),Html=require("./html"),writers=require("./writers");exports.DocumentConverter=DocumentConverter;var deferredId=1,commentAuthorLabel=exports.commentAuthorLabel=function(comment){return comment.authorInitials||""}},{"./documents":4,"./html":18,"./images":20,"./promises":23,"./results":25,"./styles/html-paths":28,"./writers":33,underscore:102}],4:[function(require,module,exports){(function(Buffer){function Document(children,options){return options=options||{},{type:types.document,children:children,notes:options.notes||new Notes({}),comments:options.comments||[]}}function Paragraph(children,properties){properties=properties||{};var indent=properties.indent||{};return{type:types.paragraph,children:children,styleId:properties.styleId||null,styleName:properties.styleName||null,numbering:properties.numbering||null,alignment:properties.alignment||null,indent:{start:indent.start||null,end:indent.end||null,firstLine:indent.firstLine||null,hanging:indent.hanging||null}}}function Run(children,properties){return properties=properties||{},{type:types.run,children:children,styleId:properties.styleId||null,styleName:properties.styleName||null,isBold:!!properties.isBold,isUnderline:!!properties.isUnderline,isItalic:!!properties.isItalic,isStrikethrough:!!properties.isStrikethrough,isAllCaps:!!properties.isAllCaps,isSmallCaps:!!properties.isSmallCaps,verticalAlignment:properties.verticalAlignment||verticalAlignment.baseline,font:properties.font||null,fontSize:properties.fontSize||null,highlight:properties.highlight||null}}function Text(value){return{type:types.text,value:value}}function Tab(){return{type:types.tab}}function Checkbox(options){return{type:types.checkbox,checked:options.checked}}function Hyperlink(children,options){return{type:types.hyperlink,children:children,href:options.href,anchor:options.anchor,targetFrame:options.targetFrame}}function NoteReference(options){return{type:types.noteReference,noteType:options.noteType,noteId:options.noteId}}function Notes(notes){this._notes=_.indexBy(notes,function(note){return noteKey(note.noteType,note.noteId)})}function Note(options){return{type:types.note,noteType:options.noteType,noteId:options.noteId,body:options.body}}function commentReference(options){return{type:types.commentReference,commentId:options.commentId}}function comment(options){return{type:types.comment,commentId:options.commentId,body:options.body,authorName:options.authorName,authorInitials:options.authorInitials}}function noteKey(noteType,id){return noteType+"-"+id}function Image(options){return{type:types.image,read:function(encoding){return encoding?options.readImage(encoding):options.readImage().then(function(arrayBuffer){return Buffer.from(arrayBuffer)})},readAsArrayBuffer:function(){return options.readImage()},readAsBase64String:function(){return options.readImage("base64")},readAsBuffer:function(){return options.readImage().then(function(arrayBuffer){return Buffer.from(arrayBuffer)})},altText:options.altText,contentType:options.contentType}}function Table(children,properties){return properties=properties||{},{type:types.table,children:children,styleId:properties.styleId||null,styleName:properties.styleName||null}}function TableRow(children,options){return options=options||{},{type:types.tableRow,children:children,isHeader:options.isHeader||!1}}function TableCell(children,options){return options=options||{},{type:types.tableCell,children:children,colSpan:null==options.colSpan?1:options.colSpan,rowSpan:null==options.rowSpan?1:options.rowSpan}}function Break(breakType){return{type:types["break"],breakType:breakType}}function BookmarkStart(options){return{type:types.bookmarkStart,name:options.name}}var _=require("underscore"),types=exports.types={document:"document",paragraph:"paragraph",run:"run",text:"text",tab:"tab",checkbox:"checkbox",hyperlink:"hyperlink",noteReference:"noteReference",image:"image",note:"note",commentReference:"commentReference",comment:"comment",table:"table",tableRow:"tableRow",tableCell:"tableCell","break":"break",bookmarkStart:"bookmarkStart"},verticalAlignment={baseline:"baseline",superscript:"superscript",subscript:"subscript"};Notes.prototype.resolve=function(reference){return this.findNoteByKey(noteKey(reference.noteType,reference.noteId))},Notes.prototype.findNoteByKey=function(key){return this._notes[key]||null},exports.document=exports.Document=Document,exports.paragraph=exports.Paragraph=Paragraph,exports.run=exports.Run=Run,exports.text=exports.Text=Text,exports.tab=exports.Tab=Tab,exports.checkbox=exports.Checkbox=Checkbox,exports.Hyperlink=Hyperlink,exports.noteReference=exports.NoteReference=NoteReference,exports.Notes=Notes,exports.Note=Note,exports.commentReference=commentReference,exports.comment=comment,exports.Image=Image,exports.Table=Table,exports.TableRow=TableRow,exports.TableCell=TableCell,exports.lineBreak=Break("line"),exports.pageBreak=Break("page"),exports.columnBreak=Break("column"),exports.BookmarkStart=BookmarkStart,exports.verticalAlignment=verticalAlignment}).call(this,require("buffer").Buffer)},{buffer:83,underscore:102}],5:[function(require,module,exports){function createBodyReader(options){return{readXmlElement:function(element){return new BodyReader(options).readXmlElement(element)},readXmlElements:function(elements){return new BodyReader(options).readXmlElements(elements)}}}function BodyReader(options){function readXmlElements(elements){var results=elements.map(readXmlElement);return combineResults(results)}function readXmlElement(element){if("element"===element.type){var handler=xmlElementReaders[element.name];if(handler)return handler(element);if(!Object.prototype.hasOwnProperty.call(ignoreElements,element.name)){var message=warning("An unrecognised element was ignored: "+element.name);return emptyResultWithMessages([message])}}return emptyResult()}function readParagraphProperties(element){return readParagraphStyle(element).map(function(style){return{type:"paragraphProperties",styleId:style.styleId,styleName:style.name,alignment:element.firstOrEmpty("w:jc").attributes["w:val"],numbering:readNumberingProperties(style.styleId,element.firstOrEmpty("w:numPr"),numbering),indent:readParagraphIndent(element.firstOrEmpty("w:ind"))}})}function readParagraphIndent(element){return{start:element.attributes["w:start"]||element.attributes["w:left"],end:element.attributes["w:end"]||element.attributes["w:right"],firstLine:element.attributes["w:firstLine"],hanging:element.attributes["w:hanging"]}}function readRunProperties(element){return readRunStyle(element).map(function(style){var fontSizeString=element.firstOrEmpty("w:sz").attributes["w:val"],fontSize=/^[0-9]+$/.test(fontSizeString)?parseInt(fontSizeString,10)/2:null;return{type:"runProperties",styleId:style.styleId,styleName:style.name,verticalAlignment:element.firstOrEmpty("w:vertAlign").attributes["w:val"],font:element.firstOrEmpty("w:rFonts").attributes["w:ascii"],fontSize:fontSize,isBold:readBooleanElement(element.first("w:b")),isUnderline:readUnderline(element.first("w:u")),isItalic:readBooleanElement(element.first("w:i")),isStrikethrough:readBooleanElement(element.first("w:strike")),isAllCaps:readBooleanElement(element.first("w:caps")),isSmallCaps:readBooleanElement(element.first("w:smallCaps")),highlight:readHighlightValue(element.firstOrEmpty("w:highlight").attributes["w:val"])}})}function readUnderline(element){if(element){var value=element.attributes["w:val"];return void 0!==value&&"false"!==value&&"0"!==value&&"none"!==value}return!1}function readBooleanElement(element){if(element){var value=element.attributes["w:val"];return"false"!==value&&"0"!==value}return!1}function readBooleanAttributeValue(value){return"false"!==value&&"0"!==value}function readHighlightValue(value){return value&&"none"!==value?value:null}function readParagraphStyle(element){return readStyle(element,"w:pStyle","Paragraph",styles.findParagraphStyleById)}function readRunStyle(element){return readStyle(element,"w:rStyle","Run",styles.findCharacterStyleById)}function readTableStyle(element){return readStyle(element,"w:tblStyle","Table",styles.findTableStyleById)}function readStyle(element,styleTagName,styleType,findStyleById){var messages=[],styleElement=element.first(styleTagName),styleId=null,name=null;if(styleElement&&(styleId=styleElement.attributes["w:val"])){var style=findStyleById(styleId);style?name=style.name:messages.push(undefinedStyleWarning(styleType,styleId))}return elementResultWithMessages({styleId:styleId,name:name},messages)}function readFldChar(element){var type=element.attributes["w:fldCharType"];if("begin"===type)complexFieldStack.push({type:"begin",fldChar:element}),currentInstrText=[];else if("end"===type){if(0===complexFieldStack.length)return emptyResultWithMessages([warning("Ignoring complex field end character without corresponding start character")]);var complexFieldEnd=complexFieldStack.pop();if("begin"===complexFieldEnd.type&&(complexFieldEnd=parseCurrentInstrText(complexFieldEnd)),"checkbox"===complexFieldEnd.type)return elementResult(documents.checkbox({checked:complexFieldEnd.checked}))}else if("separate"===type){if(0===complexFieldStack.length)return emptyResultWithMessages([warning("Ignoring complex field separator character without corresponding start character")]);var complexFieldSeparate=complexFieldStack.pop(),complexField=parseCurrentInstrText(complexFieldSeparate);complexFieldStack.push(complexField)}return emptyResult()}function currentHyperlinkOptions(){var topHyperlink=_.last(complexFieldStack.filter(function(complexField){return"hyperlink"===complexField.type}));return topHyperlink?topHyperlink.options:null}function parseCurrentInstrText(complexField){return parseInstrText(currentInstrText.join(""),"begin"===complexField.type?complexField.fldChar:xml.emptyElement)}function parseInstrText(instrText,fldChar){var linkResult=/^\s*HYPERLINK\s+(\\l\s+)?(?:"(.*)"|([^\\]\S*))/.exec(instrText);if(linkResult){var location=void 0===linkResult[2]?linkResult[3]:linkResult[2],options=void 0===linkResult[1]?{href:location}:{anchor:location};return{type:"hyperlink",options:options}}var checkboxResult=/\s*FORMCHECKBOX\s*/.exec(instrText);if(checkboxResult){var checkboxElement=fldChar.firstOrEmpty("w:ffData").firstOrEmpty("w:checkBox"),checkedElement=checkboxElement.first("w:checked"),checked=readBooleanElement(null==checkedElement?checkboxElement.first("w:default"):checkedElement);return{type:"checkbox",checked:checked}}return{type:"unknown"}}function readInstrText(element){return currentInstrText.push(element.text()),emptyResult()}function readSymbol(element){var font=element.attributes["w:font"],char=element.attributes["w:char"],unicodeCharacter=dingbatToUnicode.hex(font,char);return null==unicodeCharacter&&/^F0..$/.test(char)&&(unicodeCharacter=dingbatToUnicode.hex(font,char.substring(2))),null==unicodeCharacter?emptyResultWithMessages([warning("A w:sym element with an unsupported character was ignored: char "+char+" in font "+font)]):elementResult(new documents.Text(unicodeCharacter.string))}function noteReferenceReader(noteType){return function(element){var noteId=element.attributes["w:id"];return elementResult(new documents.NoteReference({noteType:noteType,noteId:noteId}))}}function readCommentReference(element){return elementResult(documents.commentReference({commentId:element.attributes["w:id"]}))}function readChildElements(element){return readXmlElements(element.children)}function readTable(element){var propertiesResult=readTableProperties(element.firstOrEmpty("w:tblPr"));return readXmlElements(element.children).flatMap(calculateRowSpans).flatMap(function(children){return propertiesResult.map(function(properties){return documents.Table(children,properties)})})}function readTableProperties(element){return readTableStyle(element).map(function(style){return{styleId:style.styleId,styleName:style.name}})}function readTableRow(element){var properties=element.firstOrEmpty("w:trPr"),isDeleted=!!properties.first("w:del");if(isDeleted)return emptyResult();var isHeader=!!properties.first("w:tblHeader");return readXmlElements(element.children).map(function(children){return documents.TableRow(children,{isHeader:isHeader})})}function readTableCell(element){return readXmlElements(element.children).map(function(children){var properties=element.firstOrEmpty("w:tcPr"),gridSpan=properties.firstOrEmpty("w:gridSpan").attributes["w:val"],colSpan=gridSpan?parseInt(gridSpan,10):1,cell=documents.TableCell(children,{colSpan:colSpan});return cell._vMerge=readVMerge(properties),cell})}function readVMerge(properties){var element=properties.first("w:vMerge");if(element){var val=element.attributes["w:val"];return"continue"===val||!val}return null}function calculateRowSpans(rows){var unexpectedNonRows=_.any(rows,function(row){return row.type!==documents.types.tableRow});if(unexpectedNonRows)return removeVMergeProperties(rows),elementResultWithMessages(rows,[warning("unexpected non-row element in table, cell merging may be incorrect")]);var unexpectedNonCells=_.any(rows,function(row){return _.any(row.children,function(cell){return cell.type!==documents.types.tableCell})});if(unexpectedNonCells)return removeVMergeProperties(rows),elementResultWithMessages(rows,[warning("unexpected non-cell element in table row, cell merging may be incorrect")]);var columns={};return rows.forEach(function(row){var cellIndex=0;row.children.forEach(function(cell){cell._vMerge&&columns[cellIndex]?columns[cellIndex].rowSpan++:(columns[cellIndex]=cell,cell._vMerge=!1),cellIndex+=cell.colSpan})}),rows.forEach(function(row){row.children=row.children.filter(function(cell){return!cell._vMerge}),row.children.forEach(function(cell){delete cell._vMerge})}),elementResult(rows)}function removeVMergeProperties(rows){rows.forEach(function(row){var cells=transforms.getDescendantsOfType(row,documents.types.tableCell);cells.forEach(function(cell){delete cell._vMerge})})}function readDrawingElement(element){var blips=element.getElementsByTagName("a:graphic").getElementsByTagName("a:graphicData").getElementsByTagName("pic:pic").getElementsByTagName("pic:blipFill").getElementsByTagName("a:blip");return combineResults(blips.map(readBlip.bind(null,element)))}function readBlip(element,blip){var propertiesElement=element.firstOrEmpty("wp:docPr"),properties=propertiesElement.attributes,altText=isBlank(properties.descr)?properties.title:properties.descr,blipImageFile=findBlipImageFile(blip);return null===blipImageFile?emptyResultWithMessages([warning("Could not find image file for a:blip element")]):readImage(blipImageFile,altText).map(function(imageElement){var hlinkClickElement=propertiesElement.firstOrEmpty("a:hlinkClick"),relationshipId=hlinkClickElement.attributes["r:id"];if(relationshipId){var href=relationships.findTargetByRelationshipId(relationshipId);return new documents.Hyperlink([imageElement],{href:href})}return imageElement})}function isBlank(value){return null==value||/^\s*$/.test(value)}function findBlipImageFile(blip){var embedRelationshipId=blip.attributes["r:embed"],linkRelationshipId=blip.attributes["r:link"];if(embedRelationshipId)return findEmbeddedImageFile(embedRelationshipId);if(linkRelationshipId){var imagePath=relationships.findTargetByRelationshipId(linkRelationshipId);return{path:imagePath,read:files.read.bind(files,imagePath)}}return null}function readImageData(element){var relationshipId=element.attributes["r:id"];return relationshipId?readImage(findEmbeddedImageFile(relationshipId),element.attributes["o:title"]):emptyResultWithMessages([warning("A v:imagedata element without a relationship ID was ignored")])}function findEmbeddedImageFile(relationshipId){var path=uris.uriToZipEntryName("word",relationships.findTargetByRelationshipId(relationshipId));return{path:path,read:docxFile.read.bind(docxFile,path)}}function readImage(imageFile,altText){var contentType=contentTypes.findContentType(imageFile.path),image=documents.Image({readImage:imageFile.read,altText:altText,contentType:contentType}),warnings=supportedImageTypes[contentType]?[]:warning("Image of type "+contentType+" is unlikely to display in web browsers");return elementResultWithMessages(image,warnings)}function undefinedStyleWarning(type,styleId){return warning(type+" style with ID "+styleId+" was referenced but not defined in the document")}var complexFieldStack=[],currentInstrText=[],deletedParagraphContents=[],relationships=options.relationships,contentTypes=options.contentTypes,docxFile=options.docxFile,files=options.files,numbering=options.numbering,styles=options.styles,xmlElementReaders={"w:p":function(element){var paragraphPropertiesElement=element.firstOrEmpty("w:pPr"),isDeleted=!!paragraphPropertiesElement.firstOrEmpty("w:rPr").first("w:del");if(isDeleted)return element.children.forEach(function(child){deletedParagraphContents.push(child)}),emptyResult();var childrenXml=element.children;return deletedParagraphContents.length>0&&(childrenXml=deletedParagraphContents.concat(childrenXml),deletedParagraphContents=[]),ReadResult.map(readParagraphProperties(paragraphPropertiesElement),readXmlElements(childrenXml),function(properties,children){return new documents.Paragraph(children,properties)}).insertExtra()},"w:r":function(element){return ReadResult.map(readRunProperties(element.firstOrEmpty("w:rPr")),readXmlElements(element.children),function(properties,children){var hyperlinkOptions=currentHyperlinkOptions();return null!==hyperlinkOptions&&(children=[new documents.Hyperlink(children,hyperlinkOptions)]),new documents.Run(children,properties)})},"w:fldChar":readFldChar,"w:instrText":readInstrText,"w:t":function(element){return elementResult(new documents.Text(element.text()))},"w:tab":function(element){return elementResult(new documents.Tab)},"w:noBreakHyphen":function(){return elementResult(new documents.Text("‑"))},"w:softHyphen":function(element){return elementResult(new documents.Text("­"))},"w:sym":readSymbol,"w:hyperlink":function(element){var relationshipId=element.attributes["r:id"],anchor=element.attributes["w:anchor"];return readXmlElements(element.children).map(function(children){function create(options){var targetFrame=element.attributes["w:tgtFrame"]||null;return new documents.Hyperlink(children,_.extend({targetFrame:targetFrame},options))}if(relationshipId){var href=relationships.findTargetByRelationshipId(relationshipId);return anchor&&(href=uris.replaceFragment(href,anchor)),create({href:href})}return anchor?create({anchor:anchor}):children})},"w:tbl":readTable,"w:tr":readTableRow,"w:tc":readTableCell,"w:footnoteReference":noteReferenceReader("footnote"),"w:endnoteReference":noteReferenceReader("endnote"),"w:commentReference":readCommentReference,"w:br":function(element){var breakType=element.attributes["w:type"];return null==breakType||"textWrapping"===breakType?elementResult(documents.lineBreak):"page"===breakType?elementResult(documents.pageBreak):"column"===breakType?elementResult(documents.columnBreak):emptyResultWithMessages([warning("Unsupported break type: "+breakType)])},"w:bookmarkStart":function(element){var name=element.attributes["w:name"];return"_GoBack"===name?emptyResult():elementResult(new documents.BookmarkStart({name:name}))},"mc:AlternateContent":function(element){return readChildElements(element.firstOrEmpty("mc:Fallback"))},"w:sdt":function(element){var contentResult=readXmlElements(element.firstOrEmpty("w:sdtContent").children);return contentResult.map(function(content){var checkbox=element.firstOrEmpty("w:sdtPr").first("wordml:checkbox");if(checkbox){var checkedElement=checkbox.first("wordml:checked"),isChecked=!!checkedElement&&readBooleanAttributeValue(checkedElement.attributes["wordml:val"]),documentCheckbox=documents.checkbox({checked:isChecked}),hasCheckbox=!1,replacedContent=content.map(transforms._elementsOfType(documents.types.text,function(text){return text.value.length>0&&!hasCheckbox?(hasCheckbox=!0,documentCheckbox):text}));return hasCheckbox?replacedContent:documentCheckbox}return content})},"w:ins":readChildElements,"w:object":readChildElements,"w:smartTag":readChildElements,"w:drawing":readChildElements,"w:pict":function(element){return readChildElements(element).toExtra()},"v:roundrect":readChildElements,"v:shape":readChildElements,"v:textbox":readChildElements,"w:txbxContent":readChildElements,"wp:inline":readDrawingElement,"wp:anchor":readDrawingElement,"v:imagedata":readImageData,"v:group":readChildElements,"v:rect":readChildElements};return{readXmlElement:readXmlElement,readXmlElements:readXmlElements}}function readNumberingProperties(styleId,element,numbering){
 var level=element.firstOrEmpty("w:ilvl").attributes["w:val"],numId=element.firstOrEmpty("w:numId").attributes["w:val"];if(void 0!==level&&void 0!==numId)return numbering.findLevel(numId,level);if(null!=styleId){var levelByStyleId=numbering.findLevelByParagraphStyleId(styleId);if(null!=levelByStyleId)return levelByStyleId}return void 0!==numId?numbering.findLevel(numId,"0"):null}function emptyResultWithMessages(messages){return new ReadResult(null,null,messages)}function emptyResult(){return new ReadResult(null)}function elementResult(element){return new ReadResult(element)}function elementResultWithMessages(element,messages){return new ReadResult(element,null,messages)}function ReadResult(element,extra,messages){this.value=element||[],this.extra=extra||[],this._result=new Result({element:this.value,extra:extra},messages),this.messages=this._result.messages}function combineResults(results){var result=Result.combine(_.pluck(results,"_result"));return new ReadResult(_.flatten(_.pluck(result.value,"element")),_.filter(_.flatten(_.pluck(result.value,"extra")),identity),result.messages)}function joinElements(first,second){return _.flatten([first,second])}function identity(value){return value}exports.createBodyReader=createBodyReader,exports._readNumberingProperties=readNumberingProperties;var dingbatToUnicode=require("dingbat-to-unicode"),_=require("underscore"),documents=require("../documents"),Result=require("../results").Result,warning=require("../results").warning,xml=require("../xml"),transforms=require("../transforms"),uris=require("./uris"),supportedImageTypes={"image/png":!0,"image/gif":!0,"image/jpeg":!0,"image/svg+xml":!0,"image/tiff":!0},ignoreElements={"office-word:wrap":!0,"v:shadow":!0,"v:shapetype":!0,"w:annotationRef":!0,"w:bookmarkEnd":!0,"w:sectPr":!0,"w:proofErr":!0,"w:lastRenderedPageBreak":!0,"w:commentRangeStart":!0,"w:commentRangeEnd":!0,"w:del":!0,"w:footnoteRef":!0,"w:endnoteRef":!0,"w:pPr":!0,"w:rPr":!0,"w:tblPr":!0,"w:tblGrid":!0,"w:trPr":!0,"w:tcPr":!0};ReadResult.prototype.toExtra=function(){return new ReadResult(null,joinElements(this.extra,this.value),this.messages)},ReadResult.prototype.insertExtra=function(){var extra=this.extra;return extra&&extra.length?new ReadResult(joinElements(this.value,extra),null,this.messages):this},ReadResult.prototype.map=function(func){var result=this._result.map(function(value){return func(value.element)});return new ReadResult(result.value,this.extra,result.messages)},ReadResult.prototype.flatMap=function(func){var result=this._result.flatMap(function(value){return func(value.element)._result});return new ReadResult(result.value.element,joinElements(this.extra,result.value.extra),result.messages)},ReadResult.map=function(first,second,func){return new ReadResult(func(first.value,second.value),joinElements(first.extra,second.extra),first.messages.concat(second.messages))}},{"../documents":4,"../results":25,"../transforms":30,"../xml":35,"./uris":16,"dingbat-to-unicode":85,underscore:102}],6:[function(require,module,exports){function createCommentsReader(bodyReader){function readCommentsXml(element){return Result.combine(element.getElementsByTagName("w:comment").map(readCommentElement))}function readCommentElement(element){function readOptionalAttribute(name){return(element.attributes[name]||"").trim()||null}var id=element.attributes["w:id"];return bodyReader.readXmlElements(element.children).map(function(body){return documents.comment({commentId:id,body:body,authorName:readOptionalAttribute("w:author"),authorInitials:readOptionalAttribute("w:initials")})})}return readCommentsXml}var documents=require("../documents"),Result=require("../results").Result;exports.createCommentsReader=createCommentsReader},{"../documents":4,"../results":25}],7:[function(require,module,exports){function readContentTypesFromXml(element){var extensionDefaults=Object.create(null),overrides=Object.create(null);return element.children.forEach(function(child){if("content-types:Default"===child.name&&(extensionDefaults[child.attributes.Extension]=child.attributes.ContentType),"content-types:Override"===child.name){var name=child.attributes.PartName;"/"===name.charAt(0)&&(name=name.substring(1)),overrides[name]=child.attributes.ContentType}}),contentTypes(overrides,extensionDefaults)}function contentTypes(overrides,extensionDefaults){return{findContentType:function(path){var overrideContentType=overrides[path];if(overrideContentType)return overrideContentType;var pathParts=path.split("."),extension=pathParts[pathParts.length-1];if(Object.prototype.hasOwnProperty.call(extensionDefaults,extension))return extensionDefaults[extension];var fallback=fallbackContentTypes[extension.toLowerCase()];return fallback?"image/"+fallback:null}}}exports.readContentTypesFromXml=readContentTypesFromXml;var fallbackContentTypes={png:"png",gif:"gif",jpeg:"jpeg",jpg:"jpeg",tif:"tiff",tiff:"tiff",bmp:"bmp"};exports.defaultContentTypes=contentTypes({},{})},{}],8:[function(require,module,exports){function DocumentXmlReader(options){function convertXmlToDocument(element){var body=element.first("w:body");if(null==body)throw new Error("Could not find the body element: are you sure this is a docx file?");var result=bodyReader.readXmlElements(body.children).map(function(children){return new documents.Document(children,{notes:options.notes,comments:options.comments})});return new Result(result.value,result.messages)}var bodyReader=options.bodyReader;return{convertXmlToDocument:convertXmlToDocument}}exports.DocumentXmlReader=DocumentXmlReader;var documents=require("../documents"),Result=require("../results").Result},{"../documents":4,"../results":25}],9:[function(require,module,exports){function read(docxFile,input,options){input=input||{},options=options||{};var files=new Files({externalFileAccess:options.externalFileAccess,relativeToFile:input.path});return promises.props({contentTypes:readContentTypesFromZipFile(docxFile),partPaths:findPartPaths(docxFile),docxFile:docxFile,files:files}).also(function(result){return{styles:readStylesFromZipFile(docxFile,result.partPaths.styles)}}).also(function(result){return{numbering:readNumberingFromZipFile(docxFile,result.partPaths.numbering,result.styles)}}).also(function(result){return{footnotes:readXmlFileWithBody(result.partPaths.footnotes,result,function(bodyReader,xml){return xml?notesReader.createFootnotesReader(bodyReader)(xml):new Result([])}),endnotes:readXmlFileWithBody(result.partPaths.endnotes,result,function(bodyReader,xml){return xml?notesReader.createEndnotesReader(bodyReader)(xml):new Result([])}),comments:readXmlFileWithBody(result.partPaths.comments,result,function(bodyReader,xml){return xml?commentsReader.createCommentsReader(bodyReader)(xml):new Result([])})}}).also(function(result){return{notes:result.footnotes.flatMap(function(footnotes){return result.endnotes.map(function(endnotes){return new documents.Notes(footnotes.concat(endnotes))})})}}).then(function(result){return readXmlFileWithBody(result.partPaths.mainDocument,result,function(bodyReader,xml){return result.notes.flatMap(function(notes){return result.comments.flatMap(function(comments){var reader=new DocumentXmlReader({bodyReader:bodyReader,notes:notes,comments:comments});return reader.convertXmlToDocument(xml)})})})})}function findPartPaths(docxFile){return readPackageRelationships(docxFile).then(function(packageRelationships){var mainDocumentPath=findPartPath({docxFile:docxFile,relationships:packageRelationships,relationshipType:"\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument",basePath:"",fallbackPath:"word/document.xml"});if(!docxFile.exists(mainDocumentPath))throw new Error("Could not find main document part. Are you sure this is a valid .docx file?");return xmlFileReader({filename:relationshipsFilename(mainDocumentPath),readElement:relationshipsReader.readRelationships,defaultValue:relationshipsReader.defaultValue})(docxFile).then(function(documentRelationships){function findPartRelatedToMainDocument(name){return findPartPath({docxFile:docxFile,relationships:documentRelationships,relationshipType:"\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/officeDocument/2006/relationships/"+name,basePath:zipfile.splitPath(mainDocumentPath).dirname,fallbackPath:"word/"+name+".xml"})}return{mainDocument:mainDocumentPath,comments:findPartRelatedToMainDocument("comments"),endnotes:findPartRelatedToMainDocument("endnotes"),footnotes:findPartRelatedToMainDocument("footnotes"),numbering:findPartRelatedToMainDocument("numbering"),styles:findPartRelatedToMainDocument("styles")}})})}function findPartPath(options){var docxFile=options.docxFile,relationships=options.relationships,relationshipType=options.relationshipType,basePath=options.basePath,fallbackPath=options.fallbackPath,targets=relationships.findTargetsByType(relationshipType),normalisedTargets=targets.map(function(target){return stripPrefix(zipfile.joinPath(basePath,target),"/")}),validTargets=normalisedTargets.filter(function(target){return docxFile.exists(target)});return 0===validTargets.length?fallbackPath:validTargets[0]}function stripPrefix(value,prefix){return value.substring(0,prefix.length)===prefix?value.substring(prefix.length):value}function xmlFileReader(options){return function(zipFile){return readXmlFromZipFile(zipFile,options.filename).then(function(element){return element?options.readElement(element):options.defaultValue})}}function readXmlFileWithBody(filename,options,func){var readRelationshipsFromZipFile=xmlFileReader({filename:relationshipsFilename(filename),readElement:relationshipsReader.readRelationships,defaultValue:relationshipsReader.defaultValue});return readRelationshipsFromZipFile(options.docxFile).then(function(relationships){var bodyReader=new createBodyReader({relationships:relationships,contentTypes:options.contentTypes,docxFile:options.docxFile,numbering:options.numbering,styles:options.styles,files:options.files});return readXmlFromZipFile(options.docxFile,filename).then(function(xml){return func(bodyReader,xml)})})}function relationshipsFilename(filename){var split=zipfile.splitPath(filename);return zipfile.joinPath(split.dirname,"_rels",split.basename+".rels")}function readNumberingFromZipFile(zipFile,path,styles){return xmlFileReader({filename:path,readElement:function(element){return numberingXml.readNumberingXml(element,{styles:styles})},defaultValue:numberingXml.defaultNumbering})(zipFile)}function readStylesFromZipFile(zipFile,path){return xmlFileReader({filename:path,readElement:stylesReader.readStylesXml,defaultValue:stylesReader.defaultStyles})(zipFile)}exports.read=read,exports._findPartPaths=findPartPaths;var promises=require("../promises"),documents=require("../documents"),Result=require("../results").Result,zipfile=require("../zipfile"),readXmlFromZipFile=require("./office-xml-reader").readXmlFromZipFile,createBodyReader=require("./body-reader").createBodyReader,DocumentXmlReader=require("./document-xml-reader").DocumentXmlReader,relationshipsReader=require("./relationships-reader"),contentTypesReader=require("./content-types-reader"),numberingXml=require("./numbering-xml"),stylesReader=require("./styles-reader"),notesReader=require("./notes-reader"),commentsReader=require("./comments-reader"),Files=require("./files").Files,readContentTypesFromZipFile=xmlFileReader({filename:"[Content_Types].xml",readElement:contentTypesReader.readContentTypesFromXml,defaultValue:contentTypesReader.defaultContentTypes}),readPackageRelationships=xmlFileReader({filename:"_rels/.rels",readElement:relationshipsReader.readRelationships,defaultValue:relationshipsReader.defaultValue})},{"../documents":4,"../promises":23,"../results":25,"../zipfile":40,"./body-reader":5,"./comments-reader":6,"./content-types-reader":7,"./document-xml-reader":8,"./files":1,"./notes-reader":10,"./numbering-xml":11,"./office-xml-reader":12,"./relationships-reader":13,"./styles-reader":15}],10:[function(require,module,exports){function createReader(noteType,bodyReader){function readNotesXml(element){return Result.combine(element.getElementsByTagName("w:"+noteType).filter(isFootnoteElement).map(readFootnoteElement))}function isFootnoteElement(element){var type=element.attributes["w:type"];return"continuationSeparator"!==type&&"separator"!==type}function readFootnoteElement(footnoteElement){var id=footnoteElement.attributes["w:id"];return bodyReader.readXmlElements(footnoteElement.children).map(function(body){return documents.Note({noteType:noteType,noteId:id,body:body})})}return readNotesXml}var documents=require("../documents"),Result=require("../results").Result;exports.createFootnotesReader=createReader.bind(this,"footnote"),exports.createEndnotesReader=createReader.bind(this,"endnote")},{"../documents":4,"../results":25}],11:[function(require,module,exports){function Numbering(nums,abstractNums,styles){function findLevel(numId,level){return findLevelWithSeenNumIds(numId,level,Object.create(null))}function findLevelWithSeenNumIds(numId,level,seenNumIds){if(seenNumIds[numId])return null;seenNumIds[numId]=!0;var num=nums[numId];if(!num)return null;var abstractNum=abstractNums[num.abstractNumId];if(abstractNum){if(null==abstractNum.numStyleLink)return abstractNums[num.abstractNumId].levels[level];var style=styles.findNumberingStyleById(abstractNum.numStyleLink);return findLevelWithSeenNumIds(style.numId,level,seenNumIds)}return null}function findLevelByParagraphStyleId(styleId){return levelsByParagraphStyleId[styleId]||null}var allLevels=_.flatten(_.values(abstractNums).map(function(abstractNum){return _.values(abstractNum.levels)})),levelsByParagraphStyleId=_.indexBy(allLevels.filter(function(level){return null!=level.paragraphStyleId}),"paragraphStyleId");return{findLevel:findLevel,findLevelByParagraphStyleId:findLevelByParagraphStyleId}}function readNumberingXml(root,options){if(!options||!options.styles)throw new Error("styles is missing");var abstractNums=readAbstractNums(root),nums=readNums(root,abstractNums);return new Numbering(nums,abstractNums,options.styles)}function readAbstractNums(root){var abstractNums=Object.create(null);return root.getElementsByTagName("w:abstractNum").forEach(function(element){var id=element.attributes["w:abstractNumId"];abstractNums[id]=readAbstractNum(element)}),abstractNums}function readAbstractNum(element){var levels=Object.create(null),levelWithoutIndex=null;element.getElementsByTagName("w:lvl").forEach(function(levelElement){var levelIndex=levelElement.attributes["w:ilvl"],numFmt=levelElement.firstOrEmpty("w:numFmt").attributes["w:val"],isOrdered="bullet"!==numFmt,paragraphStyleId=levelElement.firstOrEmpty("w:pStyle").attributes["w:val"];void 0===levelIndex?levelWithoutIndex={isOrdered:isOrdered,level:"0",paragraphStyleId:paragraphStyleId}:levels[levelIndex]={isOrdered:isOrdered,level:levelIndex,paragraphStyleId:paragraphStyleId}}),null!==levelWithoutIndex&&void 0===levels[levelWithoutIndex.level]&&(levels[levelWithoutIndex.level]=levelWithoutIndex);var numStyleLink=element.firstOrEmpty("w:numStyleLink").attributes["w:val"];return{levels:levels,numStyleLink:numStyleLink}}function readNums(root){var nums=Object.create(null);return root.getElementsByTagName("w:num").forEach(function(element){var numId=element.attributes["w:numId"],abstractNumId=element.first("w:abstractNumId").attributes["w:val"];nums[numId]={abstractNumId:abstractNumId}}),nums}var _=require("underscore");exports.readNumberingXml=readNumberingXml,exports.Numbering=Numbering,exports.defaultNumbering=new Numbering({},{})},{underscore:102}],12:[function(require,module,exports){function read(xmlString){return xml.readString(xmlString,xmlNamespaceMap).then(function(document){return collapseAlternateContent(document)[0]})}function readXmlFromZipFile(docxFile,path){return docxFile.exists(path)?docxFile.read(path,"utf-8").then(stripUtf8Bom).then(read):promises.resolve(null)}function stripUtf8Bom(xmlString){return xmlString.replace(/^\uFEFF/g,"")}function collapseAlternateContent(node){return"element"===node.type?"mc:AlternateContent"===node.name?node.firstOrEmpty("mc:Fallback").children:(node.children=_.flatten(node.children.map(collapseAlternateContent,!0)),[node]):[node]}var _=require("underscore"),promises=require("../promises"),xml=require("../xml");exports.read=read,exports.readXmlFromZipFile=readXmlFromZipFile;var xmlNamespaceMap={"\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/wordprocessingml/2006/main":"w","\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/officeDocument/2006/relationships":"r","\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing":"wp","\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/drawingml/2006/main":"a","\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/drawingml/2006/picture":"pic","\u0068\u0074\u0074\u0070://purl.oclc.org/ooxml/wordprocessingml/main":"w","\u0068\u0074\u0074\u0070://purl.oclc.org/ooxml/officeDocument/relationships":"r","\u0068\u0074\u0074\u0070://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing":"wp","\u0068\u0074\u0074\u0070://purl.oclc.org/ooxml/drawingml/main":"a","\u0068\u0074\u0074\u0070://purl.oclc.org/ooxml/drawingml/picture":"pic","\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/package/2006/content-types":"content-types","\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/package/2006/relationships":"relationships","\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/markup-compatibility/2006":"mc","urn:schemas-microsoft-com:vml":"v","urn:schemas-microsoft-com:office:word":"office-word","\u0068\u0074\u0074\u0070://schemas.microsoft.com/office/word/2010/wordml":"wordml"}},{"../promises":23,"../xml":35,underscore:102}],13:[function(require,module,exports){function readRelationships(element){var relationships=[];return element.children.forEach(function(child){if("relationships:Relationship"===child.name){var relationship={relationshipId:child.attributes.Id,target:child.attributes.Target,type:child.attributes.Type};relationships.push(relationship)}}),new Relationships(relationships)}function Relationships(relationships){var targetsByRelationshipId=Object.create(null);relationships.forEach(function(relationship){targetsByRelationshipId[relationship.relationshipId]=relationship.target});var targetsByType=Object.create(null);return relationships.forEach(function(relationship){targetsByType[relationship.type]||(targetsByType[relationship.type]=[]),targetsByType[relationship.type].push(relationship.target)}),{findTargetByRelationshipId:function(relationshipId){return targetsByRelationshipId[relationshipId]},findTargetsByType:function(type){return targetsByType[type]||[]}}}exports.readRelationships=readRelationships,exports.defaultValue=new Relationships([]),exports.Relationships=Relationships},{}],14:[function(require,module,exports){function writeStyleMap(docxFile,styleMap){return docxFile.write(styleMapPath,styleMap),updateRelationships(docxFile).then(function(){return updateContentTypes(docxFile)})}function updateRelationships(docxFile){var path="word/_rels/document.xml.rels",relationshipsUri="\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/package/2006/relationships",relationshipElementName="{"+relationshipsUri+"}Relationship";return docxFile.read(path,"utf8").then(xml.readString).then(function(relationshipsContainer){var relationships=relationshipsContainer.children;addOrUpdateElement(relationships,relationshipElementName,"Id",{Id:"rMammothStyleMap",Type:schema,Target:styleMapAbsolutePath});var namespaces={"":relationshipsUri};return docxFile.write(path,xml.writeString(relationshipsContainer,namespaces))})}function updateContentTypes(docxFile){var path="[Content_Types].xml",contentTypesUri="\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/package/2006/content-types",overrideName="{"+contentTypesUri+"}Override";return docxFile.read(path,"utf8").then(xml.readString).then(function(typesElement){var children=typesElement.children;addOrUpdateElement(children,overrideName,"PartName",{PartName:styleMapAbsolutePath,ContentType:"text/prs.mammoth.style-map"});var namespaces={"":contentTypesUri};return docxFile.write(path,xml.writeString(typesElement,namespaces))})}function addOrUpdateElement(elements,name,identifyingAttribute,attributes){var existingElement=_.find(elements,function(element){return element.name===name&&element.attributes[identifyingAttribute]===attributes[identifyingAttribute]});existingElement?existingElement.attributes=attributes:elements.push(xml.element(name,attributes))}function readStyleMap(docxFile){return docxFile.exists(styleMapPath)?docxFile.read(styleMapPath,"utf8"):promises.resolve(null)}var _=require("underscore"),promises=require("../promises"),xml=require("../xml");exports.writeStyleMap=writeStyleMap,exports.readStyleMap=readStyleMap;var schema="\u0068\u0074\u0074\u0070://schemas.zwobble.org/mammoth/style-map",styleMapPath="mammoth/style-map",styleMapAbsolutePath="/"+styleMapPath},{"../promises":23,"../xml":35,underscore:102}],15:[function(require,module,exports){function Styles(paragraphStyles,characterStyles,tableStyles,numberingStyles){return{findParagraphStyleById:function(styleId){return paragraphStyles[styleId]},findCharacterStyleById:function(styleId){return characterStyles[styleId]},findTableStyleById:function(styleId){return tableStyles[styleId]},findNumberingStyleById:function(styleId){return numberingStyles[styleId]}}}function readStylesXml(root){var paragraphStyles=Object.create(null),characterStyles=Object.create(null),tableStyles=Object.create(null),numberingStyles=Object.create(null);return root.getElementsByTagName("w:style").forEach(function(styleElement){var styleSet,style=readStyleElement(styleElement);switch(style.type){case"paragraph":styleSet=paragraphStyles;break;case"character":styleSet=characterStyles;break;case"table":styleSet=tableStyles;break;case"numbering":styleSet=numberingStyles}styleSet&&void 0===styleSet[style.styleId]&&(styleSet[style.styleId]=style)}),new Styles(paragraphStyles,characterStyles,tableStyles,numberingStyles)}function readStyleElement(styleElement){var type=styleElement.attributes["w:type"];if("numbering"===type)return readNumberingStyleElement(type,styleElement);var styleId=readStyleId(styleElement),name=styleName(styleElement);return{type:type,styleId:styleId,name:name}}function styleName(styleElement){var nameElement=styleElement.first("w:name");return nameElement?nameElement.attributes["w:val"]:null}function readNumberingStyleElement(type,styleElement){var styleId=readStyleId(styleElement),numId=styleElement.firstOrEmpty("w:pPr").firstOrEmpty("w:numPr").firstOrEmpty("w:numId").attributes["w:val"];return{type:type,numId:numId,styleId:styleId}}function readStyleId(styleElement){return styleElement.attributes["w:styleId"]}exports.readStylesXml=readStylesXml,exports.Styles=Styles,exports.defaultStyles=new Styles({},{}),Styles.EMPTY=new Styles({},{},{},{})},{}],16:[function(require,module,exports){function uriToZipEntryName(base,uri){return"/"===uri.charAt(0)?uri.substr(1):base+"/"+uri}function replaceFragment(uri,fragment){var hashIndex=uri.indexOf("#");return-1!==hashIndex&&(uri=uri.substring(0,hashIndex)),uri+"#"+fragment}exports.uriToZipEntryName=uriToZipEntryName,exports.replaceFragment=replaceFragment},{}],17:[function(require,module,exports){function nonFreshElement(tagName,attributes,children){return elementWithTag(htmlPaths.element(tagName,attributes,{fresh:!1}),children)}function freshElement(tagName,attributes,children){var tag=htmlPaths.element(tagName,attributes,{fresh:!0});return elementWithTag(tag,children)}function elementWithTag(tag,children){return{type:"element",tag:tag,children:children||[]}}function text(value){return{type:"text",value:value}}function isVoidElement(node){return 0===node.children.length&&voidTagNames[node.tag.tagName]}var htmlPaths=require("../styles/html-paths"),forceWrite={type:"forceWrite"};exports.freshElement=freshElement,exports.nonFreshElement=nonFreshElement,exports.elementWithTag=elementWithTag,exports.text=text,exports.forceWrite=forceWrite;var voidTagNames={br:!0,hr:!0,img:!0,input:!0};exports.isVoidElement=isVoidElement},{"../styles/html-paths":28}],18:[function(require,module,exports){function write(writer,nodes){nodes.forEach(function(node){writeNode(writer,node)})}function writeNode(writer,node){toStrings[node.type](writer,node)}function generateElementString(writer,node){ast.isVoidElement(node)?writer.selfClosing(node.tag.tagName,node.tag.attributes):(writer.open(node.tag.tagName,node.tag.attributes),write(writer,node.children),writer.close(node.tag.tagName))}function generateTextString(writer,node){writer.text(node.value)}var ast=require("./ast");exports.freshElement=ast.freshElement,exports.nonFreshElement=ast.nonFreshElement,exports.elementWithTag=ast.elementWithTag,exports.text=ast.text,exports.forceWrite=ast.forceWrite,exports.simplify=require("./simplify");var toStrings={element:generateElementString,text:generateTextString,forceWrite:function(){}};exports.write=write},{"./ast":17,"./simplify":19}],19:[function(require,module,exports){function simplify(nodes){return collapse(removeEmpty(nodes))}function collapse(nodes){var children=[];return nodes.map(collapseNode).forEach(function(child){appendChild(children,child)}),children}function collapseNode(node){return collapsers[node.type](node)}function collapseElement(node){return ast.elementWithTag(node.tag,collapse(node.children))}function identity(value){return value}function appendChild(children,child){var lastChild=children[children.length-1];"element"===child.type&&!child.tag.fresh&&lastChild&&"element"===lastChild.type&&child.tag.matchesElement(lastChild.tag)?(child.tag.separator&&appendChild(lastChild.children,ast.text(child.tag.separator)),child.children.forEach(function(grandChild){appendChild(lastChild.children,grandChild)})):children.push(child)}function removeEmpty(nodes){return flatMap(nodes,function(node){return emptiers[node.type](node)})}function flatMap(values,func){return _.flatten(_.map(values,func),!0)}function neverEmpty(node){return[node]}function elementEmptier(element){var children=removeEmpty(element.children);return 0!==children.length||ast.isVoidElement(element)?[ast.elementWithTag(element.tag,children)]:[]}function textEmptier(node){return 0===node.value.length?[]:[node]}var _=require("underscore"),ast=require("./ast"),collapsers={element:collapseElement,text:identity,forceWrite:identity},emptiers={element:elementEmptier,text:textEmptier,forceWrite:neverEmpty};module.exports=simplify},{"./ast":17,underscore:102}],20:[function(require,module,exports){function imgElement(func){return function(element,messages){return promises.when(func(element)).then(function(result){var attributes={};return element.altText&&(attributes.alt=element.altText),_.extend(attributes,result),[Html.freshElement("img",attributes)]})}}function imageFilenameExtension(image){return image.contentType.split(/\/|\\/)[1]}var _=require("underscore"),promises=require("./promises"),Html=require("./html");exports.imgElement=imgElement,exports.inline=exports.imgElement,exports.dataUri=imgElement(function(element){return element.readAsBase64String().then(function(imageBuffer){return{src:"data:"+element.contentType+";base64,"+imageBuffer}})}),exports.imageFilenameExtension=imageFilenameExtension},{"./html":18,"./promises":23,underscore:102}],21:[function(require,module,exports){(function(Buffer){function convertToHtml(input,options){return convert(input,options)}function convertToMarkdown(input,options){var markdownOptions=Object.create(options||{});return markdownOptions.outputFormat="markdown",convert(input,markdownOptions)}function convert(input,options){return options=readOptions(options),unzip.openZip(input).tap(function(docxFile){return docxStyleMap.readStyleMap(docxFile).then(function(styleMap){options.embeddedStyleMap=styleMap})}).then(function(docxFile){return docxReader.read(docxFile,input,options).then(function(documentResult){return documentResult.map(options.transformDocument)}).then(function(documentResult){return convertDocumentToHtml(documentResult,options)})})}function readEmbeddedStyleMap(input){return unzip.openZip(input).then(docxStyleMap.readStyleMap)}function convertDocumentToHtml(documentResult,options){var styleMapResult=parseStyleMap(options.readStyleMap()),parsedOptions=_.extend({},options,{styleMap:styleMapResult.value}),documentConverter=new DocumentConverter(parsedOptions);return documentResult.flatMapThen(function(document){return styleMapResult.flatMapThen(function(styleMap){return documentConverter.convertToHtml(document)})})}function parseStyleMap(styleMap){return Result.combine((styleMap||[]).map(readStyle)).map(function(styleMap){return styleMap.filter(function(styleMapping){return!!styleMapping})})}function extractRawText(input){return unzip.openZip(input).then(docxReader.read).then(function(documentResult){return documentResult.map(convertElementToRawText)})}function embedStyleMap(input,styleMap){return unzip.openZip(input).tap(function(docxFile){return docxStyleMap.writeStyleMap(docxFile,styleMap)}).then(function(docxFile){return docxFile.toArrayBuffer()}).then(function(arrayBuffer){return{toArrayBuffer:function(){return arrayBuffer},toBuffer:function(){return Buffer.from(arrayBuffer)}}})}var _=require("underscore"),docxReader=require("./docx/docx-reader"),docxStyleMap=require("./docx/style-map"),DocumentConverter=require("./document-to-html").DocumentConverter,convertElementToRawText=require("./raw-text").convertElementToRawText,readStyle=require("./style-reader").readStyle,readOptions=require("./options-reader").readOptions,unzip=require("./unzip"),Result=require("./results").Result;exports.convertToHtml=convertToHtml,exports.convertToMarkdown=convertToMarkdown,exports.convert=convert,exports.extractRawText=extractRawText,exports.images=require("./images"),exports.transforms=require("./transforms"),exports.underline=require("./underline"),exports.embedStyleMap=embedStyleMap,exports.readEmbeddedStyleMap=readEmbeddedStyleMap,exports.styleMapping=function(){throw new Error("Use a raw string instead of mammoth.styleMapping e.g. \"p[style-name='Title'] => h1\" instead of mammoth.styleMapping(\"p[style-name='Title'] => h1\")")}}).call(this,require("buffer").Buffer)},{"./document-to-html":3,"./docx/docx-reader":9,"./docx/style-map":14,"./images":20,"./options-reader":22,"./raw-text":24,"./results":25,"./style-reader":26,"./transforms":30,"./underline":31,"./unzip":2,buffer:83,underscore:102}],22:[function(require,module,exports){function readOptions(options){return options=options||{},_.extend({},standardOptions,options,{customStyleMap:readStyleMap(options.styleMap),readStyleMap:function(){var styleMap=this.customStyleMap;return this.includeEmbeddedStyleMap&&(styleMap=styleMap.concat(readStyleMap(this.embeddedStyleMap))),this.includeDefaultStyleMap&&(styleMap=styleMap.concat(defaultStyleMap)),styleMap}})}function readStyleMap(styleMap){return styleMap?_.isString(styleMap)?styleMap.split("\n").map(function(line){return line.trim()}).filter(function(line){return""!==line&&"#"!==line.charAt(0)}):styleMap:[]}function identity(value){return value}exports.readOptions=readOptions;var _=require("underscore"),defaultStyleMap=exports._defaultStyleMap=["p.Heading1 => h1:fresh","p.Heading2 => h2:fresh","p.Heading3 => h3:fresh","p.Heading4 => h4:fresh","p.Heading5 => h5:fresh","p.Heading6 => h6:fresh","p[style-name='Heading 1'] => h1:fresh","p[style-name='Heading 2'] => h2:fresh","p[style-name='Heading 3'] => h3:fresh","p[style-name='Heading 4'] => h4:fresh","p[style-name='Heading 5'] => h5:fresh","p[style-name='Heading 6'] => h6:fresh","p[style-name='heading 1'] => h1:fresh","p[style-name='heading 2'] => h2:fresh","p[style-name='heading 3'] => h3:fresh","p[style-name='heading 4'] => h4:fresh","p[style-name='heading 5'] => h5:fresh","p[style-name='heading 6'] => h6:fresh","p.Heading => h1:fresh","p[style-name='Heading'] => h1:fresh","r[style-name='Strong'] => strong","p[style-name='footnote text'] => p:fresh","r[style-name='footnote reference'] =>","p[style-name='endnote text'] => p:fresh","r[style-name='endnote reference'] =>","p[style-name='annotation text'] => p:fresh","r[style-name='annotation reference'] =>","p[style-name='Footnote'] => p:fresh","r[style-name='Footnote anchor'] =>","p[style-name='Endnote'] => p:fresh","r[style-name='Endnote anchor'] =>","p:unordered-list(1) => ul > li:fresh","p:unordered-list(2) => ul|ol > li > ul > li:fresh","p:unordered-list(3) => ul|ol > li > ul|ol > li > ul > li:fresh","p:unordered-list(4) => ul|ol > li > ul|ol > li > ul|ol > li > ul > li:fresh","p:unordered-list(5) => ul|ol > li > ul|ol > li > ul|ol > li > ul|ol > li > ul > li:fresh","p:ordered-list(1) => ol > li:fresh","p:ordered-list(2) => ul|ol > li > ol > li:fresh","p:ordered-list(3) => ul|ol > li > ul|ol > li > ol > li:fresh","p:ordered-list(4) => ul|ol > li > ul|ol > li > ul|ol > li > ol > li:fresh","p:ordered-list(5) => ul|ol > li > ul|ol > li > ul|ol > li > ul|ol > li > ol > li:fresh","r[style-name='Hyperlink'] =>","p[style-name='Normal'] => p:fresh","p.Body => p:fresh","p[style-name='Body'] => p:fresh"],standardOptions=exports._standardOptions={
@@ -2506,6 +2515,1350 @@ return exports;
     if (typeof module !== 'undefined' && module.exports) module.exports = ImageCore;
     else if (typeof define === 'function' && define.amd) define([], function () { return ImageCore; });
     else global.ImageCore = ImageCore;
+})(typeof window !== 'undefined' ? window : this);
+
+
+/* === MathCore.js === */
+/**
+ * MathCore - LaTeX math for the Kelk builders and the preview
+ * ============================================================================
+ * Version: 1.5
+ *
+ * Formulas written in Markdown the way AI models and scientists write them:
+ *
+ *   inline    $E = mc^2$            \( E = mc^2 \)
+ *   display   $$ … $$  (own lines or inside a paragraph)
+ *             \[ … \]  (on their own lines only — an inline "\[1\]" stays
+ *                       escaped brackets, as Markdown means it)
+ *
+ * A dollar sign is a formula only by the Pandoc rule: no space after the
+ * opening $, none before the closing $, no digit right after it — so
+ * "from $5 to $10" stays money. Code spans and code blocks are never read.
+ *
+ * 1. marked:  marked.use(MathCore.markedExtension())
+ *    Each formula becomes an EMPTY placeholder that carries its TeX:
+ *      <span class="kelk-math" data-display="inline" data-tex="E = mc^2"></span>
+ *      <div  class="kelk-math" data-display="block"  data-tex="…"></div>
+ *    Empty on purpose: BidiCore (isMathAtom) and every text-based rule see
+ *    nothing inside, and the HTML passed around stays short.
+ *
+ * 2. render:  await MathCore.render(tex, display, { textFont })
+ *    → { tex, display, svg, mathml, width, height, depth, error }
+ *    svg     self-contained SVG markup (no <use>, no stylesheet needed):
+ *            width/height in ex (it scales with the text around it)
+ *    mathml  MathJax's MathML (full MathML 3 — for converters)
+ *    mathmlCore  the same for browsers (MathML Core): letter styles as
+ *            Unicode math letters, primes, column alignment as CSS — or null
+ *            when a browser cannot draw it (mathmlCoreIssue says why:
+ *            \cancel/\boxed, tags, table rules, wide accents and braces,
+ *            extensible arrows, mhchem arrows)
+ *    width, height, depth   in em (depth: below the baseline) — for layout
+ *    error   the TeX error message, '' when none (typeset() then shows the
+ *            TeX as written, in red, with the message as its tooltip)
+ *    Results are cached; renders run one at a time.
+ *
+ * 3. typeset: await MathCore.typeset(root, { mode: 'svg'|'mathml', textFont })
+ *    fills every placeholder under root (preview, standalone HTML). In
+ *    'mathml' mode a formula without mathmlCore is drawn as SVG
+ *    (data-math-svg names the reason).
+ *    MathCore.css(options) is the CSS the placeholders need on a page.
+ *
+ * 4. images:  await MathCore.toImages(root, { fontSizePt, fontFamily, maxWidth, omml })
+ *    every placeholder → <img class="kelk-math-img" data-depth> (SVG data
+ *    URI, display size in px; depth = px below the baseline); a display
+ *    formula in its own <p class="kelk-math-block">. The Word and PDF
+ *    builders do this themselves (BuilderBase._mathToImages) and ImageCore
+ *    rasterizes the SVG. toImage(rec, o) is the single-formula form.
+ *    omml: true also gives each image data-omml — the formula as Word's own
+ *    equation (OMML), which DocxBuilder writes instead of the picture.
+ *
+ * 5. OMML:    MathCore.toOmml(rec.mathml, { display }) → { xml, reason }
+ *    <m:oMath> / <m:oMathPara>: fractions, radicals, scripts, n-ary operators
+ *    with their operand, delimiters, matrices and aligned rows, accents, bars,
+ *    braces, arrows with labels, boxes and strikes, letter styles, color.
+ *    xml null for mhchem (private glyphs) and maction.
+ *    ommlToWordHtml(xml): the same equation as Word writes it in HTML (.doc).
+ *
+ * 6. OMML → TeX: MathCore.ommlToTex(element) → { tex, display } — Word's
+ *    equations back to LaTeX (MarkdownImporter, .docx). No MathJax needed.
+ *
+ * Text inside a formula (\text{…}) in Persian, Arabic, Hebrew …: MathJax's
+ * fonts have no such letters, so that formula is rendered with the document
+ * font (textFont, default Vazirmatn — it must be loaded on the page) and the
+ * text is kept as one right-to-left run.
+ *
+ * Engine: MathJax 4 (Apache-2.0), local copy — no CDN, works from file://.
+ * Only startup + TeX input + SVG output + ui/safe are loaded (not the combined
+ * tex-svg.js: its speech tools read data with fetch(), which file:// refuses).
+ * ui/safe keeps \href from making javascript: links. Fonts, font ranges and
+ * TeX extensions load on first use from the same folder:
+ *   MathCore.configure({ mathjax: 'vendor/mathjax_4.1.3/' })
+ * Default: ../vendor/mathjax_4.1.3/ next to this file.
+ *
+ * Needs a DOM (browser) for render/typeset; markedExtension() works anywhere.
+ */
+(function (global) {
+    'use strict';
+
+    const VERSION = '1.5';
+
+    const RTL_LETTER = /[\u0590-\u05FF\u0600-\u06FF\u0700-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+    const STRONG = /[A-Za-z\u00C0-\u024F\u0370-\u03FF\u0400-\u04FF]|[\u0590-\u05FF\u0600-\u06FF\u0700-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+    const RLI = '\u2067', PDI = '\u2069';
+    const PUA_RE = /[\uE000-\uF8FF]/;
+
+    const here = (typeof document !== 'undefined' && document.currentScript && document.currentScript.src) || '';
+
+    const DEFAULTS = {
+        mathjax: here ? new URL('../vendor/mathjax_4.1.3/', here).href : 'vendor/mathjax_4.1.3/',
+        textFont: 'Vazirmatn',
+        imageScale: 2,          // toImage(): the SVG is declared at 2× its display size (sharper PNG)
+        fonts: null             // toImage(): { family: [{ weight, style, format, data }] } — default window.KelkWebFonts
+    };
+
+    const options = Object.assign({}, DEFAULTS);
+    const cache = new Map();            // key → Promise<record>
+    let loading = null;                 // Promise<MathJax>
+    let queue = Promise.resolve();      // renders one at a time (the text-font switch is global)
+
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    /** First strong letter is right-to-left? */
+    function rtlFirst(t) {
+        const m = STRONG.exec(String(t || ''));
+        return !!m && RTL_LETTER.test(m[0]);
+    }
+
+    /** An RTL run as one isolate; spaces at its ends stay outside (in place, not mirrored). */
+    function isolateRtl(t) {
+        const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(t);
+        return m[1] + RLI + m[2] + PDI + m[3];
+    }
+
+    function configure(o) {
+        Object.keys(o || {}).forEach(function (k) { if (o[k] != null) options[k] = o[k]; });
+        return MathCore;
+    }
+
+    // =========================================================================
+    // 1. marked extension
+    // =========================================================================
+
+    function token(type, raw, tex, display) {
+        return { type: type, raw: raw, tex: String(tex).trim(), display: display };
+    }
+
+    function markedExtension() {
+        const block = {
+            name: 'kelkMathBlock',
+            level: 'block',
+            start: function (src) {
+                const m = /(^|\n)[ \t]{0,3}(\$\$|\\\[)/.exec(src);
+                return m ? m.index + m[1].length : undefined;
+            },
+            tokenizer: function (src) {
+                const m = /^[ \t]{0,3}(?:\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\])[ \t]*(?:\n+|$)/.exec(src);
+                if (!m) return undefined;
+                const tex = m[1] !== undefined ? m[1] : m[2];
+                if (!tex.trim() || /\n[ \t]*\n/.test(tex)) return undefined;    // a blank line ends a formula
+                return token('kelkMathBlock', m[0], tex, true);
+            },
+            renderer: function (t) {
+                return '<div class="kelk-math" data-display="block" data-tex="' + esc(t.tex) + '"></div>\n';
+            }
+        };
+        const inline = {
+            name: 'kelkMath',
+            level: 'inline',
+            start: function (src) {
+                const i = src.search(/\$|\\\(/);
+                return i < 0 ? undefined : i;
+            },
+            tokenizer: function (src) {
+                let m;
+                if ((m = /^\$\$(?!\$)([\s\S]+?)\$\$/.exec(src)) && !/\n[ \t]*\n/.test(m[1])) return token('kelkMath', m[0], m[1], true);
+                if ((m = /^\\\(([\s\S]+?)\\\)/.exec(src)) && !/\n[ \t]*\n/.test(m[1])) return token('kelkMath', m[0], m[1], false);
+                if ((m = /^\$(?![\s$])((?:\\.|[^\\$\n])+?)(?<!\s)\$(?!\d)/.exec(src))) return token('kelkMath', m[0], m[1], false);
+                return undefined;
+            },
+            renderer: function (t) {
+                return '<span class="kelk-math" data-display="' + (t.display ? 'block' : 'inline') + '" data-tex="' + esc(t.tex) + '"></span>';
+            }
+        };
+        return { extensions: [block, inline] };
+    }
+
+    // =========================================================================
+    // 2. engine
+    // =========================================================================
+
+    function placeholders(root) {
+        return root && root.querySelectorAll ? Array.from(root.querySelectorAll('.kelk-math[data-tex]')) : [];
+    }
+
+    /** Does an element or an HTML string hold formulas? */
+    function hasMath(source) {
+        if (!source) return false;
+        if (typeof source === 'string') return /class="kelk-math"/.test(source);
+        return placeholders(source).length > 0;
+    }
+
+    /** Load MathJax (once). Reuses a MathJax the page already started. */
+    function load() {
+        if (loading) return loading;
+        if (typeof document === 'undefined') return Promise.reject(new Error('MathCore needs a DOM (browser)'));
+        const MJ = global.MathJax;
+        if (MJ && MJ.startup && MJ.tex2svgPromise) {
+            loading = MJ.startup.promise.then(function () { return MJ; });
+            return loading;
+        }
+        const base = new URL(options.mathjax, document.baseURI).href.replace(/\/?$/, '/');
+        global.MathJax = {
+            loader: {
+                paths: { fonts: '[mathjax]/fonts' },          // font packages: local, never the CDN
+                load: ['input/tex', 'output/svg', 'ui/safe']
+            },
+            startup: { typeset: false },
+            svg: {
+                fontCache: 'none',                            // every SVG draws its own glyphs
+                linebreaks: { inline: false }                 // one piece per formula (v4 splits inline math otherwise)
+            }
+        };
+        loading = new Promise(function (resolve, reject) {
+            const s = document.createElement('script');
+            s.src = base + 'startup.js';
+            s.onload = resolve;
+            s.onerror = function () { reject(new Error('MathCore: cannot load ' + s.src)); };
+            document.head.appendChild(s);
+        }).then(function () {
+            return global.MathJax.startup.promise;
+        }).then(function () {
+            return global.MathJax;
+        }).catch(function (e) {
+            loading = null;
+            throw e;
+        });
+        return loading;
+    }
+
+    function setAll(root, sel, attrs) {
+        root.querySelectorAll(sel).forEach(function (el) {
+            Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+        });
+    }
+
+    /**
+     * The rules of MathJax's SVG stylesheet that change how a formula looks,
+     * as attributes — so the SVG draws the same with no stylesheet (a page,
+     * an <img>, a canvas).
+     */
+    function selfContain(svg) {
+        svg.querySelectorAll('[data-latex]').forEach(function (e) { e.removeAttribute('data-latex'); });
+        setAll(svg, 'g[data-mml-node="merror"] > g', { fill: 'red', stroke: 'red' });
+        setAll(svg, 'g[data-mml-node="merror"] > rect[data-background]', { fill: 'yellow', stroke: 'none' });
+        setAll(svg, 'line[data-line]', { 'stroke-width': '70', fill: 'none' });
+        setAll(svg, 'rect[data-frame]', { 'stroke-width': '70', fill: 'none' });
+        setAll(svg, '.mjx-dashed', { 'stroke-dasharray': '140' });
+        setAll(svg, '.mjx-dotted', { 'stroke-linecap': 'round', 'stroke-dasharray': '0,140' });
+        setAll(svg, 'a', { fill: 'blue', stroke: 'blue' });
+        // only these may draw outside their box; stretched glyphs (bars, arrows) are CLIPPED by their nested <svg>
+        svg.querySelectorAll('g[data-mml-node="mtable"] > g > svg').forEach(function (s) { s.setAttribute('overflow', 'visible'); });
+        svg.setAttribute('overflow', 'visible');
+        svg.removeAttribute('focusable');
+        // right-to-left text: one isolated RTL run (words keep their order)
+        svg.querySelectorAll('text').forEach(function (t) {
+            t.setAttribute('xml:space', 'preserve');            // "\text{if }": the space was measured, keep it
+            t.style.whiteSpace = 'pre';
+            if (rtlFirst(t.textContent)) t.textContent = isolateRtl(t.textContent);
+        });
+    }
+
+    function cleanMathml(mml) {
+        return String(mml || '')
+            .replace(/\s+data-[\w-]+="[^"]*"/g, '')
+            .replace(/(<mtext\b[^>]*>)([^<]*)(<\/mtext>)/g, function (m, a, t, b) {
+                return rtlFirst(t) ? a.replace(/^<mtext\b/, '<mtext class="kelk-rtl"') + isolateRtl(t) + b : m;
+            });
+    }
+
+    // ── MathML for the browser (MathML Core) ─────────────────────────────────
+    //
+    // MathJax's MathML is full MathML 3; browsers draw MathML Core, a subset
+    // (Chromium, Firefox and Safari alike). What Core lacks is either rewritten
+    // here (letter styles → Unicode math letters, primes, column alignment) or
+    // the formula is drawn as SVG instead (the list in coreProblem()).
+
+    const ALNUM = {           // Latin A–Z a–z start, digits 0–9 start (Mathematical Alphanumeric Symbols)
+        'bold': [0x1D400, 0x1D7CE], 'italic': [0x1D434, 0], 'bold-italic': [0x1D468, 0],
+        'script': [0x1D49C, 0], 'bold-script': [0x1D4D0, 0], 'fraktur': [0x1D504, 0],
+        'double-struck': [0x1D538, 0x1D7D8], 'bold-fraktur': [0x1D56C, 0],
+        'sans-serif': [0x1D5A0, 0x1D7E2], 'bold-sans-serif': [0x1D5D4, 0x1D7EC],
+        'sans-serif-italic': [0x1D608, 0], 'sans-serif-bold-italic': [0x1D63C, 0],
+        'monospace': [0x1D670, 0x1D7F6]
+    };
+    const GREEK = { 'bold': 0x1D6A8, 'italic': 0x1D6E2, 'bold-italic': 0x1D71C, 'bold-sans-serif': 0x1D756, 'sans-serif-bold-italic': 0x1D790 };
+    const HOLES = {           // letters that live in Letterlike Symbols instead
+        'italic': { h: 0x210E },
+        'script': { B: 0x212C, E: 0x2130, F: 0x2131, H: 0x210B, I: 0x2110, L: 0x2112, M: 0x2133, R: 0x211B, e: 0x212F, g: 0x210A, o: 0x2134 },
+        'fraktur': { C: 0x212D, H: 0x210C, I: 0x2111, R: 0x211C, Z: 0x2128 },
+        'double-struck': { C: 0x2102, H: 0x210D, N: 0x2115, P: 0x2119, Q: 0x211A, R: 0x211D, Z: 0x2124 }
+    };
+    const VARIANT_CSS = {
+        'bold': 'font-weight:bold', 'italic': 'font-style:italic', 'bold-italic': 'font-weight:bold;font-style:italic',
+        'sans-serif': 'font-family:sans-serif', 'bold-sans-serif': 'font-family:sans-serif;font-weight:bold',
+        'monospace': 'font-family:monospace'
+    };
+    // horizontally stretched characters (braces, bars, wide accents, arrows)
+    const STRETCH_H = /^[\u2015\u203E\u00AF^\u02C6\u0302~\u02DC\u0303\u23DC-\u23DF\u23B4\u23B5\u2190-\u21FF\u27F5-\u27FF\u203F\u2040\u2322\u2323]$/;
+
+    function variantChar(ch, v) {
+        const c = ch.codePointAt(0);
+        const hole = HOLES[v] && HOLES[v][ch];
+        if (hole) return String.fromCodePoint(hole);
+        const a = ALNUM[v];
+        if (a && c >= 65 && c <= 90) return String.fromCodePoint(a[0] + c - 65);
+        if (a && c >= 97 && c <= 122) return String.fromCodePoint(a[0] + 26 + c - 97);
+        if (a && a[1] && c >= 48 && c <= 57) return String.fromCodePoint(a[1] + c - 48);
+        const g = GREEK[v];
+        if (g && c >= 0x391 && c <= 0x3A9) return String.fromCodePoint(g + c - 0x391);
+        if (g && c >= 0x3B1 && c <= 0x3C9) return String.fromCodePoint(g + 26 + c - 0x3B1);
+        return null;
+    }
+
+    function kids(el) { return Array.prototype.filter.call(el.childNodes, function (n) { return n.nodeType === 1; }); }
+
+    /** An element reduced to its single meaningful child (mrow/mstyle wrappers). */
+    function core1(el) {
+        while (el && /^(mrow|mstyle)$/.test(el.localName) && kids(el).length === 1) el = kids(el)[0];
+        return el;
+    }
+
+    /** Why this MathML cannot be drawn by a browser ('' = it can). */
+    function coreProblem(math) {
+        if (PUA_RE.test(math.textContent)) return 'private-use glyph (mhchem arrow)';
+        if (math.querySelector('menclose')) return 'menclose (\\cancel, \\boxed)';
+        if (math.querySelector('mlabeledtr')) return 'equation tag';
+        if (math.querySelector('maction, mglyph')) return 'maction';
+        const tables = math.querySelectorAll('mtable');
+        for (let i = 0; i < tables.length; i++) {
+            const t = tables[i];
+            if (/solid|dashed/.test((t.getAttribute('columnlines') || '') + (t.getAttribute('rowlines') || '') + (t.getAttribute('frame') || ''))) return 'table rules';
+        }
+        const pads = math.querySelectorAll('mpadded');
+        for (let i = 0; i < pads.length; i++) {
+            const p = pads[i];
+            // Core: plain lengths only — no "+0.8em", no pseudo-units ("2width")
+            if (['width', 'height', 'depth', 'lspace', 'voffset'].some(function (a) { return /^\+|width|height|depth/.test(p.getAttribute(a) || ''); })) return 'relative mpadded';
+        }
+        const scripts = math.querySelectorAll('mover, munder, munderover');
+        for (let i = 0; i < scripts.length; i++) {
+            const k = kids(scripts[i]);
+            const base = core1(k[0]);
+            if (base && base.localName === 'mo' && STRETCH_H.test(base.textContent.trim())) return 'extensible arrow';
+            const wide = base && (base.localName === 'mrow' || base.localName === 'mstyle' || base.textContent.trim().length > 1);
+            for (let j = 1; j < k.length; j++) {
+                const acc = core1(k[j]);
+                if (acc && acc.localName === 'mo' && STRETCH_H.test(acc.textContent.trim()) && (wide || /[\u23DC-\u23DF\u23B4\u23B5]/.test(acc.textContent))) return 'wide accent or brace';
+            }
+        }
+        return '';
+    }
+
+    function applyVariants(math) {
+        // mstyle mathvariant → its tokens
+        math.querySelectorAll('mstyle[mathvariant]').forEach(function (st) {
+            const v = st.getAttribute('mathvariant');
+            st.querySelectorAll('mi, mn, mo, mtext').forEach(function (t) { if (!t.hasAttribute('mathvariant')) t.setAttribute('mathvariant', v); });
+            st.removeAttribute('mathvariant');
+        });
+        let ok = true;
+        math.querySelectorAll('[mathvariant]').forEach(function (t) {
+            const v = t.getAttribute('mathvariant');
+            if (v === 'normal' && t.localName === 'mi') return;               // Core: upright single letter
+            t.removeAttribute('mathvariant');
+            if (v === 'normal') return;
+            const chars = Array.from(t.textContent);
+            const mapped = chars.map(function (ch) { return /\s/.test(ch) ? ch : variantChar(ch, v); });
+            if (/^(mi|mn)$/.test(t.localName) && mapped.every(Boolean) && chars.some(function (ch) { return !/\s/.test(ch); })) {
+                t.textContent = mapped.join('');
+                if (t.localName === 'mi' && chars.length === 1) t.setAttribute('mathvariant', 'normal');   // no auto-italic on top
+            } else if (VARIANT_CSS[v]) {
+                t.setAttribute('style', (t.getAttribute('style') ? t.getAttribute('style') + ';' : '') + VARIANT_CSS[v]);
+            } else if (mapped.every(Boolean)) {
+                t.textContent = mapped.join('');
+            } else ok = false;
+        });
+        return ok;
+    }
+
+    /** f′: the prime is a raised glyph already — not a superscript. */
+    function flattenPrimes(math) {
+        math.querySelectorAll('msup').forEach(function (m) {
+            const k = kids(m);
+            const sup = k[1] && core1(k[1]);
+            if (!sup || sup.localName !== 'mo' || !/^[\u2032-\u2034\u2057]+$/.test(sup.textContent.trim())) return;
+            const row = m.ownerDocument.createElementNS(m.namespaceURI, 'mrow');
+            row.appendChild(k[0]);
+            sup.setAttribute('lspace', '0');
+            sup.setAttribute('rspace', '0');
+            row.appendChild(sup);
+            m.parentNode.replaceChild(row, m);
+        });
+    }
+
+    function lengthList(v) { return String(v || '').trim().split(/\s+/).filter(Boolean); }
+
+    /** columnalign / columnspacing (align, cases, arrays) as CSS on the cells. */
+    function alignColumns(math) {
+        math.querySelectorAll('mtable').forEach(function (t) {
+            const al = lengthList(t.getAttribute('columnalign'));
+            const sp = lengthList(t.getAttribute('columnspacing'));
+            if (!al.length && !sp.length) return;
+            kids(t).forEach(function (tr) {
+                if (tr.localName !== 'mtr') return;
+                const rowAl = lengthList(tr.getAttribute('columnalign'));
+                const cells = kids(tr).filter(function (c) { return c.localName === 'mtd'; });
+                cells.forEach(function (td, i) {
+                    const a = td.getAttribute('columnalign') || rowAl[Math.min(i, rowAl.length - 1)] || al[Math.min(i, al.length - 1)] || 'center';
+                    const half = function (x) { return x ? 'calc(' + x + ' / 2)' : '0'; };
+                    const before = i === 0 ? '0' : half(sp.length ? sp[Math.min(i - 1, sp.length - 1)] : '0.8em');
+                    const after = i === cells.length - 1 ? '0' : half(sp.length ? sp[Math.min(i, sp.length - 1)] : '0.8em');
+                    td.setAttribute('style', (td.getAttribute('style') ? td.getAttribute('style') + ';' : '') +
+                        'text-align:' + a + ';padding-left:' + before + ';padding-right:' + after);
+                });
+            });
+        });
+    }
+
+    /**
+     * MathML a browser draws as MathJax means it, or null (→ use the SVG).
+     * @returns {{ mathml: string|null, reason: string }}
+     */
+    function toCore(mml) {
+        if (typeof DOMParser === 'undefined') return { mathml: null, reason: 'no DOM' };
+        const doc = new DOMParser().parseFromString(mml, 'application/xml');
+        const math = doc.documentElement;
+        if (!math || math.localName !== 'math' || doc.querySelector('parsererror')) return { mathml: null, reason: 'parse error' };
+        const why = coreProblem(math);
+        if (why) return { mathml: null, reason: why };
+        if (!applyVariants(math)) return { mathml: null, reason: 'letter style' };
+        flattenPrimes(math);
+        alignColumns(math);
+        return { mathml: new XMLSerializer().serializeToString(math), reason: '' };
+    }
+
+    async function renderNow(tex, display, font) {
+        const MJ = await load();
+        if (font && document.fonts && document.fonts.load) {
+            try { await document.fonts.load('16px "' + font.replace(/"/g, '') + '"', 'ابپ'); } catch (e) { /* measured with a fallback */ }
+        }
+        const jax = MJ.startup.document.outputJax;
+        const inherit = jax.options.mtextInheritFont;
+        let node;
+        try {
+            if (font) jax.options.mtextInheritFont = true;     // \text in the document font, measured in it
+            node = await MJ.tex2svgPromise(tex, font ? { display: display, family: font } : { display: display });
+        } finally {
+            jax.options.mtextInheritFont = inherit;
+        }
+        const svg = node.querySelector('svg');
+        if (!svg) throw new Error('MathCore: no output for ' + tex);
+        if (node.querySelectorAll(':scope > svg').length > 1) console.warn('MathCore: formula split in pieces — ' + tex);
+        const errEl = svg.querySelector('[data-mjx-error]');
+        const error = errEl ? errEl.getAttribute('data-mjx-error') || 'TeX error' : '';
+        selfContain(svg);
+        svg.setAttribute('aria-label', tex);
+
+        // metrics in em: the viewBox is in 1/1000 em; height and vertical-align are in ex
+        // a tagged display equation is full width (width="100%", its box in data-mjx-viewBox)
+        const full = svg.getAttribute('width') === '100%';
+        const vb = String(svg.getAttribute('viewBox') || svg.getAttribute('data-mjx-viewBox') || '0 0 0 0').trim().split(/[\s,]+/).map(Number);
+        const g0 = full ? /scale\(([\d.]+)/.exec((svg.firstElementChild && svg.firstElementChild.getAttribute('transform')) || '') : null;
+        const hEm = (vb[3] || 0) / 1000;
+        const hEx = parseFloat(svg.getAttribute('height')) || 0;
+        const va = /vertical-align:\s*(-?[\d.]+)ex/.exec(svg.getAttribute('style') || '');
+        const exPerEm = hEx && hEm ? hEx / hEm : 2;
+        const mml = cleanMathml(await MJ.tex2mmlPromise(tex, { display: display }));
+        // mhchem lays out with phantoms and zero-width boxes MathML Core does not have
+        const native = /\\(ce|pu)\b/.test(tex) ? { mathml: null, reason: 'mhchem' } : toCore(mml);
+        return {
+            tex: tex,
+            display: display,
+            svg: new XMLSerializer().serializeToString(svg),   // XML, not HTML: no &nbsp; (\text{if }) — an image parses it as XML
+            mathml: mml,
+            mathmlCore: native.mathml,
+            mathmlCoreIssue: native.reason,
+            width: (vb[2] || 0) / 1000,
+            height: hEm,
+            depth: va ? Math.max(0, -parseFloat(va[1]) / exPerEm) : 0,
+            exPerEm: exPerEm,
+            full: full,                                   // tagged: fills the line, tag at the end
+            fullEm: g0 ? 1000 * parseFloat(g0[1]) : 0,   // (full) user units per em inside it
+            error: error
+        };
+    }
+
+    /** One formula → record (cached). */
+    function render(tex, display, o) {
+        tex = String(tex == null ? '' : tex);
+        display = !!display;
+        const font = RTL_LETTER.test(tex) ? ((o && o.textFont) || options.textFont) : '';
+        const key = (display ? 'D' : 'I') + font + '\u0000' + tex;
+        if (cache.has(key)) return cache.get(key);
+        const job = queue.then(function () { return renderNow(tex, display, font); });
+        queue = job.catch(function () {});
+        cache.set(key, job);
+        job.catch(function () { cache.delete(key); });
+        return job;
+    }
+
+    // =========================================================================
+    // 4. image (Word, PDF)
+    // =========================================================================
+
+    const exCache = new Map();
+    const FONT_MIME = { woff2: 'font/woff2', woff: 'font/woff', truetype: 'font/ttf', ttf: 'font/ttf', opentype: 'font/otf' };
+
+    /** x-height / font size of a family (a formula on a page is sized in ex). */
+    async function exRatio(family) {
+        if (!family || typeof document === 'undefined' || !document.body) return 0.5;
+        if (exCache.has(family)) return exCache.get(family);
+        const fam = '"' + String(family).replace(/"/g, '') + '"';
+        try { if (document.fonts && document.fonts.load) await document.fonts.load('100px ' + fam); } catch (e) { /* fallback font */ }
+        const d = document.createElement('div');
+        d.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;font-size:100px;line-height:0;height:10ex;font-family:' + fam + ',serif';
+        document.body.appendChild(d);
+        const r = d.getBoundingClientRect().height / 1000;
+        d.remove();
+        const v = r > 0.2 && r < 1 ? r : 0.5;
+        exCache.set(family, v);
+        return v;
+    }
+
+    function b64(text) {
+        const bytes = new TextEncoder().encode(text);
+        let bin = '';
+        for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        return btoa(bin);
+    }
+
+    /**
+     * A formula as an image for a document: an SVG data URI sized for text of
+     * fontSizePt in fontFamily — the size it has on a page, where MathJax
+     * matches the x-height of the text around it.
+     * The SVG is declared at imageScale × that size (ImageCore then rasterizes
+     * it sharper); width/height/depth are the DISPLAY size in CSS px.
+     * A tagged equation (\tag, numbered environments) fills maxWidth (px), its
+     * number at the end, as on a page.
+     * Right-to-left \text: its font is embedded in the SVG (an image cannot
+     * use the page's fonts) when options.fonts / window.KelkWebFonts has it.
+     * @returns {Promise<{ src: string, width: number, height: number, depth: number }>}
+     */
+    async function toImage(rec, o) {
+        o = o || {};
+        const family = o.fontFamily || options.textFont;
+        const fontPx = (o.fontSizePt || 12) * 4 / 3;
+        const k = (rec.exPerEm || 2.26) * await exRatio(family);
+        const w = rec.width * k * fontPx, h = rec.height * k * fontPx, dp = rec.depth * k * fontPx;
+        const scale = o.scale || options.imageScale || 1;
+        const doc = new DOMParser().parseFromString(rec.svg, 'image/svg+xml');
+        const svg = doc.documentElement;
+        if (!svg || svg.localName !== 'svg' || doc.querySelector('parsererror')) throw new Error('MathCore: SVG does not parse — ' + rec.tex);
+        let W = w;
+        if (rec.full && rec.fullEm) {
+            // full width (equation tag): the line's width; its inner units scaled to the text size
+            W = Math.max(w, o.maxWidth || w);
+            const f = k * fontPx / rec.fullEm;
+            svg.setAttribute('viewBox', '0 0 ' + (W / f).toFixed(2) + ' ' + (h / f).toFixed(2));
+            svg.removeAttribute('data-mjx-viewBox');
+        }
+        svg.setAttribute('width', (W * scale).toFixed(2));
+        svg.setAttribute('height', (h * scale).toFixed(2));
+        svg.removeAttribute('style');
+        svg.setAttribute('color', o.color || '#000');            // currentColor
+        if (svg.querySelector('text')) {
+            const g = svg.querySelector('[style*="font-family"]');
+            const fam = g ? (/font-family:\s*"?([^";]+)"?/.exec(g.getAttribute('style')) || [])[1] : '';
+            const lib = options.fonts || global.KelkWebFonts || {};
+            const key = fam && Object.keys(lib).find(function (x) { return x.toLowerCase() === fam.trim().toLowerCase(); });
+            const faces = key ? lib[key] : null;
+            if (faces && faces.length) {
+                const st = doc.createElementNS('\u0068\u0074\u0074\u0070://www.w3.org/2000/svg', 'style');
+                st.textContent = faces.map(function (f) {
+                    const fmt = f.format || 'woff2';
+                    return '@font-face{font-family:"' + fam.trim() + '";src:url(data:' + (FONT_MIME[fmt] || 'font/' + fmt) + ';base64,' + f.data +
+                        ') format("' + fmt + '");font-weight:' + (f.weight || 'normal') + ';font-style:' + (f.style || 'normal') + '}';
+                }).join('');
+                svg.insertBefore(st, svg.firstChild);
+            }
+        }
+        return {
+            src: 'data:image/svg+xml;base64,' + b64(new XMLSerializer().serializeToString(svg)),
+            width: W, height: h, depth: dp
+        };
+    }
+
+    /**
+     * Every placeholder under root → <img class="kelk-math-img"> (display
+     * formulas in their own centered <p class="kelk-math-block">); a TeX error
+     * → the TeX as text. For builders that place images (Word, PDF).
+     * @returns {Promise<number>} formulas turned into images
+     */
+    async function toImages(root, o) {
+        o = o || {};
+        const els = placeholders(root);
+        let n = 0;
+        for (let i = 0; i < els.length; i++) {
+            const el = els[i], doc = el.ownerDocument;
+            const tex = el.getAttribute('data-tex');
+            const display = el.getAttribute('data-display') === 'block';
+            let rec = null;
+            try { rec = await render(tex, display, { textFont: o.fontFamily }); } catch (e) { rec = null; }
+            if (!rec || rec.error) {                        // the TeX as written, as code (an LTR isolate everywhere)
+                const d = display ? '$$' : '$';
+                const t = doc.createElement('code');
+                t.className = 'kelk-math-error';
+                t.textContent = d + tex + d;
+                el.parentNode.replaceChild(t, el);
+                continue;
+            }
+            let im = null;
+            try { im = await toImage(rec, o); } catch (e) { im = null; }
+            if (!im) {
+                const d = display ? '$$' : '$';
+                const t = doc.createElement('code');
+                t.className = 'kelk-math-error';
+                t.textContent = d + tex + d;
+                el.parentNode.replaceChild(t, el);
+                continue;
+            }
+            const img = doc.createElement('img');
+            img.setAttribute('src', im.src);
+            img.setAttribute('alt', tex);
+            img.setAttribute('width', String(Math.max(1, Math.round(im.width))));
+            img.setAttribute('height', String(Math.max(1, Math.round(im.height))));
+            img.setAttribute('class', 'kelk-math-img');
+            img.setAttribute('data-depth', im.depth.toFixed(2));         // px below the baseline
+            img.setAttribute('data-display', display ? 'block' : 'inline');
+            if (o.omml) {                                           // Word's own equation, for DocxBuilder
+                const om = /\\(ce|pu)\b/.test(tex) ? { xml: null } : toOmml(rec.mathml, { display: display });
+                if (om.xml) img.setAttribute('data-omml', om.xml);
+            }
+            if (el.tagName === 'DIV') {
+                const p = doc.createElement('p');
+                p.className = 'kelk-math-block';
+                p.appendChild(img);
+                el.parentNode.replaceChild(p, el);
+            } else el.parentNode.replaceChild(img, el);
+            n++;
+        }
+        return n;
+    }
+
+    // =========================================================================
+    // 5. OMML (Word's own equations) from MathJax's MathML
+    // =========================================================================
+    //
+    // toOmml(mathml, { display }) → { xml, reason }: an <m:oMath> (inline) or
+    // <m:oMathPara> (display) — a real, editable Word equation. xml is null
+    // (reason says why) when the formula uses what Word cannot show the same:
+    // mhchem's private glyphs, maction, mglyph. Word draws it in Cambria Math.
+
+    const M_NS = '\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/officeDocument/2006/math';
+    const W_NS = '\u0068\u0074\u0074\u0070://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    const NARY = /^[\u2211\u220F\u2210\u22C0-\u22C3\u2A00-\u2A06\u2A09\u222B-\u2233\u2A0C-\u2A11]$/;
+    const OPEN = /^[([{\u27E8\u2329\u230A\u2308|\u2016\u27E6]$/, CLOSE = /^[)\]}\u27E9\u232A\u230B\u2309|\u2016\u27E7]$/;
+    const ARROW = /^[\u2190-\u21FF\u27F5-\u27FF]$/;
+    const ACCENT = {
+        '^': '\u0302', '\u02C6': '\u0302', '\u0302': '\u0302', '~': '\u0303', '\u02DC': '\u0303', '\u0303': '\u0303',
+        '\u00AF': '\u0304', '\u0304': '\u0304', '\u02D9': '\u0307', '\u0307': '\u0307', '\u00A8': '\u0308', '\u0308': '\u0308',
+        '\u02DA': '\u030A', '\u030A': '\u030A', '\u02D8': '\u0306', '\u0306': '\u0306', '\u02C7': '\u030C', '\u030C': '\u030C',
+        '\u00B4': '\u0301', '\u0301': '\u0301', '`': '\u0300', '\u0300': '\u0300',
+        '\u2192': '\u20D7', '\u20D7': '\u20D7', '\u2190': '\u20D6', '\u20D6': '\u20D6', '\u2194': '\u20E1', '\u20E1': '\u20E1'
+    };
+    const BAR = /^[\u203E\u2015\u0305_\u0332]$/;
+    const BRACE = /^[\u23DE\u23DF\u23DC\u23DD\u23B4\u23B5]$/;
+    const SCR = { 'double-struck': 'double-struck', 'script': 'script', 'bold-script': 'script', 'fraktur': 'fraktur',
+                  'bold-fraktur': 'fraktur', 'sans-serif': 'sans-serif', 'bold-sans-serif': 'sans-serif',
+                  'sans-serif-italic': 'sans-serif', 'sans-serif-bold-italic': 'sans-serif', 'monospace': 'monospace' };
+    const STY = { 'normal': 'p', 'bold': 'b', 'italic': 'i', 'bold-italic': 'bi', 'double-struck': 'p', 'script': 'p',
+                  'bold-script': 'b', 'fraktur': 'p', 'bold-fraktur': 'b', 'sans-serif': 'p', 'bold-sans-serif': 'b',
+                  'sans-serif-italic': 'i', 'sans-serif-bold-italic': 'bi', 'monospace': 'p' };
+
+    function xesc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function mval(tag, v) { return '<m:' + tag + ' m:val="' + xesc(v) + '"/>'; }
+    function wrap(tag, inner) { return '<m:' + tag + '>' + (inner || '') + '</m:' + tag + '>'; }
+
+    function hexColor(c) {
+        if (!c) return '';
+        c = String(c).trim();
+        let m = /^#([0-9a-f]{6})$/i.exec(c);
+        if (m) return m[1].toUpperCase();
+        m = /^#([0-9a-f]{3})$/i.exec(c);
+        if (m) return m[1].replace(/./g, '$&$&').toUpperCase();
+        if (typeof document === 'undefined') return '';
+        const x = document.createElement('canvas').getContext('2d');
+        x.fillStyle = '#000'; x.fillStyle = c;
+        m = /^#([0-9a-f]{6})$/i.exec(x.fillStyle);
+        return m ? m[1].toUpperCase() : '';
+    }
+
+    function ommlConverter(ctx0) {
+        function run(text, node, ctx) {
+            text = String(text).replace(/[\u2061-\u2064]/g, '');
+            if (!text) return '';
+            const tag = node ? node.localName : 'mo';
+            const variant = (node && node.getAttribute('mathvariant')) || ctx.variant || '';
+            let rpr;
+            if (tag === 'mtext' || tag === 'ms') rpr = '<m:nor/>';
+            else {
+                const scr = SCR[variant] ? mval('scr', SCR[variant]) : '';
+                let sty = STY[variant] || '';
+                if (!sty) sty = tag === 'mi' && Array.from(text).length === 1 ? '' : 'p';   // one letter: italic (Word's default)
+                rpr = scr + (sty ? mval('sty', sty) : '');
+            }
+            let wpr = '';
+            if (ctx.color) wpr += '<w:color w:val="' + ctx.color + '"/>';
+            if ((tag === 'mtext' || tag === 'ms') && RTL_LETTER.test(text)) wpr += '<w:rtl/>';
+            // a space-only run gets a zero-width space: docx.js's XML import trims whitespace-only text away
+            if (!/\S/.test(text)) text += '\u200B';
+            return '<m:r>' + (rpr ? wrap('rPr', rpr) : '') + (wpr ? '<w:rPr>' + wpr + '</w:rPr>' : '') +
+                '<m:t xml:space="preserve">' + xesc(text) + '</m:t></m:r>';
+        }
+
+        function style(node, ctx) {
+            const c = Object.assign({}, ctx);
+            const col = node.getAttribute && (node.getAttribute('mathcolor') || node.getAttribute('color'));
+            if (col) c.color = hexColor(col) || c.color;
+            const v = node.getAttribute && node.getAttribute('mathvariant');
+            if (v && /^(mstyle|mrow)$/.test(node.localName)) c.variant = v;
+            return c;
+        }
+
+        function opChar(node) {
+            const n = core1(node);
+            return n && n.localName === 'mo' ? n.textContent.trim() : '';
+        }
+
+        /** An n-ary operator (∑ ∫ ∏ …), bare or with limits? → { chr, loc, sub, sup } */
+        function naryOf(node) {
+            const t = node.localName;
+            if (t === 'mo' && NARY.test(node.textContent.trim())) return { chr: node.textContent.trim(), loc: 'subSup' };
+            if (!/^(munderover|munder|mover|msubsup|msub|msup)$/.test(t)) return null;
+            const k = kids(node);
+            const chr = opChar(k[0]);
+            if (!NARY.test(chr)) return null;
+            const under = /^(munder|munderover)$/.test(t), over = /^(mover|munderover)$/.test(t);
+            const sub = /^(msub|msubsup)$/.test(t), sup = /^(msup|msubsup)$/.test(t);
+            return {
+                chr: chr, loc: (under || over) ? 'undOvr' : 'subSup',
+                sub: (under || sub) ? k[1] : null,
+                sup: over ? (t === 'munderover' ? k[2] : k[1]) : (sup ? (t === 'msubsup' ? k[2] : k[1]) : null)
+            };
+        }
+
+        function nary(n, eXml, ctx) {
+            let pr = mval('chr', n.chr) + mval('limLoc', n.loc);
+            if (!n.sub) pr += mval('subHide', '1');
+            if (!n.sup) pr += mval('supHide', '1');
+            return '<m:nary>' + wrap('naryPr', pr) + wrap('sub', n.sub ? conv(n.sub, ctx) : '') +
+                wrap('sup', n.sup ? conv(n.sup, ctx) : '') + wrap('e', eXml) + '</m:nary>';
+        }
+
+        /** A sequence of siblings: an n-ary operator takes the next element as its operand. */
+        function seq(nodes, ctx) {
+            let out = '';
+            for (let i = 0; i < nodes.length; i++) {
+                const n = naryOf(nodes[i]);
+                if (n) {
+                    let e = '';
+                    const nx = nodes[i + 1];
+                    if (nx && !(nx.localName === 'mo' && !naryOf(nx))) { e = conv(nx, ctx); i++; }
+                    out += nary(n, e, ctx);
+                } else out += conv(nodes[i], ctx);
+            }
+            return out;
+        }
+
+        function delim(beg, end, inner) {
+            return '<m:d>' + wrap('dPr', mval('begChr', beg) + mval('endChr', end)) + wrap('e', inner) + '</m:d>';
+        }
+
+        function table(node, ctx) {
+            const al = String(node.getAttribute('columnalign') || '').trim().split(/\s+/).filter(Boolean);
+            const rows = kids(node).filter(function (r) { return /^(mtr|mlabeledtr)$/.test(r.localName); });
+            let cols = 0;
+            const labels = [];
+            const body = rows.map(function (r) {
+                let cells = kids(r).filter(function (c) { return c.localName === 'mtd'; });
+                if (r.localName === 'mlabeledtr') { labels.push(cells[0]); cells = cells.slice(1); }
+                cols = Math.max(cols, cells.length);
+                return '<m:mr>' + cells.map(function (c) { return wrap('e', seq(kids(c), ctx)); }).join('') + '</m:mr>';
+            });
+            const jc = { left: 'left', right: 'right', center: 'center' };
+            let mcs = '';
+            for (let i = 0; i < cols; i++) {
+                mcs += wrap('mc', wrap('mcPr', mval('count', '1') + mval('mcJc', jc[al[Math.min(i, al.length - 1)]] || 'center')));
+            }
+            // a pair "right left" (align, aligned): the matrix keeps its columns tight
+            const tight = al.length > 1 && al.every(function (a, i) { return a === (i % 2 ? 'left' : 'right'); });
+            const mpr = (tight ? mval('cGpRule', '3') + mval('cGp', '0') : '') + wrap('mcs', mcs);
+            let out = '<m:m>' + wrap('mPr', mpr) + body.join('') + '</m:m>';
+            labels.forEach(function (l) { out += run('\u2003', null, ctx) + seq(kids(l), ctx); });
+            return out;
+        }
+
+        function scriptsOver(node, ctx) {
+            const t = node.localName, k = kids(node);
+            const base = k[0];
+            const baseChr = opChar(base);
+            const over = t === 'mover' ? k[1] : (t === 'munderover' ? k[2] : null);
+            const under = t === 'munder' ? k[1] : (t === 'munderover' ? k[1] : null);
+            // an arrow with a label (\xrightarrow): Word's grouping character stretches it
+            if (ARROW.test(baseChr) && (over || under)) {
+                const lab = over || under;
+                let g = '<m:groupChr>' + wrap('groupChrPr', mval('chr', baseChr) + mval('pos', over ? 'bot' : 'top') + mval('vertJc', over ? 'bot' : 'top')) +
+                    wrap('e', conv(lab, ctx)) + '</m:groupChr>';
+                if (over && under) g = '<m:limLow>' + wrap('e', g) + wrap('lim', conv(under, ctx)) + '</m:limLow>';
+                return g;
+            }
+            const oc = over ? opChar(over) : '', uc = under ? opChar(under) : '';
+            if (t === 'mover' && BRACE.test(oc)) return '<m:groupChr>' + wrap('groupChrPr', mval('chr', oc) + mval('pos', 'top') + mval('vertJc', 'bot')) + wrap('e', conv(base, ctx)) + '</m:groupChr>';
+            if (t === 'munder' && BRACE.test(uc)) return '<m:groupChr>' + wrap('groupChrPr', mval('chr', uc)) + wrap('e', conv(base, ctx)) + '</m:groupChr>';
+            if (t === 'mover' && BAR.test(oc)) return '<m:bar>' + wrap('barPr', mval('pos', 'top')) + wrap('e', conv(base, ctx)) + '</m:bar>';
+            if (t === 'munder' && BAR.test(uc)) return '<m:bar>' + wrap('barPr', mval('pos', 'bot')) + wrap('e', conv(base, ctx)) + '</m:bar>';
+            if (t === 'mover' && ACCENT[oc]) return '<m:acc>' + wrap('accPr', mval('chr', ACCENT[oc])) + wrap('e', conv(base, ctx)) + '</m:acc>';
+            let out = conv(base, ctx);
+            if (under) out = '<m:limLow>' + wrap('e', out) + wrap('lim', conv(under, ctx)) + '</m:limLow>';
+            if (over) out = '<m:limUpp>' + wrap('e', out) + wrap('lim', conv(over, ctx)) + '</m:limUpp>';
+            return out;
+        }
+
+        function enclose(node, ctx) {
+            const n = String(node.getAttribute('notation') || 'longdiv').split(/\s+/);
+            const inner = wrap('e', seq(kids(node), ctx));
+            const strike = { updiagonalstrike: 'strikeBLTR', updiagonalarrow: 'strikeBLTR', downdiagonalstrike: 'strikeTLBR', horizontalstrike: 'strikeH', verticalstrike: 'strikeV' };
+            const boxed = n.some(function (x) { return /box|roundedbox|circle/.test(x); });
+            let pr = '';
+            if (!boxed) pr += mval('hideTop', '1') + mval('hideBot', '1') + mval('hideLeft', '1') + mval('hideRight', '1');
+            n.forEach(function (x) { if (strike[x]) pr += mval(strike[x], '1'); });
+            return '<m:borderBox>' + (pr ? wrap('borderBoxPr', pr) : '') + inner + '</m:borderBox>';
+        }
+
+        function conv(node, ctx) {
+            if (!node || node.nodeType !== 1) return '';
+            const t = node.localName;
+            const c = style(node, ctx);
+            switch (t) {
+                case 'math': case 'mstyle': case 'mpadded': case 'merror':
+                    return seq(kids(node), c);
+                case 'semantics': return conv(kids(node)[0], c);
+                case 'annotation': case 'annotation-xml': case 'none': case 'mprescripts': return '';
+                case 'mrow': {
+                    const k = kids(node);
+                    if (k.length >= 2 && k[0].localName === 'mo' && OPEN.test(k[0].textContent.trim())) {
+                        const last = k[k.length - 1];
+                        const closes = last.localName === 'mo' && (CLOSE.test(last.textContent.trim()) || !last.textContent.trim());
+                        const stretch = k[0].getAttribute('stretchy') !== 'false' && (k.length === 2 || closes);
+                        if (stretch && (closes || kids(k[k.length - 1]).length || k[k.length - 1].localName === 'mtable')) {
+                            return delim(k[0].textContent.trim(), closes ? last.textContent.trim() : '', seq(closes ? k.slice(1, -1) : k.slice(1), c));
+                        }
+                    }
+                    if (k.length === 1 && k[0].localName === 'mo' && k[0].hasAttribute('minsize')) return run(k[0].textContent, k[0], c);   // \big( …
+                    return seq(k, c);
+                }
+                case 'mi': case 'mn': case 'mo': case 'mtext': case 'ms':
+                    return run(node.textContent, node, c);
+                case 'mspace': {
+                    const named = { veryverythinmathspace: 0.056, verythinmathspace: 0.111, thinmathspace: 0.167, mediummathspace: 0.222,
+                                    thickmathspace: 0.278, verythickmathspace: 0.333, veryverythickmathspace: 0.389 };
+                    const wa = String(node.getAttribute('width') || '0').trim();
+                    const w = named[wa] != null ? named[wa] : parseFloat(wa) * (/ex$/.test(wa) ? 0.44 : 1);
+                    if (!(w > 0.05)) return '';
+                    return run(w >= 0.9 ? '\u2003' : w >= 0.4 ? '\u2002' : w >= 0.25 ? '\u2005' : '\u2009', null, c);
+                }
+                case 'mphantom':
+                    return '<m:phant>' + wrap('phantPr', mval('show', '0')) + wrap('e', seq(kids(node), c)) + '</m:phant>';
+                case 'mfrac': {
+                    const k = kids(node);
+                    const lt = node.getAttribute('linethickness');
+                    const pr = lt != null && parseFloat(lt) === 0 ? wrap('fPr', mval('type', 'noBar')) : '';
+                    return '<m:f>' + pr + wrap('num', conv(k[0], c)) + wrap('den', conv(k[1], c)) + '</m:f>';
+                }
+                case 'msqrt':
+                    return '<m:rad>' + wrap('radPr', mval('degHide', '1')) + '<m:deg/>' + wrap('e', seq(kids(node), c)) + '</m:rad>';
+                case 'mroot': {
+                    const k = kids(node);
+                    return '<m:rad>' + wrap('deg', conv(k[1], c)) + wrap('e', conv(k[0], c)) + '</m:rad>';
+                }
+                case 'msub': case 'msup': case 'msubsup': {
+                    const n = naryOf(node);
+                    if (n) return nary(n, '', c);
+                    const k = kids(node);
+                    if (t === 'msub') return '<m:sSub>' + wrap('e', conv(k[0], c)) + wrap('sub', conv(k[1], c)) + '</m:sSub>';
+                    if (t === 'msup') return '<m:sSup>' + wrap('e', conv(k[0], c)) + wrap('sup', conv(k[1], c)) + '</m:sSup>';
+                    return '<m:sSubSup>' + wrap('e', conv(k[0], c)) + wrap('sub', conv(k[1], c)) + wrap('sup', conv(k[2], c)) + '</m:sSubSup>';
+                }
+                case 'munder': case 'mover': case 'munderover': {
+                    const n = naryOf(node);
+                    if (n) return nary(n, '', c);
+                    return scriptsOver(node, c);
+                }
+                case 'mmultiscripts': {
+                    const k = kids(node);
+                    const pi = k.findIndex(function (x) { return x.localName === 'mprescripts'; });
+                    const post = (pi < 0 ? k.slice(1) : k.slice(1, pi)), pre = pi < 0 ? [] : k.slice(pi + 1);
+                    let out = conv(k[0], c);
+                    if (post.length >= 2) out = '<m:sSubSup>' + wrap('e', out) + wrap('sub', conv(post[0], c)) + wrap('sup', conv(post[1], c)) + '</m:sSubSup>';
+                    if (pre.length >= 2) out = '<m:sPre>' + wrap('sub', conv(pre[0], c)) + wrap('sup', conv(pre[1], c)) + wrap('e', out) + '</m:sPre>';
+                    return out;
+                }
+                case 'mtable': return table(node, c);
+                case 'mtr': case 'mlabeledtr': case 'mtd': return seq(kids(node), c);
+                case 'menclose': return enclose(node, c);
+                default: return seq(kids(node), c);
+            }
+        }
+
+        return function (math) { return seq(kids(math), ctx0); };
+    }
+
+    /**
+     * MathML (MathJax's, rec.mathml) → OMML.
+     * @returns {{ xml: string|null, reason: string }}
+     */
+    function toOmml(mml, o) {
+        o = o || {};
+        if (typeof DOMParser === 'undefined') return { xml: null, reason: 'no DOM' };
+        const doc = new DOMParser().parseFromString(String(mml || ''), 'application/xml');
+        const math = doc.documentElement;
+        if (!math || math.localName !== 'math' || doc.querySelector('parsererror')) return { xml: null, reason: 'parse error' };
+        if (PUA_RE.test(math.textContent)) return { xml: null, reason: 'private-use glyph (mhchem arrow)' };
+        if (math.querySelector('maction, mglyph')) return { xml: null, reason: 'maction / mglyph' };
+        const body = ommlConverter({})(math);
+        const ns = ' xmlns:m="' + M_NS + '" xmlns:w="' + W_NS + '"';
+        const display = o.display != null ? o.display : math.getAttribute('display') === 'block';
+        const xml = display
+            ? '<m:oMathPara' + ns + '>' + wrap('oMathParaPr', mval('jc', 'center')) + '<m:oMath>' + body + '</m:oMath></m:oMathPara>'
+            : '<m:oMath' + ns + '>' + body + '</m:oMath>';
+        return { xml: xml, reason: '' };
+    }
+
+    /**
+     * OMML (toOmml's XML) in the form Word writes inside HTML (.doc / MHTML):
+     * the same m: elements, but each run's text sits in <m:r> itself, wrapped
+     * in a Cambria Math span — italic letters in <i> — as Word's own "Save as
+     * Web Page" writes it. The caller puts it in <!--[if gte msEquation 12]>.
+     */
+    function ommlToWordHtml(xml) {
+        const doc = new DOMParser().parseFromString(String(xml || ''), 'application/xml');
+        if (!doc.documentElement || doc.querySelector('parsererror')) return '';
+        const hesc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+        const attrs = function (el) {
+            let a = '';
+            for (let i = 0; i < el.attributes.length; i++) {
+                const at = el.attributes[i];
+                if (/^xmlns/.test(at.name)) continue;
+                a += ' ' + at.name + '="' + hesc(at.value).replace(/"/g, '&quot;') + '"';
+            }
+            return a;
+        };
+        const plain = function (el) {           // an m: element as it is (no text runs inside rPr etc.)
+            let s = '<' + el.tagName + attrs(el);
+            if (!el.childNodes.length) return s + '/>';
+            s += '>';
+            for (let c = el.firstChild; c; c = c.nextSibling) s += c.nodeType === 1 ? write(c) : '';
+            return s + '</' + el.tagName + '>';
+        };
+        function write(el) {
+            if (el.localName !== 'r' || el.prefix !== 'm') return plain(el);
+            let rpr = '', text = '', color = '', rtl = false, nor = false, italic = true;
+            for (let c = el.firstElementChild; c; c = c.nextElementSibling) {
+                if (c.prefix === 'm' && c.localName === 'rPr') {
+                    rpr = plain(c);
+                    if (c.getElementsByTagName('m:nor').length) nor = true;
+                    const sty = c.getElementsByTagName('m:sty')[0];
+                    if (sty && !/^(i|bi)$/.test(sty.getAttribute('m:val'))) italic = false;
+                    if (nor) italic = false;
+                } else if (c.prefix === 'w' && c.localName === 'rPr') {
+                    const col = c.getElementsByTagName('w:color')[0];
+                    if (col) color = col.getAttribute('w:val');
+                    if (c.getElementsByTagName('w:rtl').length) rtl = true;
+                } else if (c.localName === 't') text += c.textContent;
+            }
+            const style = (nor ? '' : 'font-family:"Cambria Math",serif') + (color ? (nor ? '' : ';') + 'color:#' + color : '');
+            let s = '<span dir=' + (rtl ? 'RTL' : 'LTR') + (style ? " style='" + style + "'" : '') + '><m:r>' + rpr + hesc(text) + '</m:r></span>';
+            if (italic) s = "<i style='mso-bidi-font-style:normal'>" + s + '</i>';
+            return s;
+        }
+        return write(doc.documentElement);
+    }
+
+    // =========================================================================
+    // 6. OMML → LaTeX (Word equations back to TeX — MarkdownImporter)
+    // =========================================================================
+    //
+    // ommlToTex(el) takes an <m:oMath> / <m:oMathPara> element (any DOM) and
+    // returns { tex, display }. The inverse of toOmml, and it also reads what
+    // Word itself writes (eqArr, func, box, sPre …). Pure DOM, no MathJax.
+
+    const TEX_SYM = {
+        '\u03B1': 'alpha', '\u03B2': 'beta', '\u03B3': 'gamma', '\u03B4': 'delta', '\u03B5': 'epsilon', '\u03F5': 'epsilon',
+        '\u03B6': 'zeta', '\u03B7': 'eta', '\u03B8': 'theta', '\u03D1': 'vartheta', '\u03B9': 'iota', '\u03BA': 'kappa',
+        '\u03BB': 'lambda', '\u03BC': 'mu', '\u03BD': 'nu', '\u03BE': 'xi', '\u03C0': 'pi', '\u03D6': 'varpi', '\u03C1': 'rho',
+        '\u03F1': 'varrho', '\u03C3': 'sigma', '\u03C2': 'varsigma', '\u03C4': 'tau', '\u03C5': 'upsilon', '\u03C6': 'phi',
+        '\u03D5': 'phi', '\u03C7': 'chi', '\u03C8': 'psi', '\u03C9': 'omega',
+        '\u0393': 'Gamma', '\u0394': 'Delta', '\u0398': 'Theta', '\u039B': 'Lambda', '\u039E': 'Xi', '\u03A0': 'Pi',
+        '\u03A3': 'Sigma', '\u03A5': 'Upsilon', '\u03A6': 'Phi', '\u03A8': 'Psi', '\u03A9': 'Omega',
+        '\u2264': 'le', '\u2265': 'ge', '\u2260': 'ne', '\u2248': 'approx', '\u2261': 'equiv', '\u223C': 'sim', '\u2243': 'simeq',
+        '\u221D': 'propto', '\u00D7': 'times', '\u00B7': 'cdot', '\u22C5': 'cdot', '\u00F7': 'div', '\u00B1': 'pm', '\u2213': 'mp',
+        '\u2218': 'circ', '\u2219': 'bullet', '\u2297': 'otimes', '\u2295': 'oplus',
+        '\u2192': 'to', '\u2190': 'leftarrow', '\u2194': 'leftrightarrow', '\u21D2': 'Rightarrow', '\u21D0': 'Leftarrow',
+        '\u21D4': 'Leftrightarrow', '\u27F6': 'longrightarrow', '\u27F5': 'longleftarrow', '\u27F9': 'Longrightarrow',
+        '\u27FA': 'Longleftrightarrow', '\u21A6': 'mapsto', '\u21AA': 'hookrightarrow', '\u2191': 'uparrow', '\u2193': 'downarrow',
+        '\u21CC': 'rightleftharpoons',
+        '\u221E': 'infty', '\u2202': 'partial', '\u2207': 'nabla', '\u2208': 'in', '\u2209': 'notin', '\u220B': 'ni',
+        '\u2282': 'subset', '\u2283': 'supset', '\u2286': 'subseteq', '\u2287': 'supseteq', '\u222A': 'cup', '\u2229': 'cap',
+        '\u2205': 'emptyset', '\u2200': 'forall', '\u2203': 'exists', '\u00AC': 'neg', '\u2227': 'wedge', '\u2228': 'vee',
+        '\u22EF': 'cdots', '\u2026': 'ldots', '\u22EE': 'vdots', '\u22F1': 'ddots', '\u22A4': 'top', '\u22A5': 'perp',
+        '\u2225': 'parallel', '\u2220': 'angle', '\u210F': 'hbar', '\u2113': 'ell', '\u211C': 'Re', '\u2111': 'Im',
+        '\u2032': "'", '\u2033': "''", '\u00B0': '^\\circ', '\u2223': 'mid', '\u2217': '*', '\u2016': '\\|', '\u27FC': 'longmapsto'
+    };
+    const TEX_FUNC = /^(sin|cos|tan|cot|sec|csc|arcsin|arccos|arctan|sinh|cosh|tanh|log|ln|lg|exp|lim|liminf|limsup|max|min|sup|inf|det|dim|ker|deg|gcd|arg|Pr|mod|hom)$/;
+    const TEX_NARY = { '\u2211': 'sum', '\u220F': 'prod', '\u2210': 'coprod', '\u222B': 'int', '\u222C': 'iint', '\u222D': 'iiint',
+        '\u222E': 'oint', '\u22C3': 'bigcup', '\u22C2': 'bigcap', '\u22C1': 'bigvee', '\u22C0': 'bigwedge', '\u2A01': 'bigoplus', '\u2A02': 'bigotimes' };
+    const TEX_ACC = { '\u0302': ['hat', 'widehat'], '\u0303': ['tilde', 'widetilde'], '\u0304': ['bar', 'overline'], '\u0305': ['bar', 'overline'],
+        '\u0307': ['dot', 'dot'], '\u0308': ['ddot', 'ddot'], '\u20D7': ['vec', 'overrightarrow'], '\u20D6': ['overleftarrow', 'overleftarrow'],
+        '\u20E1': ['overleftrightarrow', 'overleftrightarrow'], '\u030C': ['check', 'check'], '\u0306': ['breve', 'breve'],
+        '\u0301': ['acute', 'acute'], '\u0300': ['grave', 'grave'], '\u030A': ['mathring', 'mathring'] };
+    const TEX_FENCE = { '{': '\\{', '}': '\\}', '\u27E8': '\\langle', '\u27E9': '\\rangle', '\u2329': '\\langle', '\u232A': '\\rangle',
+        '\u230A': '\\lfloor', '\u230B': '\\rfloor', '\u2308': '\\lceil', '\u2309': '\\rceil', '\u2016': '\\|', '': '.' };
+    const TEX_SCR = { 'double-struck': 'mathbb', 'script': 'mathcal', 'fraktur': 'mathfrak', 'sans-serif': 'mathsf', 'monospace': 'mathtt' };
+
+    function ommlToTex(root) {
+        const child = function (el, name) {
+            for (let c = el && el.firstElementChild; c; c = c.nextElementSibling) if (c.localName === name) return c;
+            return null;
+        };
+        const val = function (el, name, def) {           // <m:name m:val="…"/> ('' is a value: endChr="")
+            const pr = child(el, name);
+            if (!pr) return def;
+            const v = pr.getAttribute('m:val');
+            return v == null ? def : v;
+        };
+        const flag = function (pr, name) {
+            const e = child(pr, name);
+            if (!e) return false;
+            const v = e.getAttribute('m:val');
+            return v == null || v === '1' || v === 'on' || v === 'true';
+        };
+        const grp = function (s) {
+            s = s.trim();
+            return Array.from(s).length === 1 || /^\\[a-zA-Z]+$/.test(s) ? s : '{' + s + '}';
+        };
+        const join = function (parts) {
+            let out = '';
+            parts.forEach(function (p) {
+                if (!p) return;
+                if (/\\[a-zA-Z]+$/.test(out) && /^[a-zA-Z0-9]/.test(p)) out += ' ';
+                out += p;
+            });
+            return out;
+        };
+        const esc = function (ch, inArr) {
+            if (TEX_SYM[ch]) { const v = TEX_SYM[ch]; return /^[a-zA-Z]+$/.test(v) ? '\\' + v : v; }
+            if (/[#$%_{}]/.test(ch)) return '\\' + ch;
+            if (ch === '&') return inArr ? '&' : '\\&';
+            if (ch === '\\') return '\\backslash ';
+            if (ch === '~') return '\\sim ';
+            if (ch === '^') return '\\wedge ';
+            if (ch === '\u2212') return '-';
+            if (ch === '\u2003' || ch === '\u2001') return '\\quad ';
+            if (ch === '\u2002' || ch === '\u2000') return '\\;';
+            if (ch === '\u2005' || ch === '\u2004') return '\\:';
+            if (ch === '\u2009' || ch === '\u200A' || ch === '\u2006') return '\\,';
+            if (ch === '\u00A0') return '~';
+            // math-alphabet letters (𝑥, 𝐯 …) back to plain ones
+            const c = ch.codePointAt(0);
+            if (c >= 0x1D400 && c <= 0x1D6A3) { const k = (c - 0x1D400) % 52; return String.fromCharCode(k < 26 ? 65 + k : 71 + k); }
+            return ch;
+        };
+
+        function run(r, ctx) {
+            let text = '';
+            for (let c = r.firstElementChild; c; c = c.nextElementSibling) if (c.localName === 't') text += c.textContent;
+            if (!r.firstElementChild || !child(r, 't')) text = text || r.textContent;     // Word's HTML form: text in <m:r>
+            text = text.replace(/[\u200B\uFEFF]/g, '');
+            if (!text) return '';
+            const pr = child(r, 'rPr');
+            if (pr && child(pr, 'nor')) return /^\s+$/.test(text) ? '\\ ' : '\\text{' + text.replace(/([{}\\#$%&_])/g, '\\$1') + '}';
+            const sty = pr ? val(pr, 'sty', '') : '';
+            const scr = pr ? val(pr, 'scr', '') : '';
+            let body = Array.from(text).map(function (ch) { return esc(ch, ctx.arr); }).join('');
+            if (TEX_SCR[scr]) return '\\' + TEX_SCR[scr] + '{' + body + '}';
+            if (sty === 'b') return '\\mathbf{' + body + '}';
+            if (sty === 'bi') return '\\boldsymbol{' + body + '}';
+            if (sty === 'p' && /^[a-zA-Z]{2,}$/.test(text)) return text === 'mod' ? '\\bmod' : TEX_FUNC.test(text) ? '\\' + text : '\\mathrm{' + text + '}';
+            if (sty === 'p' && /^[a-zA-Z]$/.test(text)) return '\\mathrm{' + text + '}';
+            return body;
+        }
+
+        function seq(el, ctx) {
+            const parts = [];
+            for (let c = el && el.firstElementChild; c; c = c.nextElementSibling) parts.push(conv(c, ctx));
+            return join(parts);
+        }
+        const part = function (el, name, ctx) { return seq(child(el, name), ctx); };
+
+        function nameOf(el) {                       // the plain name inside fName / limLow e (lim, max …)
+            const t = el ? el.textContent.trim() : '';
+            return TEX_FUNC.test(t) ? t : '';
+        }
+
+        function conv(el, ctx) {
+            if (!el || el.nodeType !== 1) return '';
+            const n = el.localName;
+            if (/Pr$/.test(n) && n !== 'rPr') return '';
+            switch (n) {
+                case 'r': return run(el, ctx);
+                case 'oMath': case 'e': case 'num': case 'den': case 'sub': case 'sup': case 'deg': case 'lim': case 'fName':
+                    return seq(el, ctx);
+                case 'f': {
+                    const pr = child(el, 'fPr'), type = pr ? val(pr, 'type', 'bar') : 'bar';
+                    const a = part(el, 'num', ctx), b = part(el, 'den', ctx);
+                    if (type === 'noBar') return '\\genfrac{}{}{0pt}{}{' + a + '}{' + b + '}';
+                    if (type === 'lin' || type === 'skw') return grp(a) + '/' + grp(b);
+                    return '\\frac{' + a + '}{' + b + '}';
+                }
+                case 'rad': {
+                    const pr = child(el, 'radPr'), d = part(el, 'deg', ctx);
+                    return (pr && flag(pr, 'degHide')) || !d ? '\\sqrt{' + part(el, 'e', ctx) + '}' : '\\sqrt[' + d + ']{' + part(el, 'e', ctx) + '}';
+                }
+                case 'sSub': return grp(part(el, 'e', ctx)) + '_{' + part(el, 'sub', ctx) + '}';
+                case 'sSup': {
+                    const sup = part(el, 'sup', ctx);
+                    if (/^'+$/.test(sup)) return part(el, 'e', ctx) + sup;          // f′ → f'
+                    return grp(part(el, 'e', ctx)) + '^{' + sup + '}';
+                }
+                case 'sSubSup': return grp(part(el, 'e', ctx)) + '_{' + part(el, 'sub', ctx) + '}^{' + part(el, 'sup', ctx) + '}';
+                case 'sPre': return '{}_{' + part(el, 'sub', ctx) + '}^{' + part(el, 'sup', ctx) + '}' + grp(part(el, 'e', ctx));
+                case 'nary': {
+                    const pr = child(el, 'naryPr');
+                    const chr = pr && child(pr, 'chr') ? val(pr, 'chr', '\u222B') : '\u222B';
+                    const op = TEX_NARY[chr] ? '\\' + TEX_NARY[chr] : chr;
+                    const loc = pr ? val(pr, 'limLoc', '') : '';
+                    let s = op + (loc === 'undOvr' && /int/.test(op) ? '\\limits' : '');
+                    if (!(pr && flag(pr, 'subHide'))) { const x = part(el, 'sub', ctx); if (x) s += '_{' + x + '}'; }
+                    if (!(pr && flag(pr, 'supHide'))) { const x = part(el, 'sup', ctx); if (x) s += '^{' + x + '}'; }
+                    return join([s, part(el, 'e', ctx)]);
+                }
+                case 'd': {
+                    const pr = child(el, 'dPr');
+                    const beg = pr && child(pr, 'begChr') ? val(pr, 'begChr', '(') : '(';
+                    const end = pr && child(pr, 'endChr') ? val(pr, 'endChr', ')') : ')';
+                    const sep = pr && child(pr, 'sepChr') ? val(pr, 'sepChr', '|') : '|';
+                    const es = [];
+                    for (let c = el.firstElementChild; c; c = c.nextElementSibling) if (c.localName === 'e') es.push(c);
+                    // a matrix in brackets, cases in a brace
+                    if (es.length === 1) {
+                        const only = es[0].firstElementChild && !es[0].firstElementChild.nextElementSibling ? es[0].firstElementChild : null;
+                        const env = { '()': 'pmatrix', '[]': 'bmatrix', '{}': 'Bmatrix', '||': 'vmatrix', '\u2016\u2016': 'Vmatrix' }[beg + end];
+                        if (only && only.localName === 'm' && env) return matrix(only, ctx, env);
+                        if (only && only.localName === 'f' && beg + end === '()') {                 // \binom
+                            const fp = child(only, 'fPr');
+                            if (fp && val(fp, 'type', '') === 'noBar') return '\\binom{' + part(only, 'num', ctx) + '}{' + part(only, 'den', ctx) + '}';
+                        }
+                        if (only && (only.localName === 'm' || only.localName === 'eqArr') && beg === '{' && !end) return matrix(only, ctx, 'cases');
+                    }
+                    const f = function (c) { return TEX_FENCE[c] != null ? TEX_FENCE[c] : c; };
+                    return '\\left' + f(beg) + ' ' + es.map(function (e) { return seq(e, ctx); }).join(' \\middle' + f(sep) + ' ') + ' \\right' + f(end);
+                }
+                case 'm': return matrix(el, ctx, 'matrix');
+                case 'eqArr': return matrix(el, ctx, 'aligned');
+                case 'acc': {
+                    const pr = child(el, 'accPr');
+                    const chr = pr && child(pr, 'chr') ? val(pr, 'chr', '\u0302') : '\u0302';
+                    const base = part(el, 'e', ctx);
+                    const a = TEX_ACC[chr] || ['hat', 'widehat'];
+                    return '\\' + (Array.from(base).length > 1 && !/^\\[a-zA-Z]+$/.test(base) ? a[1] : a[0]) + '{' + base + '}';
+                }
+                case 'bar': {
+                    const pr = child(el, 'barPr');
+                    return (pr && val(pr, 'pos', 'bot') === 'top' ? '\\overline{' : '\\underline{') + part(el, 'e', ctx) + '}';
+                }
+                case 'groupChr': {
+                    const pr = child(el, 'groupChrPr');
+                    const chr = pr && child(pr, 'chr') ? val(pr, 'chr', '\u23DF') : '\u23DF';
+                    const pos = pr ? val(pr, 'pos', 'bot') : 'bot';
+                    const e = part(el, 'e', ctx);
+                    if (ARROW.test(chr)) {
+                        const cmd = /[\u2190\u27F5\u21D0]/.test(chr) ? 'xleftarrow' : 'xrightarrow';
+                        return pos === 'top' ? '\\' + cmd + '[' + e + ']{}' : '\\' + cmd + '{' + e + '}';
+                    }
+                    return (/[\u23DE\u23DC\u23B4]/.test(chr) ? '\\overbrace{' : '\\underbrace{') + e + '}';
+                }
+                case 'limLow': case 'limUpp': {
+                    const eEl = child(el, 'e'), limT = part(el, 'lim', ctx), base = seq(eEl, ctx);
+                    const low = n === 'limLow';
+                    if (nameOf(eEl)) return '\\' + nameOf(eEl) + (low ? '_{' : '^{') + limT + '}';
+                    if (/^\\(under|over)brace\{/.test(base) || /^\\x(right|left)arrow/.test(base)) {
+                        if (/^\\x/.test(base) && low) return base.replace(/^\\(x\w+)\{/, '\\$1[' + limT + ']{');
+                        return base + (low ? '_{' : '^{') + limT + '}';
+                    }
+                    return (low ? '\\underset{' : '\\overset{') + limT + '}{' + base + '}';
+                }
+                case 'func': {
+                    const fn = child(el, 'fName'), name = seq(fn, ctx);
+                    return join([name, grp(part(el, 'e', ctx))]).replace(/^(\\[a-zA-Z]+)\{/, '$1 {');
+                }
+                case 'borderBox': {
+                    const pr = child(el, 'borderBoxPr'), e = part(el, 'e', ctx);
+                    if (pr && flag(pr, 'strikeBLTR') && flag(pr, 'strikeTLBR')) return '\\xcancel{' + e + '}';
+                    if (pr && flag(pr, 'strikeBLTR')) return '\\cancel{' + e + '}';
+                    if (pr && flag(pr, 'strikeTLBR')) return '\\bcancel{' + e + '}';
+                    if (pr && flag(pr, 'strikeH')) return '\\sout{' + e + '}';
+                    return '\\boxed{' + e + '}';
+                }
+                case 'box': return part(el, 'e', ctx);
+                case 'phant': return '\\phantom{' + part(el, 'e', ctx) + '}';
+                default:
+                    // Word's HTML form wraps runs in <i>/<span>; and unknown elements: their content
+                    return seq(el, ctx);
+            }
+        }
+
+        function matrix(el, ctx, env) {
+            const rows = [];
+            const c2 = Object.assign({}, ctx, { arr: true });
+            if (el.localName === 'eqArr') {
+                for (let e = el.firstElementChild; e; e = e.nextElementSibling) if (e.localName === 'e') rows.push(seq(e, c2));
+                if (env === 'aligned' && !rows.some(function (r) { return /&/.test(r); })) env = 'gathered';
+            } else {
+                // columns "right left …" (align, aligned): back to aligned
+                const pr = child(el, 'mPr'), mcs = pr && child(pr, 'mcs'), jcs = [];
+                for (let mc = mcs && mcs.firstElementChild; mc; mc = mc.nextElementSibling) {
+                    const mp = child(mc, 'mcPr');
+                    const cnt = parseInt(mp ? val(mp, 'count', '1') : '1', 10) || 1, jc = mp ? val(mp, 'mcJc', 'center') : 'center';
+                    for (let i = 0; i < cnt; i++) jcs.push(jc);
+                }
+                if (env === 'matrix' && jcs.length > 1 && jcs.every(function (j, i) { return j === (i % 2 ? 'left' : 'right'); })) env = 'aligned';
+                for (let r = el.firstElementChild; r; r = r.nextElementSibling) {
+                    if (r.localName !== 'mr') continue;
+                    const cells = [];
+                    for (let e = r.firstElementChild; e; e = e.nextElementSibling) if (e.localName === 'e') cells.push(seq(e, c2));
+                    rows.push(cells.join(' & '));
+                }
+            }
+            return '\\begin{' + env + '} ' + rows.join(' \\\\ ') + ' \\end{' + env + '}';
+        }
+
+        const display = root.localName === 'oMathPara';
+        let tex;
+        if (display) {
+            const maths = [];
+            for (let c = root.firstElementChild; c; c = c.nextElementSibling) if (c.localName === 'oMath') maths.push(conv(c, {}));
+            tex = maths.join(' \\\\ ');
+        } else tex = conv(root, {});
+        tex = tex.replace(/\s+/g, ' ').trim()
+            // an equation number: "\quad (1)" → \tag{1}; a one-cell matrix around the equation → the equation
+            .replace(/(?:\\quad ?)?\\text\{\(\}\\text\{([^{}]+)\}\\text\{\)\}$|(?:\\quad ?)?\\text\{\(([^{}]+)\)\}$/, function (m, a, b) { return '\\tag{' + (a || b) + '}'; })
+            .replace(/^\\begin\{matrix\} ((?:(?!\\\\|&|\\begin\{matrix\}).)*) \\end\{matrix\}(\\tag\{[^}]*\})?$/, '$1$2');
+        return { tex: tex, display: display };
+    }
+
+    /** Raw TeX in place of each placeholder (no engine: a text fallback). */
+    function fallbackText(root) {
+        placeholders(root).forEach(function (el) {
+            const d = el.getAttribute('data-display') === 'block' ? '$$' : '$';
+            el.textContent = d + el.getAttribute('data-tex') + d;
+        });
+    }
+
+    /**
+     * Fill every placeholder under root. mode 'svg' (default) or 'mathml'.
+     * @returns {Promise<{ count: number, errors: number }>}
+     */
+    async function typeset(root, o) {
+        o = o || {};
+        const els = placeholders(root);
+        let count = 0, errors = 0;
+        for (let i = 0; i < els.length; i++) {
+            const el = els[i];
+            const tex = el.getAttribute('data-tex');
+            const display = el.getAttribute('data-display') === 'block';
+            let rec;
+            try {
+                rec = await render(tex, display, o);
+            } catch (e) {
+                const d = display ? '$$' : '$';
+                el.textContent = d + tex + d;
+                el.classList.add('kelk-math-error');
+                el.title = e.message;
+                errors++;
+                continue;
+            }
+            if (rec.error) {                          // the TeX as written, in red; the message on hover
+                const d = display ? '$$' : '$';
+                el.textContent = d + tex + d;
+                el.classList.add('kelk-math-error');
+                el.title = rec.error;
+                errors++;
+                continue;
+            }
+            const useMml = o.mode === 'mathml' && rec.mathmlCore;
+            el.innerHTML = useMml ? rec.mathmlCore : rec.svg;
+            if (o.mode === 'mathml' && !useMml) el.setAttribute('data-math-svg', rec.mathmlCoreIssue);   // drawn as SVG instead
+            else el.removeAttribute('data-math-svg');
+            el.classList.remove('kelk-math-error');
+            el.removeAttribute('title');
+            el.setAttribute('data-width', rec.width.toFixed(2));        // em — table column widths (BidiCore)
+            count++;
+        }
+        return { count: count, errors: errors };
+    }
+
+    /** CSS for placeholders on a page. options.textFont: right-to-left \text in MathML mode. */
+    function css(o) {
+        const font = (o && o.textFont) || options.textFont;
+        return [
+            '.kelk-math{unicode-bidi:isolate;direction:ltr}',
+            '.kelk-math > svg{overflow:visible}',
+            'div.kelk-math,span.kelk-math[data-display="block"]{display:block;text-align:center;margin:.4em 0;padding:.3em 2px;overflow-x:auto;overflow-y:hidden;max-width:100%}',
+            // a display formula wider than its column shrinks to fit (as in Word and the PDF), not clipped
+            'div.kelk-math > svg,span.kelk-math[data-display="block"] > svg{max-width:100%;height:auto}',
+            '.kelk-math math{font-size:1.1em}',
+            '.kelk-math mtext.kelk-rtl{font-family:"' + String(font).replace(/"/g, '') + '",serif}',
+            '.kelk-math-error{color:#c5221f;font-family:ui-monospace,Consolas,monospace;font-size:.9em;cursor:help}'
+        ].join('\n');
+    }
+
+    const MathCore = {
+        version: VERSION,
+        configure: configure,
+        options: function () { return Object.assign({}, options); },
+        markedExtension: markedExtension,
+        hasMath: hasMath,
+        placeholders: placeholders,
+        load: load,
+        render: render,
+        typeset: typeset,
+        toImage: toImage,
+        toImages: toImages,
+        toOmml: toOmml,
+        ommlToWordHtml: ommlToWordHtml,
+        ommlToTex: ommlToTex,
+        fallbackText: fallbackText,
+        css: css,
+        rtlFirst: rtlFirst
+    };
+
+    if (typeof module !== 'undefined' && module.exports) module.exports = MathCore;
+    else if (typeof define === 'function' && define.amd) define([], function () { return MathCore; });
+    else global.MathCore = MathCore;
 })(typeof window !== 'undefined' ? window : this);
 
 

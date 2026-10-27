@@ -1,6 +1,7 @@
 #include "../include/HtmlExporter.h"
 #include "../include/BiDiEngine.h"
 #include "../include/SyntaxHighlighter.h"
+#include "KelkBundle.inc"
 #include <fstream>
 #include <sstream>
 #include <iomanip>
@@ -1457,6 +1458,244 @@ std::wstring TokenizeCodeHtml(const std::wstring& line, const std::wstring& lang
     return ss.str();
 }
 
+const char* s_kelkBarCss = R"CSS(
+.kelk-export-bar {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 14px;
+    background: var(--toolbar-bg, rgba(247, 242, 250, 0.95));
+    border-top: 1px solid var(--toolbar-border, #e0e0e0);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+    font-size: 12px;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
+}
+.kelk-namebox {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--code-bg, #f5f5f5);
+}
+.kelk-namebox input.stem {
+    border: none;
+    outline: none;
+    padding: 3px 8px;
+    font-size: 12px;
+    background: transparent;
+    color: var(--text-primary, #222);
+    width: 130px;
+}
+.kelk-namebox .ext {
+    padding: 3px 6px;
+    font-size: 11px;
+    color: var(--text-secondary, #666);
+    background: var(--code-header-bg, #eee);
+    border-inline-start: 1px solid var(--border-color, #ccc);
+    user-select: none;
+}
+.export-buttons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.export-buttons .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-color, #ccc);
+    background: var(--code-bg, #f9f9f9);
+    color: var(--text-primary, #333);
+    transition: all 0.15s ease;
+}
+.export-buttons .btn:hover {
+    filter: brightness(0.92);
+    border-color: var(--link-color, #005ac1);
+}
+.export-buttons .btn.primary {
+    background: var(--md-sys-color-primary, #005ac1);
+    color: #ffffff;
+    border-color: transparent;
+}
+.export-buttons .btn.soft {
+    background: var(--md-sys-color-secondary-container, #dbe2f9);
+    color: var(--md-sys-color-on-secondary-container, #141b2c);
+    border-color: transparent;
+}
+body.dark .export-buttons .btn {
+    background: var(--md-sys-color-surface-container, #211f26);
+    color: var(--text-primary, #eee);
+    border-color: var(--border-color, #444);
+}
+body.dark .export-buttons .btn:hover {
+    filter: brightness(1.2);
+}
+body.dark .export-buttons .btn.primary {
+    background: var(--md-sys-color-primary, #a8c7fa);
+    color: #041e49;
+}
+body.dark .export-buttons .btn.soft {
+    background: var(--md-sys-color-secondary-container, #3b4858);
+    color: #dbe2f9;
+}
+)CSS";
+
+const char* s_kelkBridgeJs = R"JS(
+// Kelk Client Bridge
+window.kelkDecorate = function() {
+    var c = document.getElementById("content-container");
+    if (!c) return;
+    try {
+        if (typeof BidiView !== 'undefined' && BidiView) {
+            BidiView.apply(c, { dir: window._bidiEnabled ? 'auto' : 'ltr' });
+        }
+    } catch(e) { console.error("BidiView apply:", e); }
+    try {
+        if (typeof PreviewBuilder !== 'undefined' && PreviewBuilder) {
+            var pb = PreviewBuilder.create();
+            pb.decorate(c, { width: c.clientWidth || 800 });
+        }
+    } catch(e) { console.error("PreviewBuilder decorate:", e); }
+};
+
+window.kelkExport = async function(format) {
+    var c = document.getElementById("content-container");
+    if (!c) return;
+    var stemInput = document.getElementById("nb-stem");
+    var stem = (stemInput && stemInput.value) ? stemInput.value.trim() : (document.title || "document");
+    if (!stem) stem = "document";
+    var filename = stem + "." + format;
+
+    try {
+        if (typeof showToast === 'function') showToast("Generating " + format.toUpperCase() + " with Kelk...", "info");
+        if (format === "docx") {
+            if (typeof DocxBuilder === "undefined") throw new Error("DocxBuilder is not loaded");
+            var blob = await DocxBuilder.create()
+                .configure({ direction: window._bidiEnabled ? 'auto' : 'ltr', toc: { levels: 2 } })
+                .addFromHtml(c.innerHTML)
+                .toBlob();
+            sendExportBlob(format, filename, blob);
+        } else if (format === "pdf") {
+            if (typeof PdfBuilder !== "undefined" && typeof window.PdfFonts !== "undefined") {
+                var blob = await PdfBuilder.create()
+                    .registerFonts(window.PdfFonts)
+                    .configure({ fonts: { bidi: 'Vazirmatn', latin: 'Vazirmatn' } })
+                    .addFromHtml(c.innerHTML)
+                    .toBlob();
+                sendExportBlob(format, filename, blob);
+            } else {
+                window.print();
+            }
+        } else if (format === "doc") {
+            if (typeof WordHtmlBuilder === "undefined") throw new Error("WordHtmlBuilder is not loaded");
+            var blob = await WordHtmlBuilder.create()
+                .configure({ direction: window._bidiEnabled ? 'auto' : 'ltr' })
+                .addFromHtml(c.innerHTML)
+                .toBlob();
+            sendExportBlob(format, filename, blob);
+        } else if (format === "html") {
+            if (typeof HtmlBuilder === "undefined") throw new Error("HtmlBuilder is not loaded");
+            var htmlStr = await HtmlBuilder.create()
+                .configure({ direction: window._bidiEnabled ? 'auto' : 'ltr' })
+                .addFromHtml(c.innerHTML)
+                .toHtml();
+            var blob = new Blob([htmlStr], { type: "text/html;charset=utf-8" });
+            sendExportBlob(format, filename, blob);
+        }
+    } catch(err) {
+        if (typeof showToast === 'function') showToast("Export error: " + err.message, "danger");
+        else alert("Export error: " + err.message);
+    }
+};
+
+function sendExportBlob(format, filename, blob) {
+    var reader = new FileReader();
+    reader.onloadend = function() {
+        var base64 = reader.result.split(',')[1];
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage(JSON.stringify({
+                type: "saveExportFile",
+                format: format,
+                filename: filename,
+                data: base64
+            }));
+        } else {
+            downloadBlobLocal(blob, filename);
+        }
+    };
+    reader.readAsDataURL(blob);
+}
+
+function downloadBlobLocal(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 1000);
+}
+
+window.kelkCopy = function() {
+    copyFullHtmlFromMenu();
+};
+
+window.kelkImport = function() {
+    if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage("importDocx");
+    }
+};
+
+window.kelkImportBase64 = async function(ext, base64) {
+    try {
+        var binary = atob(base64);
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        var extLower = ext.toLowerCase();
+        var md = "";
+        if (extLower === ".docx") {
+            if (typeof MarkdownImporter === "undefined") throw new Error("MarkdownImporter not loaded");
+            var imp = MarkdownImporter.create();
+            var r = await imp.fromDocx(bytes.buffer);
+            md = r.markdown;
+        } else if (extLower === ".html" || extLower === ".htm") {
+            var decoder = new TextDecoder("utf-8");
+            var html = decoder.decode(bytes);
+            var imp = MarkdownImporter.create();
+            md = imp.fromHtml(html).markdown;
+        }
+        if (md && window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage(JSON.stringify({
+                type: "importMarkdownResult",
+                text: md
+            }));
+            if (typeof showToast === 'function') showToast("Document imported to Markdown!", "success");
+        }
+    } catch(err) {
+        if (typeof showToast === 'function') showToast("Import error: " + err.message, "danger");
+        else alert("Import error: " + err.message);
+    }
+};
+)JS";
+
 } // namespace
 
 PreviewComponents HtmlExporter::GeneratePreviewComponents(
@@ -1683,7 +1922,11 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
 
     // 100% Local Offline Styles (zero external CDN or web font latency)
     html << "<style>\n" << s_modernPreviewCss << "\n" << s_themeOverrideCss << "\n"
+         << s_kelkCss << "\n" << s_kelkBarCss << "\n"
          << s_beardedVariantsCss << "\n</style>\n";
+
+    // 100% Local Offline Kelk Engines (docx, jspdf, BidiCore, BidiView, Builders, Importer)
+    html << "<script>\n" << s_kelkScripts << "\n" << s_kelkBridgeJs << "\n</script>\n";
 
     std::string bodyClass;
     switch (theme) {
@@ -1836,6 +2079,22 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
     <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></span>
     <span class="menu-label">Print / Save as PDF</span>
   </div>
+  <div class="menu-item" onclick="kelkExport('docx')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+    <span class="menu-label">Export to Word (.docx)</span>
+  </div>
+  <div class="menu-item" onclick="kelkExport('pdf')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+    <span class="menu-label">Export to PDF (.pdf)</span>
+  </div>
+  <div class="menu-item" onclick="kelkExport('doc')">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></span>
+    <span class="menu-label">Export to Word DOC (.doc)</span>
+  </div>
+  <div class="menu-item" onclick="kelkImport()">
+    <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+    <span class="menu-label">Import DOCX/HTML...</span>
+  </div>
   <div class="menu-item" onclick="openSettingsFromMenu()">
     <span class="menu-icon"><svg class="menu-svg" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg></span>
     <span class="menu-label">Settings...</span>
@@ -1862,6 +2121,25 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
     html << R"HTML(    </div>
   </aside>
 </div>
+
+<!-- Kelk Interactive Export Toolbar -->
+<div class="kelk-export-bar" id="kelk-export-bar">
+  <div class="kelk-namebox" title="Document Name">
+    <input class="stem" id="nb-stem" dir="auto" spellcheck="false" value=")HTML";
+    html << WideToUtf8(title);
+    html << R"HTML(">
+    <span class="ext"><span id="nb-ext">.docx</span></span>
+  </div>
+  <div class="export-buttons" role="group" aria-label="Kelk Export">
+    <button class="btn primary" type="button" onclick="kelkExport('docx')" title="Export Word DOCX (with styles and equations)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>DOCX</button>
+    <button class="btn soft" type="button" onclick="kelkExport('pdf')" title="Export PDF (with embedded Vazirmatn font)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF</button>
+    <button class="btn" type="button" onclick="kelkExport('html')" title="Export Standalone HTML"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>HTML</button>
+    <button class="btn ghost" type="button" onclick="kelkExport('doc')" title="Export Word DOC (MHTML)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>DOC</button>
+    <button class="btn ghost" type="button" onclick="kelkCopy()" title="Copy rendered HTML to clipboard"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>
+    <button class="btn ghost" type="button" onclick="kelkImport()" title="Import DOCX/HTML into Notepad++"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Import</button>
+  </div>
+</div>
+
 
 <script>
 window._syncEnabled = )HTML";
@@ -2655,7 +2933,7 @@ function refreshThemePopover() {
     } else if (_themePopView === 'about') {
         if (title) title.textContent = 'About';
         html += themePopRow('< Back', 'backToThemeList()', false, false, '__back');
-        html += themePopRow('NppMarkdownNext v1.0.4.0', '', false, false);
+        html += themePopRow('NppMarkdownNext v1.5.0', '', false, false);
         html += themePopRow('Open project page', "location.href='https://github.com/theneet0/NppMarkdownNext';", false, false);
     } else if (_themePopView === 'bearded') {
         if (title) title.textContent = 'Bearded themes';
@@ -3162,6 +3440,7 @@ document.addEventListener("DOMContentLoaded", function() {
     closeToc();
     renderLocalMath();
     renderLocalMermaid();
+    if (typeof kelkDecorate === "function") { kelkDecorate(); }
     if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage("pageLoaded");
     }
@@ -3192,6 +3471,7 @@ if (window.chrome && window.chrome.webview) {
             }
             renderLocalMath();
             renderLocalMermaid();
+            if (typeof kelkDecorate === "function") { kelkDecorate(); }
             if (typeof doSearch === "function") {
                 var searchInput = document.getElementById("search-input");
                 if (searchInput && searchInput.value) doSearch();

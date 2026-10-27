@@ -56,6 +56,43 @@ void TestBiDiEngine() {
     assert(BiDiEngine::ParseNumber(L"۴۵۶", 0, parsedNum, consumed));
     assert(parsedNum == 456 && consumed == 3);
 
+    // 7. Kelk Unicode script classification (RTL & LTR)
+    assert(BiDiEngine::IsRTLChar(0x05D0)); // Hebrew Alef
+    assert(BiDiEngine::IsRTLChar(0x0710)); // Syriac
+    assert(BiDiEngine::IsRTLChar(0x0780)); // Thaana
+    assert(BiDiEngine::IsRTLChar(0x0800)); // Samaritan
+    assert(BiDiEngine::IsRTLChar(0x0840)); // Mandaic
+    assert(BiDiEngine::IsLTRChar(L'A'));   // Latin
+    assert(BiDiEngine::IsLTRChar(0x0391)); // Greek Alpha
+    assert(BiDiEngine::IsLTRChar(0x0410)); // Cyrillic A
+    assert(BiDiEngine::IsLTRChar(0x0531)); // Armenian
+    assert(BiDiEngine::IsLTRChar(0x10A0)); // Georgian
+    assert(!BiDiEngine::IsLTRChar(0x0627)); // Arabic is not LTR
+    assert(!BiDiEngine::IsRTLChar(L'Z'));   // Latin is not RTL
+
+    // 8. Base64 Encode / Decode round-trip (Kelk file transfers)
+    assert(BiDiEngine::Base64Encode(std::vector<uint8_t>{}).empty());
+    assert(BiDiEngine::Base64Decode("").empty());
+
+    std::vector<uint8_t> data1 = {'A'};
+    assert(BiDiEngine::Base64Encode(data1) == "QQ==");
+    assert(BiDiEngine::Base64Decode("QQ==") == data1);
+
+    std::vector<uint8_t> data2 = {'A', 'B'};
+    assert(BiDiEngine::Base64Encode(data2) == "QUI=");
+    assert(BiDiEngine::Base64Decode("QUI=") == data2);
+
+    std::vector<uint8_t> data3 = {'A', 'B', 'C'};
+    assert(BiDiEngine::Base64Encode(data3) == "QUJD");
+    assert(BiDiEngine::Base64Decode("QUJD") == data3);
+
+    std::vector<uint8_t> binData;
+    for (int i = 0; i < 256; ++i) binData.push_back(static_cast<uint8_t>(i));
+    std::string b64 = BiDiEngine::Base64Encode(binData);
+    assert(!b64.empty());
+    std::vector<uint8_t> decodedData = BiDiEngine::Base64Decode(b64);
+    assert(decodedData == binData);
+
     std::cout << "  -> BiDiEngine PASS" << std::endl;
 }
 
@@ -315,9 +352,22 @@ void TestHtmlExporter() {
     assert(previewHtml.find("zoomOutFromMenu") != std::string::npos);
     assert(previewHtml.find("zoomResetFromMenu") != std::string::npos);
     assert(previewHtml.find("saveAsHtmlFromMenu") != std::string::npos);
-    assert(previewHtml.find("toggleBiDiFromMenu") != std::string::npos);
     assert(previewHtml.find("min read") == std::string::npos);
     assert(previewHtml.find("menu-stats") == std::string::npos);
+
+    // 8. Kelk Engines Integration & Interactive Toolbar
+    assert(previewHtml.find("kelk-export-bar") != std::string::npos);
+    assert(previewHtml.find("kelkExport('docx')") != std::string::npos);
+    assert(previewHtml.find("kelkExport('pdf')") != std::string::npos);
+    assert(previewHtml.find("kelkExport('doc')") != std::string::npos);
+    assert(previewHtml.find("kelkExport('html')") != std::string::npos);
+    assert(previewHtml.find("kelkImport()") != std::string::npos);
+    assert(previewHtml.find("kelkCopy()") != std::string::npos);
+    assert(previewHtml.find("kelkDecorate") != std::string::npos);
+    assert(previewHtml.find("Export to Word (.docx)") != std::string::npos);
+    assert(previewHtml.find("Export to PDF (.pdf)") != std::string::npos);
+    assert(previewHtml.find("Export to Word DOC (.doc)") != std::string::npos);
+    assert(previewHtml.find("Import DOCX/HTML...") != std::string::npos);
 
     std::cout << "  -> HtmlExporter PASS" << std::endl;
 }

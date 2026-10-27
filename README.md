@@ -1,19 +1,30 @@
-# NppMarkdownNext
+# NppMarkdownNext (Kelk Edition)
 
-NppMarkdownNext is a native Markdown live preview and export plugin for Notepad++. It embeds the Microsoft Edge WebView2 (Chromium) runtime for responsive HTML5/CSS preview with LaTeX math and diagram rendering, and includes a fallback Direct2D/DirectWrite engine for machines without WebView2 installed.
+NppMarkdownNext is a native Markdown live preview, multi-format export, and document import plugin for Notepad++. Refactored with the modern [Kelk](https://github.com/mohsen-1984/kelk) engine, it embeds Microsoft Edge WebView2 (Chromium) alongside high-fidelity offline builders to generate Word DOCX, PDF, MHTML DOC, and HTML documents directly from your Markdown notes, while offering a Direct2D/DirectWrite fallback engine for environments without WebView2.
 
-## Features
+## Key Features
 
+- **Kelk Multi-Engine Document Export**:
+  - **Microsoft Word (.docx)**: Compiles Markdown into native OpenXML Word documents with styled headings, blockquotes, code cards, GFM tables, and MathML equations.
+  - **PDF (.pdf)**: Generates standalone PDF documents with the embedded **Vazirmatn** font for crisp Latin, Arabic, and Persian typography.
+  - **Word 97-2003 (.doc)**: Generates self-contained MHTML Word documents formatted for instant editing in Microsoft Office.
+  - **Clean HTML (.html)**: Produces isolated offline HTML files with embedded styling.
+  - **Clipboard Copy**: Copies rendered HTML fragments directly to the system clipboard (`CF_HTML`) for seamless paste into email clients and word processors.
+- **Kelk Document Importer**:
+  - Imports Microsoft Word (`.docx`) and web documents (`.html`, `.htm`) directly into Notepad++, converting them into clean GitHub Flavored Markdown (GFM) via Kelk's `MarkdownImporter`.
+- **Advanced Kelk BiDiCore & BidiView**:
+  - Full Unicode script classification supporting Arabic, Persian, Urdu, Hebrew, Syriac, Thaana, N'Ko, Samaritan, Mandaic, Latin, Greek, Cyrillic, Armenian, and Georgian.
+  - Dynamic paragraph-level direction detection with Persian character normalization (Kaf/Yeh) and isolated bidirectional spans.
+- **Interactive Kelk Export Toolbar**:
+  - Floating export bar at the bottom of the preview panel with editable document stem name and 1-click export actions (`DOCX`, `PDF`, `HTML`, `DOC`, `Copy`, `Import`).
 - **Live Preview with Scintilla Synchronization**: Real-time rendering with debounced document parsing. Scrolling or moving the caret in Notepad++ automatically tracks the corresponding section in the preview, and clicking a heading or double-clicking any block jumps the editor caret to that source line.
 - **Bi-Directional Task Lists**: Interactive GFM task lists (`- [ ]` and `- [x]`). Clicking a checkbox in the preview toggles the bracket syntax directly in the Notepad++ buffer via Scintilla message dispatch.
-- **BiDi and RTL Support**: Autonomous paragraph-level direction detection (RTL/LTR) tailored for Persian, Arabic, and mixed technical text. Persian glyph normalization (Kaf/Yeh) and digit conversion are applied where appropriate. Code blocks maintain strict LTR or RTL isolation per line to prevent punctuation flipping.
-- **LaTeX Math Support**: Inline (`$...$`) and display (`$$...$$`) math parsed into KaTeX-compatible markup and rendered offline. Parser heuristics prevent false positives on ordinary currency values (e.g. `$50 and $20`).
+- **LaTeX / KaTeX Math**: Inline (`$...$`) and display (`$$...$$`) math parsed into KaTeX-compatible markup and rendered offline.
 - **Diagrams & Flowcharts**: Embedded offline rendering for Mermaid-compatible flowchart definitions (` ```mermaid `) using clean vector SVGs.
 - **Syntax Highlighting**: Built-in offline tokenization for common programming languages (C++, C, Python, JavaScript, TypeScript, Bash, Rust, Go, HTML, CSS, JSON, SQL, etc.).
-- **Theme Matching**: Synchronizes automatically with Notepad++ Dark Mode (`NPPM_ISDARKMODEENABLED`), with an optional manual toggle in the context menu.
+- **Theme Matching**: Synchronizes automatically with Notepad++ Dark Mode (`NPPM_ISDARKMODEENABLED`), with Bearded theme variations and custom theme popover.
 - **Outline & Search**: Slide-out Table of Contents drawer and in-page incremental search (`Ctrl+F`).
-- **Export Options**: Export the current document as a standalone offline HTML file, or copy rendered HTML fragments directly to the system clipboard (`CF_HTML`).
-- **Settings Menu**: A gear menu in the preview toolbar — and **Plugins > NppMarkdownNext > Settings...** — opens a single popover with theme selection, zoom presets (80/100/125/150%), dark mode override, caret sync, outline, smart BiDi, HTML copy/export and an About page. Every change is written to the INI file immediately.
+- **100% Offline & Private**: Zero external CDN requests or remote web font dependencies; all scripts, fonts, and stylesheets are embedded directly in the binary.
 
 ## Requirements
 

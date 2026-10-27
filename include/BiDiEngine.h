@@ -30,6 +30,11 @@ public:
     static std::wstring FixMixedPunctuation(const std::wstring& text);
     static std::wstring NormalizePersianGlyphs(const std::wstring& input);
 
+    // Base64 helpers for IPC and document exports
+    static std::string Base64Encode(const std::vector<uint8_t>& data);
+    static std::string Base64Encode(const uint8_t* data, size_t length);
+    static std::vector<uint8_t> Base64Decode(std::string_view base64Str);
+
     // UTF-8 <-> UTF-16 conversions
     static std::wstring Utf8ToWide(std::string_view utf8Str);
     static std::string WideToUtf8(std::wstring_view wideStr);

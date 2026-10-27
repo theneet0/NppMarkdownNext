@@ -20,6 +20,12 @@ public:
     void ToggleOutline();
     void CopyRenderedHtml();
     void SaveAsHtml();
+    void ExportDocx();
+    void ExportPdf();
+    void ExportDoc();
+    void ImportDocx();
+    void OnSaveExportFile(const std::string& format, const std::string& filename, const std::string& base64Data);
+    void OnImportMarkdownReceived(const std::string& markdownUtf8);
     void ZoomIn();
     void ZoomOut();
     void ZoomReset();

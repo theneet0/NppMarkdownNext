@@ -5,20 +5,31 @@
 #include <cmath>
 
 bool BiDiEngine::IsRTLChar(wchar_t ch) noexcept {
-    // Arabic, Persian, Urdu, Hebrew Unicode blocks
+    // Kelk RTL Unicode specifications (Arabic, Persian, Urdu, Hebrew, Syriac, Thaana, Mandaic):
     if (ch >= 0x0600 && ch <= 0x06FF) return true; // Arabic & Persian
     if (ch >= 0x0750 && ch <= 0x077F) return true; // Arabic Supplement
+    if (ch >= 0x0870 && ch <= 0x08E2) return true; // Arabic Extended-B
     if (ch >= 0x08A0 && ch <= 0x08FF) return true; // Arabic Extended-A
     if (ch >= 0xFB50 && ch <= 0xFDFF) return true; // Arabic Presentation Forms-A
     if (ch >= 0xFE70 && ch <= 0xFEFF) return true; // Arabic Presentation Forms-B
     if (ch >= 0x0590 && ch <= 0x05FF) return true; // Hebrew
+    if (ch >= 0xFB1D && ch <= 0xFB4F) return true; // Hebrew Presentation Forms
+    if (ch >= 0x0710 && ch <= 0x074F) return true; // Syriac
+    if (ch >= 0x0780 && ch <= 0x07EA) return true; // Thaana & N'Ko
+    if (ch >= 0x0800 && ch <= 0x0858) return true; // Samaritan & Mandaic
     return false;
 }
 
 bool BiDiEngine::IsLTRChar(wchar_t ch) noexcept {
+    // Kelk Latin/Greek/Cyrillic/Armenian/Georgian Unicode specifications:
     if ((ch >= L'a' && ch <= L'z') || (ch >= L'A' && ch <= L'Z')) return true;
-    if (ch >= 0x00C0 && ch <= 0x024F) return true; // Latin Supplement & Extended
-    if (ch >= 0x0370 && ch <= 0x052F) return true; // Greek & Cyrillic
+    if (ch >= 0x00C0 && ch <= 0x02AF && ch != 0x00D7 && ch != 0x00F7) return true; // Latin Supplement & Extended (excluding × and ÷)
+    if (ch >= 0x1E00 && ch <= 0x1EFF) return true; // Latin Extended Additional
+    if (ch >= 0x0370 && ch <= 0x03FF) return true; // Greek
+    if (ch >= 0x1F00 && ch <= 0x1FFF) return true; // Greek Extended
+    if (ch >= 0x0400 && ch <= 0x052F) return true; // Cyrillic
+    if (ch >= 0x0531 && ch <= 0x0587) return true; // Armenian
+    if (ch >= 0x10A0 && ch <= 0x10FF) return true; // Georgian
     return false;
 }
 
@@ -184,3 +195,81 @@ std::string BiDiEngine::WideToUtf8(std::wstring_view wideStr) {
     WideCharToMultiByte(CP_UTF8, 0, wideStr.data(), static_cast<int>(wideStr.size()), &result[0], count, nullptr, nullptr);
     return result;
 }
+
+namespace {
+const char s_b64chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+}
+
+std::string BiDiEngine::Base64Encode(const uint8_t* data, size_t length) {
+    if (!data || length == 0) return "";
+    std::string result;
+    result.reserve(((length + 2) / 3) * 4);
+
+    for (size_t i = 0; i < length; i += 3) {
+        uint32_t octet_a = data[i];
+        uint32_t octet_b = (i + 1 < length) ? data[i + 1] : 0;
+        uint32_t octet_c = (i + 2 < length) ? data[i + 2] : 0;
+
+        uint32_t triple = (octet_a << 16) | (octet_b << 8) | octet_c;
+
+        result.push_back(s_b64chars[(triple >> 18) & 0x3F]);
+        result.push_back(s_b64chars[(triple >> 12) & 0x3F]);
+
+        if (i + 1 < length) {
+            result.push_back(s_b64chars[(triple >> 6) & 0x3F]);
+        } else {
+            result.push_back('=');
+        }
+
+        if (i + 2 < length) {
+            result.push_back(s_b64chars[triple & 0x3F]);
+        } else {
+            result.push_back('=');
+        }
+    }
+    return result;
+}
+
+std::string BiDiEngine::Base64Encode(const std::vector<uint8_t>& data) {
+    return Base64Encode(data.data(), data.size());
+}
+
+std::vector<uint8_t> BiDiEngine::Base64Decode(std::string_view base64Str) {
+    std::vector<uint8_t> result;
+    if (base64Str.empty()) return result;
+
+    static const int b64index[256] = {
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,62,-1,-1,-1,63,
+        52,53,54,55,56,57,58,59,60,61,-1,-1,-1, 0,-1,-1,
+        -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,
+        15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,
+        -1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,
+        41,42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+    };
+
+    uint32_t val = 0;
+    int valb = -8;
+    for (char c : base64Str) {
+        if (c == '=') break;
+        int idx = b64index[static_cast<uint8_t>(c)];
+        if (idx == -1) continue;
+        val = (val << 6) | idx;
+        valb += 6;
+        if (valb >= 0) {
+            result.push_back(static_cast<uint8_t>((val >> valb) & 0xFF));
+            valb -= 8;
+        }
+    }
+    return result;
+}
+

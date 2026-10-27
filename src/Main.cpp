@@ -108,6 +108,22 @@ void CommandSettings() {
     NppMarkdownNext::Instance().OpenSettings();
 }
 
+void CommandExportDocx() {
+    NppMarkdownNext::Instance().ExportDocx();
+}
+
+void CommandExportPdf() {
+    NppMarkdownNext::Instance().ExportPdf();
+}
+
+void CommandExportDoc() {
+    NppMarkdownNext::Instance().ExportDoc();
+}
+
+void CommandImportDocx() {
+    NppMarkdownNext::Instance().ImportDocx();
+}
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
     switch (fdwReason) {
         case DLL_PROCESS_ATTACH:
@@ -312,6 +328,34 @@ __declspec(dllexport) FuncItem * getFuncsArray(int *nbF) {
     g_funcItems[CMD_SETTINGS]._cmdID = CMD_SETTINGS;
     g_funcItems[CMD_SETTINGS]._init2Check = false;
     g_funcItems[CMD_SETTINGS]._pShKey = nullptr;
+
+    // 25: Export to Word (.docx)
+    wcscpy_s(g_funcItems[CMD_EXPORT_DOCX]._itemName, L"Export to Word (.docx)");
+    g_funcItems[CMD_EXPORT_DOCX]._pFunc = CommandExportDocx;
+    g_funcItems[CMD_EXPORT_DOCX]._cmdID = CMD_EXPORT_DOCX;
+    g_funcItems[CMD_EXPORT_DOCX]._init2Check = false;
+    g_funcItems[CMD_EXPORT_DOCX]._pShKey = nullptr;
+
+    // 26: Export to PDF (.pdf)
+    wcscpy_s(g_funcItems[CMD_EXPORT_PDF]._itemName, L"Export to PDF (.pdf)");
+    g_funcItems[CMD_EXPORT_PDF]._pFunc = CommandExportPdf;
+    g_funcItems[CMD_EXPORT_PDF]._cmdID = CMD_EXPORT_PDF;
+    g_funcItems[CMD_EXPORT_PDF]._init2Check = false;
+    g_funcItems[CMD_EXPORT_PDF]._pShKey = nullptr;
+
+    // 27: Export to Word DOC (.doc)
+    wcscpy_s(g_funcItems[CMD_EXPORT_DOC]._itemName, L"Export to Word DOC (.doc)");
+    g_funcItems[CMD_EXPORT_DOC]._pFunc = CommandExportDoc;
+    g_funcItems[CMD_EXPORT_DOC]._cmdID = CMD_EXPORT_DOC;
+    g_funcItems[CMD_EXPORT_DOC]._init2Check = false;
+    g_funcItems[CMD_EXPORT_DOC]._pShKey = nullptr;
+
+    // 28: Import DOCX/HTML to Markdown
+    wcscpy_s(g_funcItems[CMD_IMPORT_DOCX]._itemName, L"Import DOCX/HTML to Markdown...");
+    g_funcItems[CMD_IMPORT_DOCX]._pFunc = CommandImportDocx;
+    g_funcItems[CMD_IMPORT_DOCX]._cmdID = CMD_IMPORT_DOCX;
+    g_funcItems[CMD_IMPORT_DOCX]._init2Check = false;
+    g_funcItems[CMD_IMPORT_DOCX]._pShKey = nullptr;
 
     return g_funcItems;
 }

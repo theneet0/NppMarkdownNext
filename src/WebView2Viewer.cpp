@@ -636,6 +636,104 @@ void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
         }
         return;
     }
+
+    if (message == L"exportDocx") {
+        if (m_exportDocxCallback) m_exportDocxCallback();
+        return;
+    }
+    if (message == L"exportPdf") {
+        if (m_exportPdfCallback) m_exportPdfCallback();
+        return;
+    }
+    if (message == L"exportDoc") {
+        if (m_exportDocCallback) m_exportDocCallback();
+        return;
+    }
+    if (message == L"importDocx") {
+        if (m_triggerImportCallback) m_triggerImportCallback();
+        return;
+    }
+
+    const std::wstring prefixSaveExport = L"saveExportFile:";
+    if (message.find(prefixSaveExport) == 0) {
+        std::string raw = BiDiEngine::WideToUtf8(message.substr(prefixSaveExport.length()));
+        size_t p1 = raw.find(':');
+        if (p1 != std::string::npos) {
+            std::string fmt = raw.substr(0, p1);
+            size_t p2 = raw.find(':', p1 + 1);
+            if (p2 != std::string::npos) {
+                std::string fname = raw.substr(p1 + 1, p2 - p1 - 1);
+                std::string b64 = raw.substr(p2 + 1);
+                if (m_saveExportFileCallback) {
+                    m_saveExportFileCallback(fmt, fname, b64);
+                }
+            }
+        }
+        return;
+    }
+
+    const std::wstring prefixImportResult = L"importMarkdownResult:";
+    if (message.find(prefixImportResult) == 0) {
+        std::string md = BiDiEngine::WideToUtf8(message.substr(prefixImportResult.length()));
+        if (m_importMarkdownCallback) {
+            m_importMarkdownCallback(md);
+        }
+        return;
+    }
+
+    // Check for JSON-formatted Kelk messages
+    if (!message.empty() && message.front() == L'{') {
+        std::string jsonStr = BiDiEngine::WideToUtf8(message);
+        if (jsonStr.find("\"saveExportFile\"") != std::string::npos) {
+            auto extractField = [&](const std::string& key) -> std::string {
+                size_t p = jsonStr.find("\"" + key + "\":");
+                if (p == std::string::npos) return "";
+                p = jsonStr.find("\"", p + key.length() + 2);
+                if (p == std::string::npos) return "";
+                size_t endP = jsonStr.find("\"", p + 1);
+                if (endP == std::string::npos) return "";
+                return jsonStr.substr(p + 1, endP - p - 1);
+            };
+            std::string fmt = extractField("format");
+            std::string fname = extractField("filename");
+            std::string b64 = extractField("data");
+            if (m_saveExportFileCallback) {
+                m_saveExportFileCallback(fmt, fname, b64);
+            }
+            return;
+        }
+        if (jsonStr.find("\"importMarkdownResult\"") != std::string::npos) {
+            size_t p = jsonStr.find("\"text\":");
+            if (p != std::string::npos) {
+                p = jsonStr.find("\"", p + 6);
+                if (p != std::string::npos) {
+                    size_t endP = jsonStr.rfind("\"");
+                    if (endP != std::string::npos && endP > p) {
+                        std::string rawMd = jsonStr.substr(p + 1, endP - p - 1);
+                        std::string unescaped;
+                        unescaped.reserve(rawMd.size());
+                        for (size_t i = 0; i < rawMd.size(); i++) {
+                            if (rawMd[i] == '\\' && i + 1 < rawMd.size()) {
+                                char next = rawMd[i + 1];
+                                if (next == 'n') { unescaped.push_back('\n'); i++; }
+                                else if (next == 'r') { unescaped.push_back('\r'); i++; }
+                                else if (next == 't') { unescaped.push_back('\t'); i++; }
+                                else if (next == '"') { unescaped.push_back('"'); i++; }
+                                else if (next == '\\') { unescaped.push_back('\\'); i++; }
+                                else { unescaped.push_back(next); i++; }
+                            } else {
+                                unescaped.push_back(rawMd[i]);
+                            }
+                        }
+                        if (m_importMarkdownCallback) {
+                            m_importMarkdownCallback(unescaped);
+                        }
+                    }
+                }
+            }
+            return;
+        }
+    }
 }
 
 void WebView2Viewer::NotifyInitFailed() {

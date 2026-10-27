@@ -29,7 +29,11 @@
 #define CMD_THEME_BEARDED              22
 #define CMD_THEME_BEARDED_GOLD         23
 #define CMD_SETTINGS                   24
-#define NB_PLUGIN_COMMANDS             25
+#define CMD_EXPORT_DOCX                25
+#define CMD_EXPORT_PDF                 26
+#define CMD_EXPORT_DOC                 27
+#define CMD_IMPORT_DOCX                28
+#define NB_PLUGIN_COMMANDS             29
 
 // Timer IDs
 #define IDT_RENDER_DEBOUNCE            3001

@@ -31,6 +31,12 @@ public:
     using PageReadyCallback = std::function<void()>;
     using InitFailedCallback = std::function<void()>;
     using InitCompletedCallback = std::function<void()>;
+    using SaveExportFileCallback = std::function<void(const std::string& format, const std::string& filename, const std::string& base64Data)>;
+    using ImportMarkdownCallback = std::function<void(const std::string& markdownUtf8)>;
+    using TriggerImportCallback = std::function<void()>;
+    using ExportDocxCallback = std::function<void()>;
+    using ExportPdfCallback = std::function<void()>;
+    using ExportDocCallback = std::function<void()>;
 
     WebView2Viewer();
     ~WebView2Viewer();
@@ -73,6 +79,12 @@ public:
     void SetZoomResetCallback(ZoomResetCallback cb) { m_zoomResetCallback = cb; }
     void SetZoomChangeCallback(ZoomChangeCallback cb) { m_zoomChangeCallback = cb; }
     void SetSaveAsHtmlCallback(SaveAsHtmlCallback cb) { m_saveAsHtmlCallback = cb; }
+    void SetSaveExportFileCallback(SaveExportFileCallback cb) { m_saveExportFileCallback = cb; }
+    void SetImportMarkdownCallback(ImportMarkdownCallback cb) { m_importMarkdownCallback = cb; }
+    void SetTriggerImportCallback(TriggerImportCallback cb) { m_triggerImportCallback = cb; }
+    void SetExportDocxCallback(ExportDocxCallback cb) { m_exportDocxCallback = cb; }
+    void SetExportPdfCallback(ExportPdfCallback cb) { m_exportPdfCallback = cb; }
+    void SetExportDocCallback(ExportDocCallback cb) { m_exportDocCallback = cb; }
     void SetBiDiCallback(BiDiCallback cb) { m_bidiCallback = cb; }
     void SetAutoShowCallback(AutoShowCallback cb) { m_autoShowCallback = cb; }
     void SetCopyHtmlCallback(CopyHtmlCallback cb) { m_copyHtmlCallback = cb; }
@@ -120,6 +132,12 @@ private:
     ZoomResetCallback m_zoomResetCallback;
     ZoomChangeCallback m_zoomChangeCallback;
     SaveAsHtmlCallback m_saveAsHtmlCallback;
+    SaveExportFileCallback m_saveExportFileCallback;
+    ImportMarkdownCallback m_importMarkdownCallback;
+    TriggerImportCallback m_triggerImportCallback;
+    ExportDocxCallback m_exportDocxCallback;
+    ExportPdfCallback m_exportPdfCallback;
+    ExportDocCallback m_exportDocCallback;
     BiDiCallback m_bidiCallback;
     AutoShowCallback m_autoShowCallback;
     CopyHtmlCallback m_copyHtmlCallback;

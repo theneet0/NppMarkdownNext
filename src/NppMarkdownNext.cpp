@@ -7,6 +7,8 @@
 #include <shlwapi.h>
 #include <commdlg.h>
 #include <algorithm>
+#include <fstream>
+#include <sstream>
 
 namespace {
 const wchar_t* s_panelClassName = L"NppMarkdownNextWindowClass";
@@ -287,6 +289,24 @@ bool NppMarkdownNext::CreatePanelWindow() {
         m_webViewViewer.SetSaveAsHtmlCallback([this]() {
             SaveAsHtml();
         });
+        m_webViewViewer.SetSaveExportFileCallback([this](const std::string& fmt, const std::string& name, const std::string& b64) {
+            OnSaveExportFile(fmt, name, b64);
+        });
+        m_webViewViewer.SetImportMarkdownCallback([this](const std::string& md) {
+            OnImportMarkdownReceived(md);
+        });
+        m_webViewViewer.SetTriggerImportCallback([this]() {
+            ImportDocx();
+        });
+        m_webViewViewer.SetExportDocxCallback([this]() {
+            ExportDocx();
+        });
+        m_webViewViewer.SetExportPdfCallback([this]() {
+            ExportPdf();
+        });
+        m_webViewViewer.SetExportDocCallback([this]() {
+            ExportDoc();
+        });
         m_webViewViewer.SetBiDiCallback([this]() {
             ToggleBiDi();
         });
@@ -487,6 +507,143 @@ void NppMarkdownNext::SaveAsHtml() {
     }
 }
 
+void NppMarkdownNext::ExportDocx() {
+    if (m_useWebView2 && m_webViewViewer.IsPageReady()) {
+        m_webViewViewer.ExecuteScript(L"if (typeof window.kelkExport === 'function') window.kelkExport('docx');");
+    } else {
+        MessageBoxW(m_nppData._nppHandle, L"Preview engine is initializing. Please try again in a moment.", L"Kelk Word DOCX Export", MB_OK | MB_ICONINFORMATION);
+    }
+}
+
+void NppMarkdownNext::ExportPdf() {
+    if (m_useWebView2 && m_webViewViewer.IsPageReady()) {
+        m_webViewViewer.ExecuteScript(L"if (typeof window.kelkExport === 'function') window.kelkExport('pdf');");
+    } else {
+        MessageBoxW(m_nppData._nppHandle, L"Preview engine is initializing. Please try again in a moment.", L"Kelk PDF Export", MB_OK | MB_ICONINFORMATION);
+    }
+}
+
+void NppMarkdownNext::ExportDoc() {
+    if (m_useWebView2 && m_webViewViewer.IsPageReady()) {
+        m_webViewViewer.ExecuteScript(L"if (typeof window.kelkExport === 'function') window.kelkExport('doc');");
+    } else {
+        MessageBoxW(m_nppData._nppHandle, L"Preview engine is initializing. Please try again in a moment.", L"Kelk Word DOC Export", MB_OK | MB_ICONINFORMATION);
+    }
+}
+
+void NppMarkdownNext::ImportDocx() {
+    wchar_t openPath[MAX_PATH] = { 0 };
+    OPENFILENAMEW ofn = { sizeof(OPENFILENAMEW) };
+    ofn.hwndOwner = m_hPanel ? m_hPanel : m_nppData._nppHandle;
+    ofn.lpstrFilter = L"Word & HTML Documents (*.docx;*.html;*.htm)\0*.docx;*.html;*.htm\0All Files (*.*)\0*.*\0";
+    ofn.lpstrFile = openPath;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+
+    if (GetOpenFileNameW(&ofn)) {
+        std::ifstream in(openPath, std::ios::binary);
+        if (!in.is_open()) {
+            MessageBoxW(m_nppData._nppHandle, L"Failed to open selected file.", L"Import Error", MB_OK | MB_ICONERROR);
+            return;
+        }
+        in.seekg(0, std::ios::end);
+        std::streamsize fileSize = in.tellg();
+        in.seekg(0, std::ios::beg);
+
+        if (fileSize <= 0) return;
+
+        std::vector<uint8_t> buffer(static_cast<size_t>(fileSize));
+        in.read(reinterpret_cast<char*>(buffer.data()), fileSize);
+        in.close();
+
+        if (buffer.empty()) return;
+
+        std::string b64 = BiDiEngine::Base64Encode(buffer);
+        std::wstring pathStr(openPath);
+        std::wstring ext = PathFindExtensionW(openPath);
+        std::string extUtf8 = BiDiEngine::WideToUtf8(ext);
+
+        if (m_useWebView2 && m_webViewViewer.IsPageReady()) {
+            std::wstringstream script;
+            script << L"if (typeof window.kelkImportBase64 === 'function') { window.kelkImportBase64('"
+                   << BiDiEngine::Utf8ToWide(extUtf8) << L"', '"
+                   << BiDiEngine::Utf8ToWide(b64) << L"'); }";
+            m_webViewViewer.ExecuteScript(script.str());
+        } else {
+            MessageBoxW(m_nppData._nppHandle, L"Preview engine is initializing. Please try again in a moment.", L"Import Document", MB_OK | MB_ICONINFORMATION);
+        }
+    }
+}
+
+void NppMarkdownNext::OnSaveExportFile(const std::string& format, const std::string& filename, const std::string& base64Data) {
+    if (base64Data.empty()) return;
+    std::vector<uint8_t> fileBytes = BiDiEngine::Base64Decode(base64Data);
+    if (fileBytes.empty()) return;
+
+    std::wstring defaultName = BiDiEngine::Utf8ToWide(filename);
+    if (defaultName.empty()) {
+        defaultName = L"document." + BiDiEngine::Utf8ToWide(format);
+    }
+
+    wchar_t savePath[MAX_PATH] = { 0 };
+    wcscpy_s(savePath, defaultName.c_str());
+
+    OPENFILENAMEW ofn = { sizeof(OPENFILENAMEW) };
+    ofn.hwndOwner = m_hPanel ? m_hPanel : m_nppData._nppHandle;
+
+    std::wstring filter;
+    std::wstring defExt = BiDiEngine::Utf8ToWide(format);
+    if (format == "docx") {
+        filter = L"Word Document (*.docx)\0*.docx\0All Files (*.*)\0*.*\0";
+    } else if (format == "pdf") {
+        filter = L"PDF Document (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0";
+    } else if (format == "doc") {
+        filter = L"Word 97-2003 Document (*.doc)\0*.doc\0All Files (*.*)\0*.*\0";
+    } else if (format == "html") {
+        filter = L"HTML Document (*.html;*.htm)\0*.html;*.htm\0All Files (*.*)\0*.*\0";
+    } else {
+        filter = L"All Files (*.*)\0*.*\0";
+    }
+
+    ofn.lpstrFilter = filter.c_str();
+    ofn.lpstrFile = savePath;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+    ofn.lpstrDefExt = defExt.c_str();
+
+    if (GetSaveFileNameW(&ofn)) {
+        std::ofstream out(savePath, std::ios::binary);
+        if (out.is_open()) {
+            out.write(reinterpret_cast<const char*>(fileBytes.data()), fileBytes.size());
+            out.close();
+            std::wstring msg = L"Successfully exported to:\n" + std::wstring(savePath);
+            MessageBoxW(m_nppData._nppHandle, msg.c_str(), L"Kelk Export Complete", MB_OK | MB_ICONINFORMATION);
+        } else {
+            MessageBoxW(m_nppData._nppHandle, L"Failed to write file to disk.", L"Export Error", MB_OK | MB_ICONERROR);
+        }
+    }
+}
+
+void NppMarkdownNext::OnImportMarkdownReceived(const std::string& markdownUtf8) {
+    HWND hSci = GetCurrentScintilla();
+    if (!hSci || markdownUtf8.empty()) return;
+
+    int choice = MessageBoxW(
+        m_nppData._nppHandle,
+        L"Word/HTML document successfully converted to Markdown!\n\nDo you want to replace the current editor buffer?\nClick 'Yes' to replace all, or 'No' to insert at cursor position.",
+        L"Kelk Markdown Importer",
+        MB_YESNOCANCEL | MB_ICONQUESTION
+    );
+
+    if (choice == IDYES) {
+        SendMessage(hSci, SCI_SETTEXT, 0, (LPARAM)markdownUtf8.c_str());
+        ExecuteRender();
+    } else if (choice == IDNO) {
+        SendMessage(hSci, SCI_REPLACESEL, 0, (LPARAM)markdownUtf8.c_str());
+        ExecuteRender();
+    }
+}
+
 void NppMarkdownNext::ZoomIn() {
     m_config.zoomLevel += 0.1f;
     if (m_config.zoomLevel > 3.0f) m_config.zoomLevel = 3.0f;
@@ -609,19 +766,21 @@ void NppMarkdownNext::SelectTheme(PreviewTheme theme, const std::wstring& bearde
 
 void NppMarkdownNext::ShowAbout() {
     const wchar_t* aboutMsg =
-        L"NppMarkdownNext (Native C++ Modern Edition)\n"
-        L"Version 1.0.4 (x64 / x86 / ARM64)\n\n"
+        L"NppMarkdownNext (Kelk Modern Engine Edition)\n"
+        L"Version 1.5.0 (x64 / x86 / ARM64)\n\n"
         L"Next-generation native Markdown live preview panel for Notepad++.\n\n"
         L"Features:\n"
+        L"  • Kelk Multi-Engine Core: DOCX, PDF, MHTML DOC, and HTML Builders\n"
+        L"  • Kelk DOCX / HTML Importer to Scintilla buffer\n"
+        L"  • Kelk BiDiCore & BidiView Multi-script Direction Isolation\n"
+        L"  • Embedded Vazirmatn Font for Flawless PDF/DOCX Arabic & Persian\n"
         L"  • Dual Engine: Chromium WebView2 + Direct2D Fallback\n"
         L"  • Material Design 3 Minimal Typography & Theming\n"
         L"  • Minimal Vector SVG Context Menu & Overlays\n"
-        L"  • Intelligent RTL / BiDi & Persian/Arabic Typography\n"
         L"  • GFM Tables, Task Lists, Syntax Highlighting & 1-Click Copy\n"
         L"  • LaTeX / KaTeX Math & Offline Mermaid Diagrams\n"
         L"  • Live Caret & Scrollbar Synchronization\n"
-        L"  • Responsive Table of Contents & In-Page Search\n"
-        L"  • Standalone HTML Export & PDF Printing\n\n"
+        L"  • Responsive Table of Contents & In-Page Search\n\n"
         L"Author: theneet0\n"
         L"Licensed under the MIT License";
 

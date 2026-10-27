@@ -146,6 +146,20 @@ pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5p
 */.hljs{color:#24292e;background:#fff}.hljs-doctag,.hljs-keyword,.hljs-meta .hljs-keyword,.hljs-template-tag,.hljs-template-variable,.hljs-type,.hljs-variable.language_{color:#d73a49}.hljs-title,.hljs-title.class_,.hljs-title.class_.inherited__,.hljs-title.function_{color:#6f42c1}.hljs-attr,.hljs-attribute,.hljs-literal,.hljs-meta,.hljs-number,.hljs-operator,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-id,.hljs-variable{color:#005cc5}.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#032f62}.hljs-built_in,.hljs-symbol{color:#e36209}.hljs-code,.hljs-comment,.hljs-formula{color:#6a737d}.hljs-name,.hljs-quote,.hljs-selector-pseudo,.hljs-selector-tag{color:#22863a}.hljs-subst{color:#24292e}.hljs-section{color:#005cc5;font-weight:700}.hljs-bullet{color:#735c0f}.hljs-emphasis{color:#24292e;font-style:italic}.hljs-strong{color:#24292e;font-weight:700}.hljs-addition{color:#22863a;background-color:#f0fff4}.hljs-deletion{color:#b31d28;background-color:#ffeef0}
 
 
+/* BidiView direction classes */
+.bd-doc-rtl{direction:rtl}.bd-doc-ltr{direction:ltr}
+.bd-ltr,.bd-ltr-table{direction:ltr}.bd-rtl{direction:rtl}
+.bd-root :is(p,h1,h2,h3,h4,h5,h6,li,blockquote,ul,ol,dt,dd):is(.bd-ltr,.bd-rtl){text-align:start}
+.bd-root :is(td,th):is(.bd-ltr,.bd-rtl):not([align]):not([style*="text-align"]){text-align:start}
+.bd-iso-ltr{unicode-bidi:isolate;direction:ltr}.bd-iso-rtl{unicode-bidi:isolate;direction:rtl}
+.bd-root pre{direction:ltr;text-align:left}
+.bd-root :is(ul,ol){padding-inline-start:0}
+.bd-root li{--bd-b:1;--bd-s:0;margin-inline-start:calc(var(--bd-b) * var(--bd-base,1.7em) + var(--bd-s) * var(--bd-step,1.7em))}
+.bd-root li.bd-b0{--bd-b:0}
+.bd-root li.bd-s1{--bd-s:1}.bd-root li.bd-s2{--bd-s:2}.bd-root li.bd-s3{--bd-s:3}.bd-root li.bd-s4{--bd-s:4}.bd-root li.bd-s5{--bd-s:5}.bd-root li.bd-s6{--bd-s:6}.bd-root li.bd-s7{--bd-s:7}.bd-root li.bd-s8{--bd-s:8}.bd-root li.bd-s9{--bd-s:9}
+
+
+
 /* Reader host adaptations */
 :root {
   --font-ui: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, Tahoma, sans-serif;
@@ -3339,6 +3353,28 @@ return Ke}()
   var contentEl = null;
   var currentBiDi = true;
 
+  // Safe HTML entity escaping
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // Global uncaught error and rejection handlers: report to host C++
+  window.onerror = function(msg, url, line, col, err) {
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage('jsError:' + msg + ' (line ' + line + ')');
+    }
+  };
+  window.addEventListener('unhandledrejection', function(e) {
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage('jsError:' + (e.reason ? (e.reason.message || e.reason) : 'Unhandled rejection'));
+    }
+  });
+
   // Configure marked for GFM
   if (typeof marked !== 'undefined') {
     marked.setOptions({
@@ -3369,28 +3405,38 @@ return Ke}()
       }
 
       var customRenderer = new marked.Renderer();
+
+      // Suppress default disabled checkbox: customRenderer.listitem renders the interactive task checkbox
+      customRenderer.checkbox = function() {
+        return '';
+      };
+
       customRenderer.heading = function(obj) {
         var text = this.parser.parseInline(obj.tokens);
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         return '<h' + obj.depth + ' data-line="' + line + '">' + text + '</h' + obj.depth + '>\n';
       };
+
       customRenderer.paragraph = function(obj) {
         var text = this.parser.parseInline(obj.tokens);
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         return '<p data-line="' + line + '">' + text + '</p>\n';
       };
+
       customRenderer.code = function(obj) {
         var validLang = (obj.lang || '').match(/^\S*/)[0];
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         var langClass = validLang ? ' language-' + validLang : '';
         return '<pre data-line="' + line + '"><code class="hljs' + langClass + '">' +
-               DOMPurify.sanitize(obj.text) + '</code></pre>\n';
+               escapeHtml(obj.text) + '</code></pre>\n';
       };
+
       customRenderer.blockquote = function(obj) {
         var text = this.parser.parse(obj.tokens);
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         return '<blockquote data-line="' + line + '">' + text + '</blockquote>\n';
       };
+
       customRenderer.listitem = function(obj) {
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         var text = this.parser.parse(obj.tokens);
@@ -3402,6 +3448,17 @@ return Ke}()
         return '<li data-line="' + line + '">' + text + '</li>\n';
       };
 
+      customRenderer.table = function(obj) {
+        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
+        var text = marked.Renderer.prototype.table.call(this, obj);
+        return text.replace(/^<table/, '<table data-line="' + line + '"');
+      };
+
+      customRenderer.hr = function(obj) {
+        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
+        return '<hr data-line="' + line + '">\n';
+      };
+
       var parser = new marked.Parser({ renderer: customRenderer });
       return parser.parse(tokens);
     } catch(err) {
@@ -3411,78 +3468,97 @@ return Ke}()
   }
 
   function applyRender(data) {
-    if (!contentEl) contentEl = document.getElementById('content');
-    if (!contentEl) return;
+    try {
+      if (!contentEl) contentEl = document.getElementById('content');
+      if (!contentEl) return;
 
-    if (data.title) {
-      document.title = data.title;
-    }
-
-    if (typeof data.isDark === 'boolean') {
-      document.body.classList.toggle('dark', data.isDark);
-      document.documentElement.setAttribute('data-theme', data.isDark ? 'dark' : 'light');
-    }
-
-    if (typeof data.isBiDi === 'boolean') {
-      currentBiDi = data.isBiDi;
-    }
-
-    var mdText = data.markdown || '';
-    if (!mdText.trim()) {
-      contentEl.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px 20px;"><em>(No content to preview)</em></div>';
-      return;
-    }
-
-    var html = parseWithLines(mdText);
-    if (typeof DOMPurify !== 'undefined') {
-      html = DOMPurify.sanitize(html, { ADD_ATTR: ['data-line', 'target', 'dir', 'align'] });
-    }
-
-    contentEl.innerHTML = html;
-
-    // External links open in default browser
-    var links = contentEl.querySelectorAll('a[href^="http"]');
-    for (var l = 0; l < links.length; l++) {
-      links[l].target = '_blank';
-      links[l].rel = 'noopener';
-    }
-
-    // Syntax highlighting with highlight.js
-    if (typeof hljs !== 'undefined') {
-      var codeBlocks = contentEl.querySelectorAll('pre code');
-      for (var c = 0; c < codeBlocks.length; c++) {
-        try { hljs.highlightElement(codeBlocks[c]); } catch(e) {}
+      if (data.title) {
+        document.title = data.title;
       }
-    }
 
-    // Apply Kelk BiDi engine
-    if (currentBiDi && typeof BidiView !== 'undefined' && typeof BidiCore !== 'undefined') {
-      try {
-        BidiView.apply(contentEl);
-      } catch(e) {
-        console.error('BidiView error:', e);
+      if (typeof data.isDark === 'boolean') {
+        document.body.classList.toggle('dark', data.isDark);
+        document.documentElement.setAttribute('data-theme', data.isDark ? 'dark' : 'light');
       }
-    } else {
-      contentEl.setAttribute('dir', 'auto');
-    }
 
-    // Bind interactive task checkboxes
-    var cbs = contentEl.querySelectorAll('input.task-checkbox, input.task-list-item-checkbox');
-    for (var k = 0; k < cbs.length; k++) {
-      (function(cb) {
-        cb.addEventListener('click', function(e) {
-          e.stopPropagation();
-          var line = cb.getAttribute('data-line');
-          if (line !== null && window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage('toggleCheckbox:' + line);
+      if (typeof data.isBiDi === 'boolean') {
+        currentBiDi = data.isBiDi;
+      }
+
+      var mdText = data.markdown || '';
+      if (!mdText.trim()) {
+        contentEl.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px 20px;"><em>(No content to preview)</em></div>';
+        return;
+      }
+
+      var html = parseWithLines(mdText);
+      if (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function') {
+        html = DOMPurify.sanitize(html, { ADD_ATTR: ['data-line', 'target', 'dir', 'align'] });
+      }
+
+      contentEl.innerHTML = html;
+
+      // External links open in default browser
+      var links = contentEl.querySelectorAll('a[href^="http"]');
+      for (var l = 0; l < links.length; l++) {
+        links[l].target = '_blank';
+        links[l].rel = 'noopener';
+      }
+
+      // Syntax highlighting with highlight.js
+      if (typeof hljs !== 'undefined') {
+        var codeBlocks = contentEl.querySelectorAll('pre code');
+        for (var c = 0; c < codeBlocks.length; c++) {
+          try { hljs.highlightElement(codeBlocks[c]); } catch(e) {}
+        }
+      }
+
+      // Apply Kelk BiDi engine
+      if (currentBiDi && typeof BidiView !== 'undefined' && typeof BidiCore !== 'undefined') {
+        try {
+          var bidiRes = BidiView.apply(contentEl);
+          if (bidiRes && bidiRes.dir) {
+            contentEl.setAttribute('dir', bidiRes.dir);
           }
-        });
-      })(cbs[k]);
-    }
+        } catch(e) {
+          console.error('BidiView error:', e);
+        }
+      } else {
+        if (typeof BidiView !== 'undefined') {
+          try { BidiView.clear(contentEl); } catch(e) {}
+        }
+        contentEl.setAttribute('dir', 'auto');
+      }
 
-    // Scroll to caret if specified
-    if (typeof data.caretLine === 'number' && data.caretLine >= 0) {
-      scrollToLine(data.caretLine, false);
+      // Bind interactive task checkboxes
+      var cbs = contentEl.querySelectorAll('input.task-checkbox');
+      for (var k = 0; k < cbs.length; k++) {
+        (function(cb) {
+          cb.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var line = cb.getAttribute('data-line');
+            if (line !== null && window.chrome && window.chrome.webview) {
+              window.chrome.webview.postMessage('toggleCheckbox:' + line);
+            }
+          });
+        })(cbs[k]);
+      }
+
+      // Scroll to caret if specified
+      if (typeof data.caretLine === 'number' && data.caretLine >= 0) {
+        scrollToLine(data.caretLine, false);
+      }
+    } catch(err) {
+      console.error('applyRender fatal error:', err);
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage('jsError:' + (err ? (err.message || err) : 'Render error'));
+      }
+      if (contentEl) {
+        contentEl.innerHTML = '<div style="color:var(--danger);padding:24px;border:1px solid var(--danger);border-radius:8px;background:var(--code-bg);">' +
+                              '<h3 style="margin-top:0;">Preview Error</h3>' +
+                              '<p>' + escapeHtml(err ? err.message : 'Error') + '</p>' +
+                              '</div>';
+      }
     }
   }
 
@@ -3549,19 +3625,30 @@ return Ke}()
       } else if (data.type === 'setBiDi') {
         currentBiDi = !!data.isBiDi;
         if (contentEl && typeof BidiView !== 'undefined') {
-          if (currentBiDi) BidiView.apply(contentEl);
-          else { BidiView.clear(contentEl); contentEl.setAttribute('dir', 'auto'); }
+          if (currentBiDi) {
+            var r = BidiView.apply(contentEl);
+            if (r && r.dir) contentEl.setAttribute('dir', r.dir);
+          } else {
+            BidiView.clear(contentEl);
+            contentEl.setAttribute('dir', 'auto');
+          }
         }
       }
     });
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
+  function onReady() {
     contentEl = document.getElementById('content');
     if (window.chrome && window.chrome.webview) {
       window.chrome.webview.postMessage('pageLoaded');
     }
-  });
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    onReady();
+  } else {
+    document.addEventListener('DOMContentLoaded', onReady);
+  }
 })();
 
 )KELK_JS_EOF";
@@ -3716,6 +3803,20 @@ pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5p
   Outdated base version: https://github.com/primer/github-syntax-light
   Current colors taken from GitHub's CSS
 */.hljs{color:#24292e;background:#fff}.hljs-doctag,.hljs-keyword,.hljs-meta .hljs-keyword,.hljs-template-tag,.hljs-template-variable,.hljs-type,.hljs-variable.language_{color:#d73a49}.hljs-title,.hljs-title.class_,.hljs-title.class_.inherited__,.hljs-title.function_{color:#6f42c1}.hljs-attr,.hljs-attribute,.hljs-literal,.hljs-meta,.hljs-number,.hljs-operator,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-id,.hljs-variable{color:#005cc5}.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#032f62}.hljs-built_in,.hljs-symbol{color:#e36209}.hljs-code,.hljs-comment,.hljs-formula{color:#6a737d}.hljs-name,.hljs-quote,.hljs-selector-pseudo,.hljs-selector-tag{color:#22863a}.hljs-subst{color:#24292e}.hljs-section{color:#005cc5;font-weight:700}.hljs-bullet{color:#735c0f}.hljs-emphasis{color:#24292e;font-style:italic}.hljs-strong{color:#24292e;font-weight:700}.hljs-addition{color:#22863a;background-color:#f0fff4}.hljs-deletion{color:#b31d28;background-color:#ffeef0}
+
+
+/* BidiView direction classes */
+.bd-doc-rtl{direction:rtl}.bd-doc-ltr{direction:ltr}
+.bd-ltr,.bd-ltr-table{direction:ltr}.bd-rtl{direction:rtl}
+.bd-root :is(p,h1,h2,h3,h4,h5,h6,li,blockquote,ul,ol,dt,dd):is(.bd-ltr,.bd-rtl){text-align:start}
+.bd-root :is(td,th):is(.bd-ltr,.bd-rtl):not([align]):not([style*="text-align"]){text-align:start}
+.bd-iso-ltr{unicode-bidi:isolate;direction:ltr}.bd-iso-rtl{unicode-bidi:isolate;direction:rtl}
+.bd-root pre{direction:ltr;text-align:left}
+.bd-root :is(ul,ol){padding-inline-start:0}
+.bd-root li{--bd-b:1;--bd-s:0;margin-inline-start:calc(var(--bd-b) * var(--bd-base,1.7em) + var(--bd-s) * var(--bd-step,1.7em))}
+.bd-root li.bd-b0{--bd-b:0}
+.bd-root li.bd-s1{--bd-s:1}.bd-root li.bd-s2{--bd-s:2}.bd-root li.bd-s3{--bd-s:3}.bd-root li.bd-s4{--bd-s:4}.bd-root li.bd-s5{--bd-s:5}.bd-root li.bd-s6{--bd-s:6}.bd-root li.bd-s7{--bd-s:7}.bd-root li.bd-s8{--bd-s:8}.bd-root li.bd-s9{--bd-s:9}
+
 
 
 /* Reader host adaptations */
@@ -6910,6 +7011,28 @@ return Ke}()
   var contentEl = null;
   var currentBiDi = true;
 
+  // Safe HTML entity escaping
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // Global uncaught error and rejection handlers: report to host C++
+  window.onerror = function(msg, url, line, col, err) {
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage('jsError:' + msg + ' (line ' + line + ')');
+    }
+  };
+  window.addEventListener('unhandledrejection', function(e) {
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage('jsError:' + (e.reason ? (e.reason.message || e.reason) : 'Unhandled rejection'));
+    }
+  });
+
   // Configure marked for GFM
   if (typeof marked !== 'undefined') {
     marked.setOptions({
@@ -6940,28 +7063,38 @@ return Ke}()
       }
 
       var customRenderer = new marked.Renderer();
+
+      // Suppress default disabled checkbox: customRenderer.listitem renders the interactive task checkbox
+      customRenderer.checkbox = function() {
+        return '';
+      };
+
       customRenderer.heading = function(obj) {
         var text = this.parser.parseInline(obj.tokens);
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         return '<h' + obj.depth + ' data-line="' + line + '">' + text + '</h' + obj.depth + '>\n';
       };
+
       customRenderer.paragraph = function(obj) {
         var text = this.parser.parseInline(obj.tokens);
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         return '<p data-line="' + line + '">' + text + '</p>\n';
       };
+
       customRenderer.code = function(obj) {
         var validLang = (obj.lang || '').match(/^\S*/)[0];
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         var langClass = validLang ? ' language-' + validLang : '';
         return '<pre data-line="' + line + '"><code class="hljs' + langClass + '">' +
-               DOMPurify.sanitize(obj.text) + '</code></pre>\n';
+               escapeHtml(obj.text) + '</code></pre>\n';
       };
+
       customRenderer.blockquote = function(obj) {
         var text = this.parser.parse(obj.tokens);
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         return '<blockquote data-line="' + line + '">' + text + '</blockquote>\n';
       };
+
       customRenderer.listitem = function(obj) {
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         var text = this.parser.parse(obj.tokens);
@@ -6973,6 +7106,17 @@ return Ke}()
         return '<li data-line="' + line + '">' + text + '</li>\n';
       };
 
+      customRenderer.table = function(obj) {
+        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
+        var text = marked.Renderer.prototype.table.call(this, obj);
+        return text.replace(/^<table/, '<table data-line="' + line + '"');
+      };
+
+      customRenderer.hr = function(obj) {
+        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
+        return '<hr data-line="' + line + '">\n';
+      };
+
       var parser = new marked.Parser({ renderer: customRenderer });
       return parser.parse(tokens);
     } catch(err) {
@@ -6982,78 +7126,97 @@ return Ke}()
   }
 
   function applyRender(data) {
-    if (!contentEl) contentEl = document.getElementById('content');
-    if (!contentEl) return;
+    try {
+      if (!contentEl) contentEl = document.getElementById('content');
+      if (!contentEl) return;
 
-    if (data.title) {
-      document.title = data.title;
-    }
-
-    if (typeof data.isDark === 'boolean') {
-      document.body.classList.toggle('dark', data.isDark);
-      document.documentElement.setAttribute('data-theme', data.isDark ? 'dark' : 'light');
-    }
-
-    if (typeof data.isBiDi === 'boolean') {
-      currentBiDi = data.isBiDi;
-    }
-
-    var mdText = data.markdown || '';
-    if (!mdText.trim()) {
-      contentEl.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px 20px;"><em>(No content to preview)</em></div>';
-      return;
-    }
-
-    var html = parseWithLines(mdText);
-    if (typeof DOMPurify !== 'undefined') {
-      html = DOMPurify.sanitize(html, { ADD_ATTR: ['data-line', 'target', 'dir', 'align'] });
-    }
-
-    contentEl.innerHTML = html;
-
-    // External links open in default browser
-    var links = contentEl.querySelectorAll('a[href^="http"]');
-    for (var l = 0; l < links.length; l++) {
-      links[l].target = '_blank';
-      links[l].rel = 'noopener';
-    }
-
-    // Syntax highlighting with highlight.js
-    if (typeof hljs !== 'undefined') {
-      var codeBlocks = contentEl.querySelectorAll('pre code');
-      for (var c = 0; c < codeBlocks.length; c++) {
-        try { hljs.highlightElement(codeBlocks[c]); } catch(e) {}
+      if (data.title) {
+        document.title = data.title;
       }
-    }
 
-    // Apply Kelk BiDi engine
-    if (currentBiDi && typeof BidiView !== 'undefined' && typeof BidiCore !== 'undefined') {
-      try {
-        BidiView.apply(contentEl);
-      } catch(e) {
-        console.error('BidiView error:', e);
+      if (typeof data.isDark === 'boolean') {
+        document.body.classList.toggle('dark', data.isDark);
+        document.documentElement.setAttribute('data-theme', data.isDark ? 'dark' : 'light');
       }
-    } else {
-      contentEl.setAttribute('dir', 'auto');
-    }
 
-    // Bind interactive task checkboxes
-    var cbs = contentEl.querySelectorAll('input.task-checkbox, input.task-list-item-checkbox');
-    for (var k = 0; k < cbs.length; k++) {
-      (function(cb) {
-        cb.addEventListener('click', function(e) {
-          e.stopPropagation();
-          var line = cb.getAttribute('data-line');
-          if (line !== null && window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage('toggleCheckbox:' + line);
+      if (typeof data.isBiDi === 'boolean') {
+        currentBiDi = data.isBiDi;
+      }
+
+      var mdText = data.markdown || '';
+      if (!mdText.trim()) {
+        contentEl.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px 20px;"><em>(No content to preview)</em></div>';
+        return;
+      }
+
+      var html = parseWithLines(mdText);
+      if (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function') {
+        html = DOMPurify.sanitize(html, { ADD_ATTR: ['data-line', 'target', 'dir', 'align'] });
+      }
+
+      contentEl.innerHTML = html;
+
+      // External links open in default browser
+      var links = contentEl.querySelectorAll('a[href^="http"]');
+      for (var l = 0; l < links.length; l++) {
+        links[l].target = '_blank';
+        links[l].rel = 'noopener';
+      }
+
+      // Syntax highlighting with highlight.js
+      if (typeof hljs !== 'undefined') {
+        var codeBlocks = contentEl.querySelectorAll('pre code');
+        for (var c = 0; c < codeBlocks.length; c++) {
+          try { hljs.highlightElement(codeBlocks[c]); } catch(e) {}
+        }
+      }
+
+      // Apply Kelk BiDi engine
+      if (currentBiDi && typeof BidiView !== 'undefined' && typeof BidiCore !== 'undefined') {
+        try {
+          var bidiRes = BidiView.apply(contentEl);
+          if (bidiRes && bidiRes.dir) {
+            contentEl.setAttribute('dir', bidiRes.dir);
           }
-        });
-      })(cbs[k]);
-    }
+        } catch(e) {
+          console.error('BidiView error:', e);
+        }
+      } else {
+        if (typeof BidiView !== 'undefined') {
+          try { BidiView.clear(contentEl); } catch(e) {}
+        }
+        contentEl.setAttribute('dir', 'auto');
+      }
 
-    // Scroll to caret if specified
-    if (typeof data.caretLine === 'number' && data.caretLine >= 0) {
-      scrollToLine(data.caretLine, false);
+      // Bind interactive task checkboxes
+      var cbs = contentEl.querySelectorAll('input.task-checkbox');
+      for (var k = 0; k < cbs.length; k++) {
+        (function(cb) {
+          cb.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var line = cb.getAttribute('data-line');
+            if (line !== null && window.chrome && window.chrome.webview) {
+              window.chrome.webview.postMessage('toggleCheckbox:' + line);
+            }
+          });
+        })(cbs[k]);
+      }
+
+      // Scroll to caret if specified
+      if (typeof data.caretLine === 'number' && data.caretLine >= 0) {
+        scrollToLine(data.caretLine, false);
+      }
+    } catch(err) {
+      console.error('applyRender fatal error:', err);
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage('jsError:' + (err ? (err.message || err) : 'Render error'));
+      }
+      if (contentEl) {
+        contentEl.innerHTML = '<div style="color:var(--danger);padding:24px;border:1px solid var(--danger);border-radius:8px;background:var(--code-bg);">' +
+                              '<h3 style="margin-top:0;">Preview Error</h3>' +
+                              '<p>' + escapeHtml(err ? err.message : 'Error') + '</p>' +
+                              '</div>';
+      }
     }
   }
 
@@ -7120,26 +7283,37 @@ return Ke}()
       } else if (data.type === 'setBiDi') {
         currentBiDi = !!data.isBiDi;
         if (contentEl && typeof BidiView !== 'undefined') {
-          if (currentBiDi) BidiView.apply(contentEl);
-          else { BidiView.clear(contentEl); contentEl.setAttribute('dir', 'auto'); }
+          if (currentBiDi) {
+            var r = BidiView.apply(contentEl);
+            if (r && r.dir) contentEl.setAttribute('dir', r.dir);
+          } else {
+            BidiView.clear(contentEl);
+            contentEl.setAttribute('dir', 'auto');
+          }
         }
       }
     });
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
+  function onReady() {
     contentEl = document.getElementById('content');
     if (window.chrome && window.chrome.webview) {
       window.chrome.webview.postMessage('pageLoaded');
     }
-  });
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    onReady();
+  } else {
+    document.addEventListener('DOMContentLoaded', onReady);
+  }
 })();
 
   </script>
 </head>
 <body>
   <div id="reader-wrap">
-    <div id="content" class="doc" dir="auto"></div>
+    <div id="content" class="doc bd-root" dir="auto"></div>
   </div>
 </body>
 </html>

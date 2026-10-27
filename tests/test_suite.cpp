@@ -568,6 +568,55 @@ void TestParserEdgeCases() {
     std::cout << "  -> Parser Edge Cases PASS" << std::endl;
 }
 
+#include "../src/KelkBundle.inc"
+
+void TestWebViewBundleIntegrity() {
+    std::cout << "[TEST] WebView2 Bundle Integrity & Reader Shell..." << std::endl;
+
+    std::string shell(s_kelkReaderShellHtml);
+    assert(!shell.empty());
+
+    // 1. Strict size check: must be < 700 KB (well below WebView2 NavigateToString 2MB limit)
+    assert(shell.size() < 700000);
+    assert(shell.size() > 50000);
+
+    // 2. Pure 100% offline security: zero unescaped http:// URLs
+    assert(shell.find("http://") == std::string::npos);
+    assert(shell.find("https://cdn.") == std::string::npos);
+    assert(shell.find("https://fonts.") == std::string::npos);
+
+    // 3. Kelk BidiView engine CSS classes and root element
+    assert(shell.find("bd-root") != std::string::npos);
+    assert(shell.find(".bd-doc-rtl") != std::string::npos);
+    assert(shell.find(".bd-iso-rtl") != std::string::npos);
+    assert(shell.find(".bd-ltr") != std::string::npos);
+
+    // 4. Task checkboxes & interactive click handler
+    assert(shell.find("task-checkbox") != std::string::npos);
+    assert(shell.find("toggleCheckbox:") != std::string::npos);
+    assert(shell.find("customRenderer.checkbox") != std::string::npos);
+
+    // 5. Line tracking & jumpToSource
+    assert(shell.find("jumpToSource") != std::string::npos);
+    assert(shell.find("jumpToLine:") != std::string::npos);
+    assert(shell.find("scrollToLine") != std::string::npos);
+    assert(shell.find("customRenderer.table") != std::string::npos);
+    assert(shell.find("customRenderer.hr") != std::string::npos);
+
+    // 6. JavaScript error interception & host reporting
+    assert(shell.find("window.onerror") != std::string::npos);
+    assert(shell.find("unhandledrejection") != std::string::npos);
+    assert(shell.find("jsError:") != std::string::npos);
+
+    // 7. Marked & Highlight.js presence
+    assert(shell.find("marked") != std::string::npos);
+    assert(shell.find("hljs") != std::string::npos);
+    assert(shell.find("BidiCore") != std::string::npos);
+    assert(shell.find("BidiView") != std::string::npos);
+
+    std::cout << "  -> WebView2 Bundle Integrity PASS" << std::endl;
+}
+
 int main() {
     std::cout << "=== Running NppMarkdownPanel Native C++ Unit Tests ===" << std::endl;
     TestBiDiEngine();
@@ -577,6 +626,7 @@ int main() {
     TestPersianDocument();
     TestAdvancedDocument();
     TestParserEdgeCases();
-    std::cout << "\n>>> ALL 7 TEST SUITES PASSED SUCCESSFULLY! <<<" << std::endl;
+    TestWebViewBundleIntegrity();
+    std::cout << "\n>>> ALL 8 TEST SUITES PASSED SUCCESSFULLY! <<<" << std::endl;
     return 0;
 }

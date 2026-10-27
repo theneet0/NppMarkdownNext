@@ -140,10 +140,8 @@ public:
     }
 };
 
-std::wstring EscapeJsonString(const std::string& utf8Str) {
-    if (utf8Str.empty()) return L"";
-    std::wstring wide = BiDiEngine::Utf8ToWide(utf8Str);
-
+std::wstring EscapeJsonString(const std::wstring& wide) {
+    if (wide.empty()) return L"";
     std::wstringstream ss;
     for (wchar_t ch : wide) {
         switch (ch) {
@@ -166,6 +164,11 @@ std::wstring EscapeJsonString(const std::string& utf8Str) {
         }
     }
     return ss.str();
+}
+
+std::wstring EscapeJsonString(const std::string& utf8Str) {
+    if (utf8Str.empty()) return L"";
+    return EscapeJsonString(BiDiEngine::Utf8ToWide(utf8Str));
 }
 
 typedef HRESULT (STDAPICALLTYPE *CreateCoreWebView2EnvironmentWithOptionsFn)(
@@ -477,7 +480,7 @@ bool WebView2Viewer::UpdateMarkdown(const std::string& markdownUtf8, const std::
     std::wstringstream json;
     json << L"{\"type\":\"render\""
          << L",\"markdown\":\"" << EscapeJsonString(markdownUtf8) << L"\""
-         << L",\"title\":\"" << EscapeJsonString(BiDiEngine::WideToUtf8(title)) << L"\""
+         << L",\"title\":\"" << EscapeJsonString(title) << L"\""
          << L",\"isDark\":" << (isDark ? L"true" : L"false")
          << L",\"isBiDi\":" << (isBiDi ? L"true" : L"false")
          << L",\"caretLine\":" << caretLine
@@ -489,18 +492,25 @@ bool WebView2Viewer::UpdateMarkdown(const std::string& markdownUtf8, const std::
 }
 
 void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
-    NppLog("OnWebMessageReceived: %ls", message.c_str());
+    std::string msgUtf8 = BiDiEngine::WideToUtf8(message);
+    NppLog("OnWebMessageReceived: %s", msgUtf8.c_str());
+
+    const std::wstring prefixError = L"jsError:";
+    if (message.find(prefixError) == 0) {
+        std::string errUtf8 = BiDiEngine::WideToUtf8(message.substr(prefixError.length()));
+        NppLog("JavaScript Exception: %s", errUtf8.c_str());
+        return;
+    }
 
     if (message == L"pageLoaded") {
         m_pageReady = true;
-        NppLog("OnWebMessageReceived: pageLoaded, applying pending renders");
-        if (m_pendingRender.valid) {
+        NppLog("OnWebMessageReceived: pageLoaded");
+        if (m_pageReadyCallback) {
+            m_pageReadyCallback();
+        } else if (m_pendingRender.valid) {
             UpdateMarkdown(m_pendingRender.markdown, m_pendingRender.title,
                            m_pendingRender.isDark, m_pendingRender.isBiDi, m_pendingRender.caretLine);
             m_pendingRender.valid = false;
-        }
-        if (m_pageReadyCallback) {
-            m_pageReadyCallback();
         }
         return;
     }

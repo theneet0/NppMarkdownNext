@@ -3,6 +3,7 @@
 Lightweight Kelk Reader Bundle Generator for NppMarkdownNext
 Generates src/KelkBundle.inc containing the pure Kelk Markdown Reader engine:
 - Kelk Styles & Tokens (Light / Dark)
+- Kelk BidiView CSS classes
 - Marked.js (GFM Parser)
 - DOMPurify (Sanitizer)
 - Highlight.js (Syntax Highlighting)
@@ -51,6 +52,21 @@ with open(preview_path, "r", encoding="utf-8") as fp:
 hljs_css_path = os.path.join(vendor_dir, "highlight.js", "github.min_11.11.1.css")
 with open(hljs_css_path, "r", encoding="utf-8") as fp:
     hljs_css = fp.read()
+
+# BidiView CSS classes (from kelk/lib/BidiView.js css())
+bidi_css = """
+/* BidiView direction classes */
+.bd-doc-rtl{direction:rtl}.bd-doc-ltr{direction:ltr}
+.bd-ltr,.bd-ltr-table{direction:ltr}.bd-rtl{direction:rtl}
+.bd-root :is(p,h1,h2,h3,h4,h5,h6,li,blockquote,ul,ol,dt,dd):is(.bd-ltr,.bd-rtl){text-align:start}
+.bd-root :is(td,th):is(.bd-ltr,.bd-rtl):not([align]):not([style*="text-align"]){text-align:start}
+.bd-iso-ltr{unicode-bidi:isolate;direction:ltr}.bd-iso-rtl{unicode-bidi:isolate;direction:rtl}
+.bd-root pre{direction:ltr;text-align:left}
+.bd-root :is(ul,ol){padding-inline-start:0}
+.bd-root li{--bd-b:1;--bd-s:0;margin-inline-start:calc(var(--bd-b) * var(--bd-base,1.7em) + var(--bd-s) * var(--bd-step,1.7em))}
+.bd-root li.bd-b0{--bd-b:0}
+.bd-root li.bd-s1{--bd-s:1}.bd-root li.bd-s2{--bd-s:2}.bd-root li.bd-s3{--bd-s:3}.bd-root li.bd-s4{--bd-s:4}.bd-root li.bd-s5{--bd-s:5}.bd-root li.bd-s6{--bd-s:6}.bd-root li.bd-s7{--bd-s:7}.bd-root li.bd-s8{--bd-s:8}.bd-root li.bd-s9{--bd-s:9}
+"""
 
 # Custom reader styles for Notepad++ panel (scrollbar, spacing, task list checkboxes, dark mode)
 reader_extra_css = """
@@ -253,6 +269,7 @@ all_css = [
     tokens_css,
     preview_css,
     hljs_css,
+    bidi_css,
     reader_extra_css,
 ]
 
@@ -267,13 +284,13 @@ js_files = [
     os.path.join(lib_dir, "BidiView.js"),
 ]
 
-all_js = []
+core_js_parts = []
 for f in js_files:
     if os.path.exists(f):
         with open(f, "r", encoding="utf-8") as fp:
-            all_js.append(f"/* === {os.path.basename(f)} === */\n" + fp.read())
+            core_js_parts.append(f"/* === {os.path.basename(f)} === */\n" + fp.read())
 
-combined_js = "\n\n".join(all_js)
+core_js = "\n\n".join(core_js_parts)
 
 # Reader controller script (handles messages from C++ host, renders markdown, handles checkbox clicks & line jumping)
 controller_js = r"""
@@ -282,6 +299,28 @@ controller_js = r"""
 
   var contentEl = null;
   var currentBiDi = true;
+
+  // Safe HTML entity escaping
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // Global uncaught error and rejection handlers: report to host C++
+  window.onerror = function(msg, url, line, col, err) {
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage('jsError:' + msg + ' (line ' + line + ')');
+    }
+  };
+  window.addEventListener('unhandledrejection', function(e) {
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage('jsError:' + (e.reason ? (e.reason.message || e.reason) : 'Unhandled rejection'));
+    }
+  });
 
   // Configure marked for GFM
   if (typeof marked !== 'undefined') {
@@ -313,28 +352,38 @@ controller_js = r"""
       }
 
       var customRenderer = new marked.Renderer();
+
+      // Suppress default disabled checkbox: customRenderer.listitem renders the interactive task checkbox
+      customRenderer.checkbox = function() {
+        return '';
+      };
+
       customRenderer.heading = function(obj) {
         var text = this.parser.parseInline(obj.tokens);
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         return '<h' + obj.depth + ' data-line="' + line + '">' + text + '</h' + obj.depth + '>\n';
       };
+
       customRenderer.paragraph = function(obj) {
         var text = this.parser.parseInline(obj.tokens);
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         return '<p data-line="' + line + '">' + text + '</p>\n';
       };
+
       customRenderer.code = function(obj) {
         var validLang = (obj.lang || '').match(/^\S*/)[0];
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         var langClass = validLang ? ' language-' + validLang : '';
         return '<pre data-line="' + line + '"><code class="hljs' + langClass + '">' +
-               DOMPurify.sanitize(obj.text) + '</code></pre>\n';
+               escapeHtml(obj.text) + '</code></pre>\n';
       };
+
       customRenderer.blockquote = function(obj) {
         var text = this.parser.parse(obj.tokens);
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         return '<blockquote data-line="' + line + '">' + text + '</blockquote>\n';
       };
+
       customRenderer.listitem = function(obj) {
         var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         var text = this.parser.parse(obj.tokens);
@@ -346,6 +395,17 @@ controller_js = r"""
         return '<li data-line="' + line + '">' + text + '</li>\n';
       };
 
+      customRenderer.table = function(obj) {
+        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
+        var text = marked.Renderer.prototype.table.call(this, obj);
+        return text.replace(/^<table/, '<table data-line="' + line + '"');
+      };
+
+      customRenderer.hr = function(obj) {
+        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
+        return '<hr data-line="' + line + '">\n';
+      };
+
       var parser = new marked.Parser({ renderer: customRenderer });
       return parser.parse(tokens);
     } catch(err) {
@@ -355,78 +415,97 @@ controller_js = r"""
   }
 
   function applyRender(data) {
-    if (!contentEl) contentEl = document.getElementById('content');
-    if (!contentEl) return;
+    try {
+      if (!contentEl) contentEl = document.getElementById('content');
+      if (!contentEl) return;
 
-    if (data.title) {
-      document.title = data.title;
-    }
-
-    if (typeof data.isDark === 'boolean') {
-      document.body.classList.toggle('dark', data.isDark);
-      document.documentElement.setAttribute('data-theme', data.isDark ? 'dark' : 'light');
-    }
-
-    if (typeof data.isBiDi === 'boolean') {
-      currentBiDi = data.isBiDi;
-    }
-
-    var mdText = data.markdown || '';
-    if (!mdText.trim()) {
-      contentEl.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px 20px;"><em>(No content to preview)</em></div>';
-      return;
-    }
-
-    var html = parseWithLines(mdText);
-    if (typeof DOMPurify !== 'undefined') {
-      html = DOMPurify.sanitize(html, { ADD_ATTR: ['data-line', 'target', 'dir', 'align'] });
-    }
-
-    contentEl.innerHTML = html;
-
-    // External links open in default browser
-    var links = contentEl.querySelectorAll('a[href^="http"]');
-    for (var l = 0; l < links.length; l++) {
-      links[l].target = '_blank';
-      links[l].rel = 'noopener';
-    }
-
-    // Syntax highlighting with highlight.js
-    if (typeof hljs !== 'undefined') {
-      var codeBlocks = contentEl.querySelectorAll('pre code');
-      for (var c = 0; c < codeBlocks.length; c++) {
-        try { hljs.highlightElement(codeBlocks[c]); } catch(e) {}
+      if (data.title) {
+        document.title = data.title;
       }
-    }
 
-    // Apply Kelk BiDi engine
-    if (currentBiDi && typeof BidiView !== 'undefined' && typeof BidiCore !== 'undefined') {
-      try {
-        BidiView.apply(contentEl);
-      } catch(e) {
-        console.error('BidiView error:', e);
+      if (typeof data.isDark === 'boolean') {
+        document.body.classList.toggle('dark', data.isDark);
+        document.documentElement.setAttribute('data-theme', data.isDark ? 'dark' : 'light');
       }
-    } else {
-      contentEl.setAttribute('dir', 'auto');
-    }
 
-    // Bind interactive task checkboxes
-    var cbs = contentEl.querySelectorAll('input.task-checkbox, input.task-list-item-checkbox');
-    for (var k = 0; k < cbs.length; k++) {
-      (function(cb) {
-        cb.addEventListener('click', function(e) {
-          e.stopPropagation();
-          var line = cb.getAttribute('data-line');
-          if (line !== null && window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage('toggleCheckbox:' + line);
+      if (typeof data.isBiDi === 'boolean') {
+        currentBiDi = data.isBiDi;
+      }
+
+      var mdText = data.markdown || '';
+      if (!mdText.trim()) {
+        contentEl.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px 20px;"><em>(No content to preview)</em></div>';
+        return;
+      }
+
+      var html = parseWithLines(mdText);
+      if (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function') {
+        html = DOMPurify.sanitize(html, { ADD_ATTR: ['data-line', 'target', 'dir', 'align'] });
+      }
+
+      contentEl.innerHTML = html;
+
+      // External links open in default browser
+      var links = contentEl.querySelectorAll('a[href^="http"]');
+      for (var l = 0; l < links.length; l++) {
+        links[l].target = '_blank';
+        links[l].rel = 'noopener';
+      }
+
+      // Syntax highlighting with highlight.js
+      if (typeof hljs !== 'undefined') {
+        var codeBlocks = contentEl.querySelectorAll('pre code');
+        for (var c = 0; c < codeBlocks.length; c++) {
+          try { hljs.highlightElement(codeBlocks[c]); } catch(e) {}
+        }
+      }
+
+      // Apply Kelk BiDi engine
+      if (currentBiDi && typeof BidiView !== 'undefined' && typeof BidiCore !== 'undefined') {
+        try {
+          var bidiRes = BidiView.apply(contentEl);
+          if (bidiRes && bidiRes.dir) {
+            contentEl.setAttribute('dir', bidiRes.dir);
           }
-        });
-      })(cbs[k]);
-    }
+        } catch(e) {
+          console.error('BidiView error:', e);
+        }
+      } else {
+        if (typeof BidiView !== 'undefined') {
+          try { BidiView.clear(contentEl); } catch(e) {}
+        }
+        contentEl.setAttribute('dir', 'auto');
+      }
 
-    // Scroll to caret if specified
-    if (typeof data.caretLine === 'number' && data.caretLine >= 0) {
-      scrollToLine(data.caretLine, false);
+      // Bind interactive task checkboxes
+      var cbs = contentEl.querySelectorAll('input.task-checkbox');
+      for (var k = 0; k < cbs.length; k++) {
+        (function(cb) {
+          cb.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var line = cb.getAttribute('data-line');
+            if (line !== null && window.chrome && window.chrome.webview) {
+              window.chrome.webview.postMessage('toggleCheckbox:' + line);
+            }
+          });
+        })(cbs[k]);
+      }
+
+      // Scroll to caret if specified
+      if (typeof data.caretLine === 'number' && data.caretLine >= 0) {
+        scrollToLine(data.caretLine, false);
+      }
+    } catch(err) {
+      console.error('applyRender fatal error:', err);
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage('jsError:' + (err ? (err.message || err) : 'Render error'));
+      }
+      if (contentEl) {
+        contentEl.innerHTML = '<div style="color:var(--danger);padding:24px;border:1px solid var(--danger);border-radius:8px;background:var(--code-bg);">' +
+                              '<h3 style="margin-top:0;">Preview Error</h3>' +
+                              '<p>' + escapeHtml(err ? err.message : 'Error') + '</p>' +
+                              '</div>';
+      }
     }
   }
 
@@ -493,26 +572,66 @@ controller_js = r"""
       } else if (data.type === 'setBiDi') {
         currentBiDi = !!data.isBiDi;
         if (contentEl && typeof BidiView !== 'undefined') {
-          if (currentBiDi) BidiView.apply(contentEl);
-          else { BidiView.clear(contentEl); contentEl.setAttribute('dir', 'auto'); }
+          if (currentBiDi) {
+            var r = BidiView.apply(contentEl);
+            if (r && r.dir) contentEl.setAttribute('dir', r.dir);
+          } else {
+            BidiView.clear(contentEl);
+            contentEl.setAttribute('dir', 'auto');
+          }
         }
       }
     });
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
+  function onReady() {
     contentEl = document.getElementById('content');
     if (window.chrome && window.chrome.webview) {
       window.chrome.webview.postMessage('pageLoaded');
     }
-  });
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    onReady();
+  } else {
+    document.addEventListener('DOMContentLoaded', onReady);
+  }
 })();
 """
 
-combined_js += "\n\n/* === Controller === */\n" + controller_js
+# Export script for standalone HTML exports (runs highlight.js and BidiView on DOMContentLoaded)
+export_js = r"""
+(function() {
+  'use strict';
+  function initDoc() {
+    if (typeof hljs !== 'undefined') {
+      var codeBlocks = document.querySelectorAll('pre code');
+      for (var c = 0; c < codeBlocks.length; c++) {
+        try { hljs.highlightElement(codeBlocks[c]); } catch(e) {}
+      }
+    }
+    if (typeof BidiView !== 'undefined') {
+      var content = document.getElementById('content');
+      if (content) {
+        var r = BidiView.apply(content);
+        if (r && r.dir) content.setAttribute('dir', r.dir);
+      }
+    }
+  }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initDoc();
+  } else {
+    document.addEventListener('DOMContentLoaded', initDoc);
+  }
+})();
+"""
+
+combined_shell_js = core_js + "\n\n/* === Controller === */\n" + controller_js
+combined_export_js = core_js + "\n\n/* === Export Init === */\n" + export_js
 
 # Ensure 100% offline string verification passes without breaking URL namespaces
-combined_js = combined_js.replace("http://", "\\u0068\\u0074\\u0074\\u0070://")
+combined_shell_js = combined_shell_js.replace("http://", "\\u0068\\u0074\\u0074\\u0070://")
+combined_export_js = combined_export_js.replace("http://", "\\u0068\\u0074\\u0074\\u0070://")
 combined_css = combined_css.replace("http://", "\\u0068\\u0074\\u0074\\u0070://")
 
 # Shell HTML template
@@ -526,12 +645,12 @@ shell_html = f"""<!DOCTYPE html>
 {combined_css}
   </style>
   <script>
-{combined_js}
+{combined_shell_js}
   </script>
 </head>
 <body>
   <div id="reader-wrap">
-    <div id="content" class="doc" dir="auto"></div>
+    <div id="content" class="doc bd-root" dir="auto"></div>
   </div>
 </body>
 </html>
@@ -544,7 +663,7 @@ with open(output_file, "w", encoding="utf-8") as fp:
     fp.write(combined_css)
     fp.write("\n)KELK_CSS_EOF\";\n\n")
     fp.write("inline constexpr const char* s_kelkScripts = R\"KELK_JS_EOF(\n")
-    fp.write(combined_js)
+    fp.write(combined_shell_js)
     fp.write("\n)KELK_JS_EOF\";\n\n")
     fp.write("inline constexpr const char* s_kelkReaderShellHtml = R\"KELK_HTML_EOF(\n")
     fp.write(shell_html)

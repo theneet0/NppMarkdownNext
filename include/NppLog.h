@@ -19,15 +19,18 @@ inline void NppLog(const char* fmt, ...) {
         DeleteFileW(path.c_str());
     }
 
-    char buf[768];
+    char buf[1024];
     va_list args;
     va_start(args, fmt);
-    vsnprintf(buf, sizeof(buf), fmt, args);
+    int len = vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
+    if (len < 0) {
+        strncpy_s(buf, sizeof(buf), "[Log formatting error]", _TRUNCATE);
+    }
 
     SYSTEMTIME st;
     GetLocalTime(&st);
-    char line[860];
+    char line[1200];
     int n = snprintf(line, sizeof(line), "[%02u:%02u:%02u.%03u] %s\r\n",
                      st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, buf);
     if (n <= 0) return;

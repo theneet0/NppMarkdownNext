@@ -16,8 +16,14 @@
 #define CMD_COPY_HTML                  9
 #define CMD_SAVE_HTML                  10
 #define CMD_ABOUT                      11
-#define NB_PLUGIN_COMMANDS             12
+#define CMD_SETTINGS                  12
+#define NB_PLUGIN_COMMANDS             13
 
 // Timer IDs
 #define IDT_RENDER_DEBOUNCE            3001
 #define RENDER_DEBOUNCE_DELAY_MS       50
+
+#define WM_APP_VIEWER_RECOVERY         (WM_APP + 0x41)
+#define WM_APP_EXPORT_REQUEST          (WM_APP + 0x42)
+#define WM_APP_EXPORT_RESULT           (WM_APP + 0x43)
+#define IDC_RETRY_VIEWER               5001

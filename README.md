@@ -4,7 +4,7 @@ NppMarkdownNext is an ultra-lightweight native Markdown reader and live preview 
 
 ## Key Features
 
-- **Ultra-Lightweight & Fast**: Streamlined reader shell (~300 KB HTML/JS/CSS bundle) that initializes instantly and operates with minimal memory footprint.
+- **Self-Contained Reader**: Bundled HTML, CSS, and JavaScript with no frontend package installation or CDN dependency.
 - **Kelk BiDiCore & BidiView**: Flawless Persian, Arabic, Urdu, and Hebrew bidirectional layout with Unicode script classification, character normalization, and isolated code blocks.
 - **GFM & Extensions**:
   - Headings, blockquotes, callout alerts (`[!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!هشدار]`).
@@ -12,9 +12,11 @@ NppMarkdownNext is an ultra-lightweight native Markdown reader and live preview 
   - Interactive Task Lists (`- [ ]`, `- [x]`) that synchronize directly with the Notepad++ editor buffer.
   - Math expressions and Mermaid diagram containers.
 - **Real-Time Caret & Editor Synchronization**: Moving the editor caret scrolls the reader to the matching line. Double-clicking any element in the preview jumps the editor caret straight to the source line.
-- **Dark Mode & Theme Adaptation**: Seamlessly matches Notepad++ theme (Follow Notepad++, Light, Dark) without bloated third-party theme packs.
+- **Preview Themes & Settings**: The animated gear menu provides Follow Notepad++, Light, Dark, Sepia, Monokai, Dracula, Solarized, Nord, GitHub, VS Code Dark, and all 64 Bearded variants, including hover previews. It also controls caret sync, outline, BiDi, auto-show, zoom, HTML copy/export, and dark mode. Open it from the preview or **Plugins > NppMarkdownNext > Settings...**. Existing settings are preserved.
 - **Zero Network Dependencies**: 100% offline, private, and secure. Zero external font downloads or CDN tracking requests.
 - **Export & Clipboard**: 1-click "Save As HTML" and "Copy Rendered HTML" to clipboard.
+
+HTML saves use a temporary sibling file and preserve a recoverable original if replacement fails. Clipboard copy publishes HTML and Unicode text; the menu reports the native result, including partial copy and cancellation. Export still uses the native Markdown parser, so complex Markdown structures can differ from the live reader.
 
 ## Requirements
 
@@ -40,6 +42,21 @@ NppMarkdownNext is an ultra-lightweight native Markdown reader and live preview 
        └── WebView2Loader.dll
    ```
 4. Restart Notepad++. Toggle the preview panel via **Plugins > NppMarkdownNext > Toggle Markdown Preview** or press `Ctrl+Shift+M`.
+
+Release archives contain both DLLs at the ZIP root, plus documentation, theme notices, and `manifest.json`. The manifest records the architecture, source commit/digest, and file hashes. Hashes detect corruption; they do not authenticate the publisher.
+
+### Optional Local Installer
+
+The optional `tools/Install-NppMarkdownNext.ps1` script requires an explicit `-PackagePath`. From the repository root:
+
+```powershell
+.\tools\Install-NppMarkdownNext.ps1 -PackagePath .\Release\NppMarkdownNext-1.6.0-x64.zip -DryRun
+.\tools\Install-NppMarkdownNext.ps1 -PackagePath .\Release\NppMarkdownNext-1.6.0-x64.zip
+```
+
+`-NppDirectory` selects a portable or alternate installation. `-DryRun` validates and displays the selected package without elevation, closing windows, or writing files. `-Force` skips the close confirmation but still requests graceful shutdown and waits for save dialogs; it never kills the editor. Only processes belonging to the selected executable are closed.
+
+A successful installation prints its backup directory. Restore it with `-RollbackPath <backup-directory>` and the same `-NppDirectory`. Failed partial installations attempt rollback and retain a recovery directory if restoration also fails. User INI settings are not replaced.
 
 ## Keyboard Shortcuts
 
@@ -86,11 +103,11 @@ SupportedExtensions=.md,.markdown,.mdown,.mkd,.rst
 
 NppMarkdownNext is written in native C++ using the standard Win32 API and Scintilla notification callbacks:
 
-- **Scintilla Notification Loop**: Hooks `SCN_MODIFIED` and `SCN_UPDATEUI` to observe buffer edits. To maintain responsiveness on large files, buffer checks verify the active file's extension before triggering debounced rendering (250 ms delay). Micro-caret movements that stay on the same line are filtered out before sending IPC messages.
+- **Scintilla Notification Loop**: Hooks `SCN_MODIFIED` and `SCN_UPDATEUI` to observe buffer edits. One render timer coalesces text changes with a 50 ms delay; lifecycle refreshes use a forced 1 ms request. Scintilla position fields match the pointer-sized notification ABI. Micro-caret movements that stay on the same line are filtered out before sending IPC messages.
 - **AST Parser (`MarkdownParser`)**: Single-pass recursive tokenization into structured blocks (headers, lists, tables, blockquotes, code blocks, alerts, horizontal rules). The inline tokenizer handles bold/italic boundary markers, intra-word snake_case protection (e.g. `foo_bar_baz`), multi-backtick spans, and pipe escaping in table cells.
 - **BiDi Processing (`BiDiEngine`)**: Analyzes text direction based on the first strong directional character, isolates directional text in code lines with `<bdi>` and directional CSS markers, and normalizes Arabic Yeh/Kaf characters to Persian equivalents.
-- **WebView2 Viewer (`WebView2Viewer`)**: Hosts `ICoreWebView2Controller` and `ICoreWebView2`. Uses efficient JSON messaging (`render`, `scrollToLine`, `setTheme`, `setBiDi`) and direct message dispatch (`jumpToLine:<line>`, `toggleCheckbox:<line>`) between the Kelk web environment and the native Win32 window.
-- **Kelk Core Bundle (`KelkBundle.inc`)**: Lightweight compilation of Marked.js, DOMPurify, Highlight.js, and Kelk's BiDiCore/BidiView direction engine, fitting under 300 KB for lightning-fast loads.
+- **WebView2 Viewer (`WebView2Viewer`)**: Hosts `ICoreWebView2Controller` and `ICoreWebView2`. Uses JSON messaging for renders and settings. Checkbox changes carry a buffer ID, render revision, source line, marker column, and expected state; the native host verifies the current source snapshot before editing.
+- **Kelk Core Bundle (`KelkBundle.inc`)**: Bundled Marked.js, DOMPurify, Highlight.js, and Kelk's BiDiCore/BidiView direction engine. Shared theme, heading, and callout data generate the native and JavaScript views of those contracts.
 
 ## Building from Source
 
@@ -99,6 +116,7 @@ NppMarkdownNext is written in native C++ using the standard Win32 API and Scinti
 - Windows 10/11 or Windows Server.
 - [LLVM](https://llvm.org/) (`clang++` on your `PATH`, or the default install location `C:\Program Files\LLVM\bin`), or [LLVM-MinGW](https://github.com/mstorsjo/llvm-mingw). `windres` is optional — the build script falls back to `llvm-rc` automatically.
 - PowerShell 5.1 or PowerShell 7.
+- Python 3.10+ for checking the generated theme catalog, and Git for source provenance.
 
 ### Build Instructions
 
@@ -123,6 +141,7 @@ NppMarkdownNext is written in native C++ using the standard Win32 API and Scinti
    powershell -ExecutionPolicy Bypass -File .\makerelease.ps1
    ```
    Release `.zip` packages for all supported architectures will be generated in the `Release/` directory.
+   Packaging requires `build-info.json` from a successful build of each architecture. Source or binary changes after that build invalidate packaging; rebuild before retrying. Build metadata is invalidated before every compile attempt.
 
 ### Running Unit Tests Separately
 
@@ -135,10 +154,28 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1 -TestsOnly
 Or compile and run directly via Clang:
 
 ```powershell
-clang++ -std=c++23 -O2 -Iinclude tests/test_suite.cpp src/MarkdownParser.cpp src/BiDiEngine.cpp src/SyntaxHighlighter.cpp src/HtmlExporter.cpp -luser32 -o bin/test_suite.exe
+clang++ -std=c++23 -O2 -Iinclude tests/test_suite.cpp src/MarkdownParser.cpp src/BiDiEngine.cpp src/SyntaxHighlighter.cpp src/HtmlExporter.cpp src/Config.cpp -luser32 -o bin/test_suite.exe
 .\bin\test_suite.exe
 ```
 
+`-TestsOnly` also builds and executes `test_export_io.exe` and `test_viewer_lifecycle.exe`. These support `--case <name>` for an individual scenario. Their Win32 fault hooks exist only in test builds; clipboard tests use an in-memory fake instead of changing the user's clipboard.
+
+Run the packaging and optional installer checks separately:
+
+```powershell
+pwsh -NoProfile -File .\tests\test_package.ps1
+pwsh -NoProfile -File .\tests\test_install.ps1
+```
+
+These checks create isolated fixtures under the ignored `bin` directory and validate ZIP structure, provenance, preflight failures, target process selection, and rollback. They do not install into the user's Notepad++.
+
+### Running Settings UI Checks
+
+Generate the settings UI regression fixture with `python tests/reader_fixture.py`.
+Serve `bin/reader-validation` locally, open the generated reader page, and evaluate
+the async function in `tests/reader_ui_test.js` to check themes, hover previews,
+settings commands, nested lists, and empty content against a mock host.
+
 ## License
 
-This project is licensed under the MIT License. See [License.txt](License.txt) for details.
+The plugin source is licensed under the MIT License. See [License.txt](License.txt) for details. The bundled Bearded Theme palettes retain their GPL-3.0 license; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [themes/BEARDED_LICENSE](themes/BEARDED_LICENSE).

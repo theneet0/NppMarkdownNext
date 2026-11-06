@@ -14,9 +14,45 @@ Generates src/KelkBundle.inc containing the pure Kelk Markdown Reader engine:
 import os
 import sys
 import re
+import json
+import unicodedata
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.abspath(os.path.join(script_dir, ".."))
+heading_policy_path = os.path.join(repo_root, "themes", "heading-policy.json")
+if "--import-heading-policy" in sys.argv:
+    ranges = []
+    folds = []
+    expansions = {}
+    for codepoint in range(0x110000):
+        lower = chr(codepoint).lower()
+        if lower != chr(codepoint):
+            if len(lower) == 1:
+                delta = ord(lower) - codepoint
+                if folds and codepoint == folds[-1][1] + 1 and delta == folds[-1][2]:
+                    folds[-1][1] = codepoint
+                else:
+                    folds.append([codepoint, codepoint, delta])
+            else:
+                expansions[str(codepoint)] = [ord(character) for character in lower]
+        if unicodedata.category(chr(codepoint))[0] not in "LNM":
+            continue
+        if ranges and codepoint == ranges[-1][1] + 1:
+            ranges[-1][1] = codepoint
+        else:
+            ranges.append([codepoint, codepoint])
+    reserved = ["content", "reader-wrap", "theme-fab", "theme-popover", "theme-pop-list", "toast-msg", "toc-backdrop", "toc-drawer", "reader-warnings", "reader-settings-warning", "reader-operation-warning"]
+    if os.path.exists(heading_policy_path):
+        with open(heading_policy_path, encoding="utf-8") as fp:
+            reserved = json.load(fp)["reservedIds"]
+    policy = {"unicodeVersion": unicodedata.unidata_version, "reservedIds": reserved, "acceptedRanges": ranges,
+              "lowercaseRanges": folds, "lowercaseExpansions": expansions,
+              "whitespaceRanges": [[9, 13], [32, 32], [160, 160], [5760, 5760], [8192, 8202], [8232, 8233], [8239, 8239], [8287, 8287], [12288, 12288], [65279, 65279]]}
+    with open(heading_policy_path, "w", encoding="utf-8") as fp:
+        json.dump(policy, fp, ensure_ascii=False, separators=(",", ":"))
+        fp.write("\n")
+    print("Imported heading policy Unicode " + unicodedata.unidata_version)
+    sys.exit(0)
 default_kelk = os.path.abspath(os.path.join(repo_root, "..", "kelk_repo"))
 
 kelk_dir = sys.argv[1] if len(sys.argv) > 1 else default_kelk
@@ -292,6 +328,47 @@ for f in js_files:
 
 core_js = "\n\n".join(core_js_parts)
 
+# Shared data stays independent of the Markdown parsers.
+with open(os.path.join(repo_root, "themes", "callouts.json"), encoding="utf-8") as fp:
+    callouts = json.load(fp)
+callout_js = "window.READER_CALLOUTS=" + json.dumps(callouts, ensure_ascii=False, separators=(",", ":")) + ";\n"
+with open(heading_policy_path, encoding="utf-8") as fp:
+    heading_policy = json.load(fp)
+heading_js = "window.READER_HEADING_POLICY=" + json.dumps(heading_policy, ensure_ascii=False, separators=(",", ":")) + ";\n"
+with open(os.path.join(repo_root, "include", "HeadingPolicy.inc"), "w", encoding="utf-8") as fp:
+    fp.write("// Generated from themes/heading-policy.json; Unicode " + heading_policy["unicodeVersion"] + ".\n")
+    fp.write('inline constexpr const char* kHeadingUnicodeVersion = "' + heading_policy["unicodeVersion"] + '";\n')
+    fp.write("inline constexpr const wchar_t* kReservedHeadingIds[] = {" + ",".join("L" + json.dumps(value) for value in heading_policy["reservedIds"]) + "};\n")
+    fp.write("struct HeadingCodepointRange { unsigned first, last; };\ninline constexpr HeadingCodepointRange kHeadingCodepoints[] = {\n")
+    fp.write("\n".join("    {" + str(first) + "," + str(last) + "}," for first, last in heading_policy["acceptedRanges"]))
+    fp.write("\n};\n")
+    fp.write("inline constexpr HeadingCodepointRange kHeadingWhitespace[] = {" + ",".join("{" + str(first) + "," + str(last) + "}" for first, last in heading_policy["whitespaceRanges"]) + "};\n")
+    fp.write("struct HeadingFoldRange { unsigned first, last; int delta; };\ninline constexpr HeadingFoldRange kHeadingFolds[] = {\n")
+    fp.write("\n".join("    {" + ",".join(map(str, row)) + "}," for row in heading_policy["lowercaseRanges"]) + "\n};\n")
+    fp.write("struct HeadingExpansion { unsigned codepoint, first, second; };\ninline constexpr HeadingExpansion kHeadingExpansions[] = {\n")
+    for codepoint, values in heading_policy["lowercaseExpansions"].items():
+        if len(values) != 2:
+            raise ValueError("Update the explicit heading expansion contract before importing this Unicode version")
+        fp.write("    {" + codepoint + "," + ",".join(map(str, values)) + "},\n")
+    fp.write("};\n")
+callout_rows = []
+for item in callouts:
+    for index, alias in enumerate(item["aliases"]):
+        title = item["title"] if index == 0 else item["localizedTitle"]
+        callout_rows.append("    {L" + json.dumps(alias, ensure_ascii=False) + ", AlertType::" + item["nativeType"] + ", L" + json.dumps(title, ensure_ascii=False) + "},")
+with open(os.path.join(repo_root, "src", "CalloutRegistry.inc"), "w", encoding="utf-8") as fp:
+    fp.write("// Generated from themes/callouts.json.\nstruct CalloutRegistryEntry { const wchar_t* alias; AlertType type; const wchar_t* title; };\n")
+    fp.write("inline constexpr CalloutRegistryEntry kCalloutRegistry[] = {\n" + "\n".join(callout_rows) + "\n};\n")
+with open(os.path.join(repo_root, "tests", "fixtures", "headings.json"), encoding="utf-8") as fp:
+    heading_cases = json.load(fp)
+def wide_list(values):
+    return "{" + ", ".join("L" + json.dumps(value, ensure_ascii=False) for value in values) + "}"
+with open(os.path.join(repo_root, "tests", "fixtures", "headings.inc"), "w", encoding="utf-8") as fp:
+    fp.write("// Generated from headings.json.\n#include <initializer_list>\nstruct HeadingCase { const wchar_t* name; std::initializer_list<const wchar_t*> reserved, headings, expected; };\ninline const HeadingCase kHeadingCases[] = {\n")
+    for case in heading_cases:
+        fp.write("    {L" + json.dumps(case["name"], ensure_ascii=False) + ", " + ", ".join(wide_list(case[key]) for key in ("reserved", "headings", "expected")) + "},\n")
+    fp.write("};\n")
+
 # Reader controller script (handles messages from C++ host, renders markdown, handles checkbox clicks & line jumping)
 controller_js = r"""
 (function() {
@@ -299,6 +376,12 @@ controller_js = r"""
 
   var contentEl = null;
   var currentBiDi = true;
+  var blockSources = new WeakMap();
+  var renderSequence = 0;
+  var currentDocument = null;
+  var readingPositions = new Map();
+  var taskSources = new Map();
+  var taskSourceLines = [];
 
   // Safe HTML entity escaping
   function escapeHtml(s) {
@@ -330,26 +413,166 @@ controller_js = r"""
     });
   }
 
-  // Tokenize markdown with source line tracking
-  function parseWithLines(markdown) {
+  function captureBlockSources(lexer) {
+    var sources = new WeakMap();
+    var original = lexer.blockTokens;
+    lexer.blockTokens = function(source, tokens, clipped) {
+      var previous = tokens && sources.get(tokens);
+      var hadTokens = tokens && tokens.length;
+      var result = original.call(this, source, tokens, clipped);
+      var separator = previous && hadTokens && clipped && !previous.endsWith('\n') ? '\n' : '';
+      sources.set(result, previous && hadTokens ? previous + separator + source : source);
+      return result;
+    };
+    return sources;
+  }
+
+  function annotateSourceLines(tokens, source, physicalLines) {
+    var cursor = 0;
+    var cursorLine = 0;
+    var uncertain = false;
+    tokens.forEach(function(token) {
+      var raw = typeof token.raw === 'string' ? token.raw : '';
+      var position = !uncertain && raw ? source.indexOf(raw, cursor) : -1;
+      if (position < 0) uncertain = true;
+      var localLine = position < 0 ? -1 : cursorLine + (source.slice(cursor, position).match(/\n/g) || []).length;
+      var line = localLine < 0 ? null : physicalLines[localLine];
+      token.sourceLine = Number.isInteger(line) && line >= 0 ? line : null;
+      var rawLines = (raw.match(/\n/g) || []).length + 1;
+      var childMap = [];
+      for (var n = 0; n < rawLines; n++) childMap.push(token.sourceLine === null ? null : physicalLines[localLine + n]);
+      if (token.items) annotateSourceLines(token.items, raw, childMap);
+      if (token.tokens && blockSources.has(token.tokens)) {
+        annotateSourceLines(token.tokens, blockSources.get(token.tokens), childMap);
+      }
+      if (position >= 0) { cursor = position + raw.length; cursorLine = localLine + rawLines - 1; }
+    });
+  }
+
+  function sourceAttributes(token) {
+    return Number.isInteger(token.sourceLine) && token.sourceLine >= 0 ?
+      ' data-line="' + token.sourceLine + '"' : ' data-source-unmapped="true"';
+  }
+
+  function slugHeading(text, usedIds) {
+    var policy = window.READER_HEADING_POLICY;
+    var ranges = policy.acceptedRanges;
+    var lowercase = Array.from(String(text)).map(function(character) {
+      var codepoint = character.codePointAt(0), expansion = policy.lowercaseExpansions[codepoint];
+      if (expansion) return String.fromCodePoint.apply(String, expansion);
+      var folds = policy.lowercaseRanges, left = 0, right = folds.length;
+      while (left < right) { var middle = (left + right) >>> 1; if (folds[middle][1] < codepoint) left = middle + 1; else right = middle; }
+      return left < folds.length && folds[left][0] <= codepoint ? String.fromCodePoint(codepoint + folds[left][2]) : character;
+    }).join('');
+    var base = Array.from(lowercase).filter(function(character) {
+      if (/\s/u.test(character)) return true;
+      var codepoint = character.codePointAt(0), left = 0, right = ranges.length;
+      while (left < right) { var middle = (left + right) >>> 1; if (ranges[middle][1] < codepoint) left = middle + 1; else right = middle; }
+      return left < ranges.length && ranges[left][0] <= codepoint;
+    }).join('').trim().replace(/\s+/gu, '-') || 'section';
+    var id = base, number = 0;
+    while (usedIds.has(id)) id = base + '-' + (++number);
+    usedIds.add(id);
+    return id;
+  }
+
+  function headingText(heading) {
+    var clone = heading.cloneNode(true);
+    clone.querySelectorAll('img').forEach(function(image) {
+      image.replaceWith(document.createTextNode(image.getAttribute('alt') || ''));
+    });
+    return clone.textContent;
+  }
+
+  function buildDocumentIndex(root) {
+    var used = new Set(window.READER_HEADING_POLICY.reservedIds);
+    document.querySelectorAll('[id]').forEach(function(element) { if (!root.contains(element)) used.add(element.id); });
+    root.querySelectorAll('[id]').forEach(function(element) {
+      if (used.has(element.id)) element.removeAttribute('id');
+      else used.add(element.id);
+    });
+    var headings = [];
+    root.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(function(heading, index) {
+      var text = headingText(heading);
+      if (!heading.id) heading.id = slugHeading(text, used);
+      var line = Number(heading.getAttribute('data-line'));
+      headings.push({id: heading.id, level: Number(heading.tagName.slice(1)), text: text,
+                     line: heading.hasAttribute('data-line') && Number.isInteger(line) ? line : null, element: heading});
+    });
+    // Canonical heading IDs take priority over compatibility aliases.
+    headings.forEach(function(heading, index) {
+      var legacy = 'reader-heading-' + index;
+      if (!used.has(legacy)) {
+        var alias = document.createElement('span');
+        alias.id = legacy; alias.className = 'reader-legacy-anchor'; alias.setAttribute('aria-hidden', 'true');
+        heading.element.before(alias); used.add(legacy);
+      }
+    });
+    var blocks = Array.from(root.querySelectorAll('[data-line]')).filter(function(element) {
+      return !element.closest('[data-source-unmapped]');
+    }).map(function(element) { return {line: Number(element.getAttribute('data-line')), element: element}; });
+    return {headings: headings, blocks: blocks};
+  }
+
+  function getReaderScrollRoot() {
+    var body = document.body;
+    if (body && /^(auto|scroll)$/.test(getComputedStyle(body).overflowY) && body.scrollHeight > body.clientHeight) return body;
+    return document.scrollingElement || document.documentElement;
+  }
+  window.getReaderScrollRoot = getReaderScrollRoot;
+
+  function captureReadingPosition() {
+    if (!currentDocument || currentDocument.closed || !currentDocument.bufferId || currentDocument.sync || !currentDocument.index.blocks.length) return;
+    var blocks = currentDocument.index.blocks;
+    var anchor = blocks.find(function(block) { return block.element.getBoundingClientRect().bottom > 0; }) || blocks[blocks.length - 1];
+    var preceding = currentDocument.index.headings.filter(function(heading) { return heading.line !== null && heading.line <= anchor.line; });
+    readingPositions.delete(currentDocument.bufferId);
+    var heading = preceding.length ? preceding[preceding.length - 1] : null;
+    readingPositions.set(currentDocument.bufferId, {line: anchor.line, heading: heading ? heading.id : '', relativeLine: heading ? anchor.line - heading.line : 0, offset: anchor.element.getBoundingClientRect().top});
+    while (readingPositions.size > 100) readingPositions.delete(readingPositions.keys().next().value);
+  }
+
+  function finalizeDocument(data, state, sequence) {
+    var index = state === 'ready' ? buildDocumentIndex(contentEl) : {headings: [], blocks: []};
+    var bufferId = typeof data.bufferId === 'string' ? data.bufferId : '';
+    currentDocument = {bufferId: bufferId, sync: typeof data.caretLine === 'number' && data.caretLine >= 0, closed: false, index: index};
+    window.readerDocumentIndex = {bufferId: bufferId, renderRevision: data.renderRevision, sequence: sequence, state: state, headings: index.headings, blocks: index.blocks};
+    document.dispatchEvent(new CustomEvent('readerRendered', {detail: window.readerDocumentIndex}));
+    var saved = readingPositions.get(bufferId);
+    if (!currentDocument.sync && saved && index.blocks.length) {
+      requestAnimationFrame(function() {
+        if (sequence !== renderSequence || !currentDocument || currentDocument.closed || currentDocument.bufferId !== bufferId || currentDocument.sync) return;
+        var headingIndex = index.headings.findIndex(function(heading) { return heading.id === saved.heading && heading.line !== null; });
+        var targetLine = headingIndex >= 0 ? index.headings[headingIndex].line + saved.relativeLine : saved.line;
+        var candidates = index.blocks;
+        if (headingIndex >= 0) {
+          var start = index.headings[headingIndex].line, next = index.headings[headingIndex + 1];
+          var section = candidates.filter(function(block) { return block.line >= start && (!next || next.line === null || block.line < next.line); });
+          if (section.length) candidates = section;
+        }
+        var nearest = candidates.reduce(function(best, block) { return Math.abs(block.line - targetLine) < Math.abs(best.line - targetLine) ? block : best; });
+        getReaderScrollRoot().scrollTop += nearest.element.getBoundingClientRect().top - saved.offset;
+      });
+    } else if (!currentDocument.sync && !saved) {
+      getReaderScrollRoot().scrollTop = 0;
+    }
+  }
+
+  // Token positions come from each actual lexer input, before task text mutation.
+  function parseWithLines(markdown, startLine) {
     if (!markdown || !markdown.trim()) return '';
     try {
-      var tokens = marked.lexer(markdown);
-      var curLine = 0;
-      for (var i = 0; i < tokens.length; i++) {
-        var tok = tokens[i];
-        tok.sourceLine = curLine;
-        if (tok.type === 'list' && tok.items) {
-          var itemLine = curLine;
-          for (var j = 0; j < tok.items.length; j++) {
-            tok.items[j].sourceLine = itemLine;
-            var numLines = (tok.items[j].raw.match(/\n/g) || []).length;
-            itemLine += numLines;
-          }
-        }
-        var lines = (tok.raw.match(/\n/g) || []).length;
-        curLine += lines;
+      var source = markdown.replace(/\r\n?|\n/g, '\n');
+      if (startLine === undefined) {
+        taskSources = new Map();
+        taskSourceLines = source.split('\n');
       }
+      var lexer = new marked.Lexer();
+      blockSources = captureBlockSources(lexer);
+      var tokens = lexer.lex(source);
+      if (startLine === undefined) startLine = 0;
+      var physicalLines = source.split('\n').map(function(_, index) { return Number.isInteger(startLine) ? startLine + index : null; });
+      annotateSourceLines(tokens, source, physicalLines);
 
       var customRenderer = new marked.Renderer();
 
@@ -360,50 +583,62 @@ controller_js = r"""
 
       customRenderer.heading = function(obj) {
         var text = this.parser.parseInline(obj.tokens);
-        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
-        return '<h' + obj.depth + ' data-line="' + line + '">' + text + '</h' + obj.depth + '>\n';
+        return '<h' + obj.depth + sourceAttributes(obj) + '>' + text + '</h' + obj.depth + '>\n';
       };
 
       customRenderer.paragraph = function(obj) {
         var text = this.parser.parseInline(obj.tokens);
-        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
-        return '<p data-line="' + line + '">' + text + '</p>\n';
+        return '<p' + sourceAttributes(obj) + '>' + text + '</p>\n';
       };
 
       customRenderer.code = function(obj) {
         var validLang = (obj.lang || '').match(/^\S*/)[0];
-        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         var langClass = validLang ? ' language-' + validLang : '';
-        return '<pre data-line="' + line + '"><code class="hljs' + langClass + '">' +
+        return '<pre' + sourceAttributes(obj) + '><code class="hljs' + escapeHtml(langClass) + '">' +
                escapeHtml(obj.text) + '</code></pre>\n';
       };
 
       customRenderer.blockquote = function(obj) {
+        var firstLine = (obj.text || '').split('\n')[0];
+        var marker = firstLine.match(/^\[!([^\]\r\n]+)\][ \t]*$/);
+        var registry = window.READER_CALLOUTS || [];
+        var callout = marker && registry.find(function(item) { return item.aliases.some(function(alias) { return alias.toLowerCase() === marker[1].toLowerCase(); }); });
+        if (callout) {
+          var title = marker[1].toLowerCase() === callout.aliases[0].toLowerCase() ? callout.title : callout.localizedTitle;
+          var body = (obj.text || '').slice(firstLine.length).replace(/^\n/, '');
+          var bodyLine = Number.isInteger(obj.sourceLine) ? obj.sourceLine + 1 : null;
+          return '<blockquote class="alert-callout alert-' + escapeHtml(callout.type) + '"' + sourceAttributes(obj) + '><div class="alert-title">' + escapeHtml(title) + '</div>' + parseWithLines(body, bodyLine) + '</blockquote>\n';
+        }
         var text = this.parser.parse(obj.tokens);
-        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
-        return '<blockquote data-line="' + line + '">' + text + '</blockquote>\n';
+        return '<blockquote' + sourceAttributes(obj) + '>' + text + '</blockquote>\n';
       };
 
       customRenderer.listitem = function(obj) {
-        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         var text = this.parser.parse(obj.tokens);
         if (obj.task) {
-          return '<li class="task-list-item" data-line="' + line + '">' +
-                 '<input type="checkbox" class="task-checkbox" data-line="' + line + '" ' +
+          var original = taskSourceLines[obj.sourceLine];
+          var marker = typeof original === 'string' && original.match(/^([ \t]*(?:(?:>[ \t]*)|(?:(?:[-+*]|\d{1,9}[.)])[ \t]+))*)\[([ xX])\](?=[ \t]|$)/);
+          var key = '';
+          if (obj.sourceLine !== null && marker) {
+            // NavigateToString has an opaque origin; getRandomValues also works outside secure contexts.
+            key = Array.from(crypto.getRandomValues(new Uint32Array(4)), function(value) { return value.toString(16).padStart(8, '0'); }).join('');
+            taskSources.set(key, {line: obj.sourceLine, column: new TextEncoder().encode(marker[1]).length,
+                                  state: marker[2] === ' ' ? 0 : marker[2] === 'x' ? 1 : 2});
+          }
+          return '<li class="task-list-item"' + sourceAttributes(obj) + '>' +
+                 '<input type="checkbox" class="task-checkbox"' + sourceAttributes(obj) + (key ? ' data-task-key="' + key + '"' : ' disabled title="Source position could not be verified"') + ' ' +
                  (obj.checked ? 'checked' : '') + '> ' + text + '</li>\n';
         }
-        return '<li data-line="' + line + '">' + text + '</li>\n';
+        return '<li' + sourceAttributes(obj) + '>' + text + '</li>\n';
       };
 
       customRenderer.table = function(obj) {
-        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
         var text = marked.Renderer.prototype.table.call(this, obj);
-        return text.replace(/^<table/, '<table data-line="' + line + '"');
+        return text.replace(/^<table/, '<table' + sourceAttributes(obj));
       };
 
       customRenderer.hr = function(obj) {
-        var line = obj.sourceLine !== undefined ? obj.sourceLine : 0;
-        return '<hr data-line="' + line + '">\n';
+        return '<hr' + sourceAttributes(obj) + '>\n';
       };
 
       var parser = new marked.Parser({ renderer: customRenderer });
@@ -415,6 +650,8 @@ controller_js = r"""
   }
 
   function applyRender(data) {
+    captureReadingPosition();
+    var sequence = ++renderSequence;
     try {
       if (!contentEl) contentEl = document.getElementById('content');
       if (!contentEl) return;
@@ -435,12 +672,13 @@ controller_js = r"""
       var mdText = data.markdown || '';
       if (!mdText.trim()) {
         contentEl.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px 20px;"><em>(No content to preview)</em></div>';
+        finalizeDocument(data, 'empty', sequence);
         return;
       }
 
       var html = parseWithLines(mdText);
       if (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function') {
-        html = DOMPurify.sanitize(html, { ADD_ATTR: ['data-line', 'target', 'dir', 'align'] });
+        html = DOMPurify.sanitize(html, { ADD_ATTR: ['data-line', 'data-source-unmapped', 'data-task-key', 'target', 'dir', 'align'] });
       }
 
       contentEl.innerHTML = html;
@@ -481,16 +719,25 @@ controller_js = r"""
       var cbs = contentEl.querySelectorAll('input.task-checkbox');
       for (var k = 0; k < cbs.length; k++) {
         (function(cb) {
+          var task = taskSources.get(cb.getAttribute('data-task-key'));
+          taskSources.delete(cb.getAttribute('data-task-key'));
+          cb.removeAttribute('data-task-key');
+          if (!task || cb.closest('[data-source-unmapped]') || !/^\d+$/.test(data.bufferId || '') || !/^\d+$/.test(data.renderRevision || '')) {
+            cb.disabled = true;
+            return;
+          }
           cb.addEventListener('click', function(e) {
             e.stopPropagation();
-            var line = cb.getAttribute('data-line');
-            if (line !== null && window.chrome && window.chrome.webview) {
-              window.chrome.webview.postMessage('toggleCheckbox:' + line);
+            if (sequence !== renderSequence || !cb.isConnected || !currentDocument || currentDocument.closed) { e.preventDefault(); return; }
+            if (window.chrome && window.chrome.webview) {
+              cb.disabled = true;
+              window.chrome.webview.postMessage('toggleCheckbox:' + data.bufferId + ':' + data.renderRevision + ':' + task.line + ':' + task.column + ':' + task.state);
             }
           });
         })(cbs[k]);
       }
 
+      finalizeDocument(data, 'ready', sequence);
       // Scroll to caret if specified
       if (typeof data.caretLine === 'number' && data.caretLine >= 0) {
         scrollToLine(data.caretLine, false);
@@ -505,6 +752,7 @@ controller_js = r"""
                               '<h3 style="margin-top:0;">Preview Error</h3>' +
                               '<p>' + escapeHtml(err ? err.message : 'Error') + '</p>' +
                               '</div>';
+        finalizeDocument(data, 'error', sequence);
       }
     }
   }
@@ -513,7 +761,7 @@ controller_js = r"""
     if (!contentEl) contentEl = document.getElementById('content');
     if (!contentEl) return;
 
-    var elements = contentEl.querySelectorAll('[data-line]');
+    var elements = currentDocument ? currentDocument.index.blocks.map(function(block) { return block.element; }) : [];
     if (elements.length === 0) return;
 
     var bestEl = null;
@@ -547,6 +795,7 @@ controller_js = r"""
   }
 
   document.addEventListener('dblclick', function(e) {
+    if (e.target.closest('[data-source-unmapped]')) return;
     var target = e.target.closest('[data-line]');
     if (target) {
       jumpToSource(target);
@@ -564,6 +813,11 @@ controller_js = r"""
 
       if (data.type === 'render') {
         applyRender(data);
+      } else if (data.type === 'bufferClosed') {
+        readingPositions.delete(data.bufferId);
+        if (currentDocument && currentDocument.bufferId === data.bufferId) currentDocument.closed = true;
+      } else if (data.type === 'settings') {
+        if (currentDocument && typeof data.sync === 'boolean') currentDocument.sync = data.sync;
       } else if (data.type === 'scrollToLine') {
         scrollToLine(data.line, true);
       } else if (data.type === 'setTheme') {
@@ -626,7 +880,7 @@ export_js = r"""
 })();
 """
 
-combined_shell_js = core_js + "\n\n/* === Controller === */\n" + controller_js
+combined_shell_js = core_js + "\n\n" + callout_js + heading_js + "\n/* === Controller === */\n" + controller_js
 combined_export_js = core_js + "\n\n/* === Export Init === */\n" + export_js
 
 # Ensure 100% offline string verification passes without breaking URL namespaces

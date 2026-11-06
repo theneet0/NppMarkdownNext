@@ -1,5 +1,6 @@
 #pragma once
 #include <windows.h>
+#include <cstddef>
 #include "Notepad_plus_msgs.h"
 #include "Scintilla.h"
 
@@ -44,17 +45,18 @@ struct FuncItem {
 
 struct SCNotification {
     NMHDR nmhdr;
-    int position;
+    // Scintilla positions are pointer-sized; Windows long stays 32-bit on x64.
+    std::ptrdiff_t position;
     int ch;
     int modifiers;
     int modificationType;
     const char *text;
-    int length;
-    int linesAdded;
+    std::ptrdiff_t length;
+    std::ptrdiff_t linesAdded;
     int message;
     uintptr_t wParam;
     intptr_t lParam;
-    int line;
+    std::ptrdiff_t line;
     int foldLevelNow;
     int foldLevelPrev;
     int margin;
@@ -62,11 +64,14 @@ struct SCNotification {
     int x;
     int y;
     int token;
-    int annotationLinesAdded;
+    std::ptrdiff_t annotationLinesAdded;
     int updated;
     int listCompletionMethod;
     int characterSource;
 };
+
+static_assert(offsetof(SCNotification, modificationType) == (sizeof(void*) == 8 ? 40 : 24),
+    "SCNotification must match the Scintilla notification ABI");
 
 #ifdef __cplusplus
 extern "C" {

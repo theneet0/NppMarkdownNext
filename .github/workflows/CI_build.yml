@@ -47,6 +47,20 @@ jobs:
         path: packages/Microsoft.Web.WebView2.1.0.4191.47
         key: webview2-nuget-1.0.4191.47
 
+    - name: Check reader contracts and installer
+      shell: pwsh
+      run: |
+        python -m unittest discover -s tests -p test_theme_catalog.py
+        if ($LASTEXITCODE -ne 0) { throw "Theme catalog tests failed" }
+        node tests/test_reader_parser.cjs
+        if ($LASTEXITCODE -ne 0) { throw "Reader parser tests failed" }
+        foreach ($test in @('test_package.ps1', 'test_install.ps1')) {
+          & powershell -NoProfile -File "tests/$test"
+          if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell test failed: $test" }
+          & pwsh -NoProfile -File "tests/$test"
+          if ($LASTEXITCODE -ne 0) { throw "PowerShell test failed: $test" }
+        }
+
     - name: Build plugin DLLs (x64, x86, arm64) and run tests
       shell: pwsh
       run: |

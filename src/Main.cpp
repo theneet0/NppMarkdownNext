@@ -4,6 +4,7 @@
 #include "../include/NppMarkdownNext.h"
 
 HINSTANCE g_hInst = nullptr;
+bool g_isDllDetaching = false;
 NppData g_nppData = {};
 FuncItem g_funcItems[NB_PLUGIN_COMMANDS] = {};
 ShortcutKey g_shortcuts[NB_PLUGIN_COMMANDS] = {};
@@ -56,13 +57,18 @@ void CommandAbout() {
     NppMarkdownNext::Instance().ShowAbout();
 }
 
+void CommandSettings() {
+    NppMarkdownNext::Instance().OpenSettings();
+}
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
     switch (fdwReason) {
         case DLL_PROCESS_ATTACH:
             g_hInst = hinstDLL;
+            g_isDllDetaching = false;
             break;
         case DLL_PROCESS_DETACH:
-            NppMarkdownNext::Instance().Cleanup();
+            g_isDllDetaching = true;
             break;
     }
     return TRUE;
@@ -170,6 +176,9 @@ __declspec(dllexport) FuncItem * getFuncsArray(int *nbF) {
     g_funcItems[CMD_ABOUT]._init2Check = false;
     g_funcItems[CMD_ABOUT]._pShKey = nullptr;
 
+    wcscpy_s(g_funcItems[CMD_SETTINGS]._itemName, L"Settings...");
+    g_funcItems[CMD_SETTINGS]._pFunc = CommandSettings;
+    g_funcItems[CMD_SETTINGS]._cmdID = CMD_SETTINGS;
     return g_funcItems;
 }
 
@@ -202,6 +211,20 @@ __declspec(dllexport) void beNotified(SCNotification *notifyCode) {
 
         case NPPN_BUFFERACTIVATED:
             NppMarkdownNext::Instance().OnBufferActivated();
+            break;
+
+        case NPPN_FILECLOSED:
+            NppMarkdownNext::Instance().OnBufferClosed(notifyCode->nmhdr.idFrom);
+            NppMarkdownNext::Instance().OnBufferActivated();
+            break;
+
+        case NPPN_FILESAVED:
+        case NPPN_FILERENAMED:
+            NppMarkdownNext::Instance().OnDocumentPathChanged(notifyCode->nmhdr.idFrom);
+            break;
+
+        case NPPN_SHUTDOWN:
+            NppMarkdownNext::Instance().Cleanup();
             break;
 
         default:

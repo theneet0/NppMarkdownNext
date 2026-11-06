@@ -6,6 +6,9 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $scriptDir
+. (Join-Path $scriptDir 'makerelease.ps1') -FunctionsOnly
+& python (Join-Path $scriptDir 'tools\gen-reader-themes.py') --check
+if ($LASTEXITCODE -ne 0) { throw 'Generated theme catalog is out of date.' }
 
 # 1. Locate toolchain (clang++ and windres)
 $clang64 = "clang++"
@@ -115,6 +118,7 @@ $testSources = @(
     (Join-Path $scriptDir "src\BiDiEngine.cpp"),
     (Join-Path $scriptDir "src\SyntaxHighlighter.cpp"),
     (Join-Path $scriptDir "src\HtmlExporter.cpp")
+    (Join-Path $scriptDir "src\Config.cpp")
 )
 
 & $clang64 -std=c++23 -O2 -I"$scriptDir\include" $testSources -luser32 -o "$testExe"
@@ -134,12 +138,42 @@ try {
     Pop-Location
 }
 
+$ioTestExe = Join-Path $binDir 'test_export_io.exe'
+$ioTestSources = @(
+    (Join-Path $scriptDir 'tests\test_export_io.cpp'),
+    (Join-Path $scriptDir 'src\MarkdownParser.cpp'),
+    (Join-Path $scriptDir 'src\BiDiEngine.cpp'),
+    (Join-Path $scriptDir 'src\HtmlExporter.cpp'),
+    (Join-Path $scriptDir 'src\Config.cpp')
+)
+& $clang64 -std=c++23 -O2 -DNPP_READER_TESTING -I"$scriptDir\include" $ioTestSources -luser32 -o "$ioTestExe"
+if ($LASTEXITCODE -ne 0) { throw 'Could not compile the export I/O tests.' }
+& $ioTestExe
+if ($LASTEXITCODE -ne 0) { throw 'Export I/O tests failed.' }
+
+$lifecycleTestExe = Join-Path $binDir 'test_viewer_lifecycle.exe'
+$lifecycleSources = @(
+    (Join-Path $scriptDir 'tests\test_viewer_lifecycle.cpp'),
+    (Join-Path $scriptDir 'src\NppMarkdownNext.cpp'),
+    (Join-Path $scriptDir 'src\WebView2Viewer.cpp'),
+    (Join-Path $scriptDir 'src\Config.cpp'),
+    (Join-Path $scriptDir 'src\MarkdownParser.cpp'),
+    (Join-Path $scriptDir 'src\BiDiEngine.cpp'),
+    (Join-Path $scriptDir 'src\SyntaxHighlighter.cpp'),
+    (Join-Path $scriptDir 'src\HtmlExporter.cpp')
+)
+& $clang64 -std=c++23 -O2 -DNPP_READER_TESTING -DUNICODE -D_UNICODE -I"$scriptDir\include" -I"$wv2Include" $lifecycleSources -luser32 -lgdi32 -lcomctl32 -lshlwapi -lole32 -luuid -lcomdlg32 -lshell32 -o "$lifecycleTestExe"
+if ($LASTEXITCODE -ne 0) { throw 'Could not compile the viewer lifecycle tests.' }
+& $lifecycleTestExe
+if ($LASTEXITCODE -ne 0) { throw 'Viewer lifecycle tests failed.' }
+
 if ($TestsOnly) {
     Write-Host "`n[SUCCESS] Unit tests completed successfully!" -ForegroundColor Green
     exit 0
 }
 
 # 3. Build x64 DLL
+Start-PluginBuild $binDir
 Write-Host "`n>>> [2/4] Compiling NppMarkdownNext.dll (x64 Native)..." -ForegroundColor Yellow
 $resFile64 = Join-Path $binDir "resource.res"
 Invoke-ResourceCompile $windres64 (Join-Path $scriptDir "res\NppMarkdownNext.rc") $resFile64
@@ -171,11 +205,13 @@ Invoke-Strip $dllPath64
 if (Test-Path $wv2Loader64) {
     Copy-Item $wv2Loader64 -Destination (Join-Path $binDir "WebView2Loader.dll") -Force
 }
+$null = Write-PluginBuildInfo 'x64' $binDir
 
 Write-Host "Built x64 DLL: $dllPath64 ($( (Get-Item $dllPath64).Length / 1KB ) KB)" -ForegroundColor Green
 
 # 4. Build x86 DLL (if 32-bit compiler is available)
 if (Get-Command $clang32 -ErrorAction SilentlyContinue) {
+    Start-PluginBuild $bin32Dir
     Write-Host "`n>>> [3/4] Compiling NppMarkdownNext.dll (x86 Native)..." -ForegroundColor Yellow
     $resFile32 = Join-Path $bin32Dir "resource.res"
     Invoke-ResourceCompile $windres32 (Join-Path $scriptDir "res\NppMarkdownNext.rc") $resFile32
@@ -201,13 +237,15 @@ if (Get-Command $clang32 -ErrorAction SilentlyContinue) {
         if (Test-Path $wv2Loader32) {
             Copy-Item $wv2Loader32 -Destination (Join-Path $bin32Dir "WebView2Loader.dll") -Force
         }
+        $null = Write-PluginBuildInfo 'x86' $bin32Dir
 
         Write-Host "Built x86 DLL: $dllPath32 ($( (Get-Item $dllPath32).Length / 1KB ) KB)" -ForegroundColor Green
-    }
+    } else { throw "Failed to compile x86 NppMarkdownNext.dll (exit $LASTEXITCODE)." }
 }
 
 # 5. Build ARM64 DLL (if ARM64 compiler is available)
 if (Get-Command $clangArm64 -ErrorAction SilentlyContinue) {
+    Start-PluginBuild $binArm64Dir
     Write-Host "`n>>> [4/4] Compiling NppMarkdownNext.dll (ARM64 Native)..." -ForegroundColor Yellow
     $resFileArm64 = Join-Path $binArm64Dir "resource.res"
     Invoke-ResourceCompile $windresArm64 (Join-Path $scriptDir "res\NppMarkdownNext.rc") $resFileArm64
@@ -233,9 +271,10 @@ if (Get-Command $clangArm64 -ErrorAction SilentlyContinue) {
         if (Test-Path $wv2LoaderArm64) {
             Copy-Item $wv2LoaderArm64 -Destination (Join-Path $binArm64Dir "WebView2Loader.dll") -Force
         }
+        $null = Write-PluginBuildInfo 'arm64' $binArm64Dir
 
         Write-Host "Built ARM64 DLL: $dllPathArm64 ($( (Get-Item $dllPathArm64).Length / 1KB ) KB)" -ForegroundColor Green
-    }
+    } else { throw "Failed to compile ARM64 NppMarkdownNext.dll (exit $LASTEXITCODE)." }
 }
 
 Write-Host "`n[SUCCESS] Build completed successfully!" -ForegroundColor Green

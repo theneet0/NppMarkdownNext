@@ -1,0 +1,7 @@
+[
+  {"type":"note","nativeType":"Note","aliases":["NOTE","نکته","یادداشت"],"title":"Note","localizedTitle":"نکته"},
+  {"type":"tip","nativeType":"Tip","aliases":["TIP","راهنما","ترفند"],"title":"Tip","localizedTitle":"ترفند"},
+  {"type":"important","nativeType":"Important","aliases":["IMPORTANT","مهم"],"title":"Important","localizedTitle":"مهم"},
+  {"type":"warning","nativeType":"Warning","aliases":["WARNING","هشدار"],"title":"Warning","localizedTitle":"هشدار"},
+  {"type":"caution","nativeType":"Caution","aliases":["CAUTION","احتیاط","خطر"],"title":"Caution","localizedTitle":"احتیاط"}
+]

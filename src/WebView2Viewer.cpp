@@ -10,6 +10,36 @@
 
 namespace {
 
+void MatchSystemDpi(HWND parent, ICoreWebView2* view, ICoreWebView2Controller* controller) {
+    const HMODULE user32 = GetModuleHandleW(L"user32.dll");
+    static const auto getContext = reinterpret_cast<HANDLE (WINAPI*)(HWND)>(GetProcAddress(user32, "GetWindowDpiAwarenessContext"));
+    static const auto sameContext = reinterpret_cast<BOOL (WINAPI*)(HANDLE, HANDLE)>(GetProcAddress(user32, "AreDpiAwarenessContextsEqual"));
+    static const auto windowDpi = reinterpret_cast<UINT (WINAPI*)(HWND)>(GetProcAddress(user32, "GetDpiForWindow"));
+    static const auto processDpi = reinterpret_cast<UINT (WINAPI*)(HANDLE)>(GetProcAddress(user32, "GetSystemDpiForProcess"));
+    if (!getContext || !sameContext || !windowDpi || !processDpi ||
+        !sameContext(getContext(parent), DPI_AWARENESS_CONTEXT_SYSTEM_AWARE)) return;
+
+    UINT32 pid = 0;
+    if (FAILED(view->get_BrowserProcessId(&pid)) || !pid) return;
+    HANDLE browser = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (!browser) return;
+    const UINT browserDpi = processDpi(browser);
+    CloseHandle(browser);
+    const UINT hostDpi = windowDpi(parent);
+    if (!hostDpi || !browserDpi || browserDpi == hostDpi) return;
+
+    // A browser started after a scale change can have a different system DPI from the still-running host.
+    ICoreWebView2Controller3* dpiController = nullptr;
+    if (FAILED(controller->QueryInterface(IID_ICoreWebView2Controller3, reinterpret_cast<void**>(&dpiController)))) return;
+    if (SUCCEEDED(dpiController->put_ShouldDetectMonitorScaleChanges(FALSE))) {
+        if (FAILED(dpiController->put_RasterizationScale(hostDpi / 96.0)))
+            dpiController->put_ShouldDetectMonitorScaleChanges(TRUE);
+        else
+            NppLog("WebView2 rasterization matched to panel DPI %u (browser DPI %u)", hostDpi, browserDpi);
+    }
+    dpiController->Release();
+}
+
 class EnvironmentCompletedHandler : public ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler {
     LONG m_ref = 1;
     std::function<HRESULT(HRESULT, ICoreWebView2Environment*)> m_func;
@@ -335,6 +365,7 @@ void WebView2Viewer::OnControllerCreated(HRESULT result, ICoreWebView2Controller
     HRESULT coreHr = m_pController->get_CoreWebView2(&m_pWebView);
     NppLog("OnControllerCreated: get_CoreWebView2 hr=0x%08X web=%p", (unsigned)coreHr, (void*)m_pWebView);
     if (SUCCEEDED(coreHr) && m_pWebView) {
+        MatchSystemDpi(m_hParent, m_pWebView, m_pController);
         // Disable default browser context menus so our clean reader experience takes over
         ICoreWebView2Settings* settings = nullptr;
         if (SUCCEEDED(m_pWebView->get_Settings(&settings)) && settings) {

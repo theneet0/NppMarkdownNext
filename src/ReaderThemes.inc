@@ -19,6 +19,8 @@ body, body.dark {
 }
 body[class] .doc :is(h1, h2, h3, h4, h5, h6) { color: var(--ink); }
 .doc .hljs { background: transparent; color: var(--ink); }
+/* Keep the reader's hover rule more specific than the theme's resting color. */
+:where(body.bearded-v-gold-d-raynh, body.bearded-v-gold-d-raynh *)::-webkit-scrollbar-thumb { background: #5e7296; }
 /* Floating theme picker button */
 #theme-fab {
     position: fixed;

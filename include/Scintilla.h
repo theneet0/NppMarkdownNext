@@ -4,6 +4,7 @@
 #define SCI_GETTEXT                    2182
 #define SCI_GETLENGTH                  2006
 #define SCI_GETSELECTIONSTART          2143
+#define SCI_GETREADONLY                2140
 #define SCI_GETSELECTIONEND            2145
 #define SCI_GETSELTEXT                 2161
 #define SCI_SETSEL                     2160

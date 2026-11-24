@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "product": "NppMarkdownNext",
+  "version": "1.6.0",
+  "architecture": "x64",
+  "source": {
+    "commit": "20244060fffc59256abad11937bc98edc6bc78a2",
+    "treeDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "dirty": false
+  },
+  "builtAtUtc": "2026-11-04T00:00:00.0000000Z",
+  "files": []
+}

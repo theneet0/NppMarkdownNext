@@ -1,5 +1,6 @@
 #include "../include/MarkdownParser.h"
 #include "../include/BiDiEngine.h"
+#include "CalloutRegistry.inc"
 #include <sstream>
 #include <cwctype>
 #include <algorithm>
@@ -690,36 +691,16 @@ MarkdownDocument MarkdownParser::Parse(const std::wstring& markdownText) {
                 return true;
             };
 
-            if (startsWithNoCase(trimmedBq, L"[!NOTE]") || startsWithNoCase(trimmedBq, L"[!نکته]") || startsWithNoCase(trimmedBq, L"[!یادداشت]")) {
-                block.type = MarkdownBlockType::AlertCallout;
-                block.alertType = AlertType::Note;
-                block.alertTitle = startsWithNoCase(trimmedBq, L"[!NOTE]") ? L"Note" : L"نکته";
-                size_t close = trimmedBq.find(L']');
-                block.rawText = (close != std::wstring::npos && close + 1 < trimmedBq.size()) ? trimmedBq.substr(close + 1) : L"";
-            } else if (startsWithNoCase(trimmedBq, L"[!TIP]") || startsWithNoCase(trimmedBq, L"[!راهنما]") || startsWithNoCase(trimmedBq, L"[!ترفند]")) {
-                block.type = MarkdownBlockType::AlertCallout;
-                block.alertType = AlertType::Tip;
-                block.alertTitle = startsWithNoCase(trimmedBq, L"[!TIP]") ? L"Tip" : L"ترفند";
-                size_t close = trimmedBq.find(L']');
-                block.rawText = (close != std::wstring::npos && close + 1 < trimmedBq.size()) ? trimmedBq.substr(close + 1) : L"";
-            } else if (startsWithNoCase(trimmedBq, L"[!IMPORTANT]") || startsWithNoCase(trimmedBq, L"[!مهم]")) {
-                block.type = MarkdownBlockType::AlertCallout;
-                block.alertType = AlertType::Important;
-                block.alertTitle = startsWithNoCase(trimmedBq, L"[!IMPORTANT]") ? L"Important" : L"مهم";
-                size_t close = trimmedBq.find(L']');
-                block.rawText = (close != std::wstring::npos && close + 1 < trimmedBq.size()) ? trimmedBq.substr(close + 1) : L"";
-            } else if (startsWithNoCase(trimmedBq, L"[!WARNING]") || startsWithNoCase(trimmedBq, L"[!هشدار]")) {
-                block.type = MarkdownBlockType::AlertCallout;
-                block.alertType = AlertType::Warning;
-                block.alertTitle = startsWithNoCase(trimmedBq, L"[!WARNING]") ? L"Warning" : L"هشدار";
-                size_t close = trimmedBq.find(L']');
-                block.rawText = (close != std::wstring::npos && close + 1 < trimmedBq.size()) ? trimmedBq.substr(close + 1) : L"";
-            } else if (startsWithNoCase(trimmedBq, L"[!CAUTION]") || startsWithNoCase(trimmedBq, L"[!احتیاط]") || startsWithNoCase(trimmedBq, L"[!خطر]")) {
-                block.type = MarkdownBlockType::AlertCallout;
-                block.alertType = AlertType::Caution;
-                block.alertTitle = startsWithNoCase(trimmedBq, L"[!CAUTION]") ? L"Caution" : L"احتیاط";
-                size_t close = trimmedBq.find(L']');
-                block.rawText = (close != std::wstring::npos && close + 1 < trimmedBq.size()) ? trimmedBq.substr(close + 1) : L"";
+            for (const auto& entry : kCalloutRegistry) {
+                std::wstring marker = L"[!" + std::wstring(entry.alias) + L"]";
+                if (startsWithNoCase(trimmedBq, marker)) {
+                    block.type = MarkdownBlockType::AlertCallout;
+                    block.alertType = entry.type;
+                    block.alertTitle = entry.title;
+                    size_t close = trimmedBq.find(L']');
+                    block.rawText = (close != std::wstring::npos && close + 1 < trimmedBq.size()) ? trimmedBq.substr(close + 1) : L"";
+                    break;
+                }
             }
 
             while (!block.rawText.empty() && (block.rawText.front() == L' ' || block.rawText.front() == L'\t')) block.rawText.erase(0, 1);

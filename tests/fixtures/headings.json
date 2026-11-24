@@ -1,0 +1,10 @@
+[
+  {"name":"duplicates","reserved":[],"headings":["Same","Same","Same"],"expected":["same","same-1","same-2"]},
+  {"name":"legacy-alias-collision","reserved":[],"headings":["Intro","Reader Heading 0"],"expected":["intro","reader-heading-0"]},
+  {"name":"unicode","reserved":[],"headings":["Привет Мир!","Café","مقدمه","Á title"],"expected":["привет-мир","café","مقدمه","á-title"]},
+  {"name":"punctuation","reserved":[],"headings":["!!!","","API v2.0","Name-With_Dash"],"expected":["section","section-1","api-v20","namewithdash"]},
+  {"name":"reserved","reserved":["content","same","reader-heading-0"],"headings":["Content","Same","Same"],"expected":["content-1","same-1","same-2"]},
+  {"name":"whitespace","reserved":[],"headings":["  Hello\t World  ","A\nB","😀 Title"],"expected":["hello-world","a-b","title"]},
+  {"name":"classification","reserved":[],"headings":["^´ Test","ः Title","½ ①","𐐀","😀"],"expected":["test","ः-title","½-①","𐐨","section"]},
+  {"name":"simple-lowercase","reserved":[],"headings":["İ","Σ","ΟΣ","𞤀"],"expected":["i̇","σ","οσ","𞤢"]}
+]

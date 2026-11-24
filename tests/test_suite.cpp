@@ -2,10 +2,48 @@
 #include "../include/BiDiEngine.h"
 #include "../include/SyntaxHighlighter.h"
 #include "../include/HtmlExporter.h"
+#include "../include/ThemeCatalog.h"
+#include "../include/HeadingIds.h"
+#include "../include/PluginInterface.h"
 #include <iostream>
 #include <fstream>
 #include <cassert>
 #include <string>
+#include <initializer_list>
+#include <cstring>
+#include "fixtures/headings.inc"
+
+void TestNotificationAbi() {
+    std::cout << "[TEST] Scintilla notification wire ABI..." << std::endl;
+    SCNotification event{};
+    const bool wide = sizeof(void*) == 8;
+    const int inserted = SC_MOD_INSERTTEXT;
+    std::memcpy(reinterpret_cast<unsigned char*>(&event) + (wide ? 40 : 24), &inserted, sizeof inserted);
+    assert(event.modificationType == inserted);
+    assert(offsetof(SCNotification, text) == (wide ? 48 : 28));
+    assert(offsetof(SCNotification, length) == (wide ? 56 : 32));
+    assert(offsetof(SCNotification, linesAdded) == (wide ? 64 : 36));
+    assert(offsetof(SCNotification, line) == (wide ? 96 : 52));
+    assert(offsetof(SCNotification, annotationLinesAdded) == (wide ? 136 : 84));
+    assert(sizeof(SCNotification) == (wide ? 160 : 100));
+    std::cout << "  -> Notification ABI PASS" << std::endl;
+}
+
+void TestHeadingIds() {
+    std::cout << "[TEST] Shared Unicode heading IDs..." << std::endl;
+    for (const auto& fixture : kHeadingCases) {
+        std::set<std::wstring> used;
+        for (const auto* reserved : fixture.reserved) used.emplace(reserved);
+        auto expected = fixture.expected.begin();
+        assert(fixture.headings.size() == fixture.expected.size());
+        for (const auto* heading : fixture.headings) {
+            auto actual = MakeHeadingId(heading, used);
+            if (actual != *expected) std::wcerr << L"Heading case failed: " << fixture.name << L" => " << actual << std::endl;
+            assert(actual == *expected++);
+        }
+    }
+    std::cout << "  -> Shared Heading IDs PASS" << std::endl;
+}
 
 void TestBiDiEngine() {
     std::cout << "[TEST] BiDiEngine..." << std::endl;
@@ -569,16 +607,101 @@ void TestParserEdgeCases() {
 }
 
 #include "../src/KelkBundle.inc"
+#include "../src/ReaderThemes.inc"
+
+void TestReaderThemes() {
+    std::cout << "[TEST] Reader themes and legacy settings..." << std::endl;
+    PluginConfig config;
+    for (int i = 0; i <= static_cast<int>(ReaderTheme::Bearded); ++i) {
+        config.theme = static_cast<ReaderTheme>(i);
+        std::wstring id = config.ThemeId();
+        PluginConfig restored;
+        assert(restored.SetThemeId(id));
+        assert(restored.theme == config.theme);
+    }
+    assert(config.SetThemeId(L"bearded-v-gold-d-raynh"));
+    assert(config.theme == ReaderTheme::Bearded);
+    assert(config.beardedVariant == L"gold-d-raynh");
+    assert(!config.SetThemeId(L"bearded-v-\"><script>"));
+    assert(!config.SetThemeId(L"unknown"));
+    assert(!config.SetThemeId(L"bearded-v-does-not-exist"));
+    assert(config.ThemeId() == L"bearded-v-gold-d-raynh");
+    assert(std::size(kThemeCatalog) == 77);
+    assert(FindTheme(static_cast<ReaderTheme>(999)) == nullptr);
+    for (const auto& entry : kThemeCatalog) {
+        PluginConfig choice;
+        assert(choice.SetThemeId(std::wstring(entry.id)));
+        assert(choice.ThemeId() == entry.id);
+        assert(choice.theme == entry.theme);
+    }
+    PluginConfig alias;
+    assert(alias.SetThemeId(L"bearded-v-bearded-themanopia"));
+    assert(alias.ThemeId() == L"bearded-v-themanopia");
+    assert(FindTheme(L"bearded-v-melle-julie-light") && !FindTheme(L"bearded-v-melle-julie-light")->isDark);
+    config.showOutline = true;
+    config.darkModeOverride = 0;
+
+    wchar_t exePath[MAX_PATH] = {};
+    GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+    std::wstring iniPath(exePath);
+    iniPath += L".themes-test.ini";
+    assert(config.Save(iniPath));
+    PluginConfig loaded;
+    loaded.Load(iniPath);
+    assert(loaded.ThemeId() == L"bearded-v-gold-d-raynh");
+    assert(loaded.showOutline);
+    assert(loaded.darkModeOverride == 0);
+    assert(loaded.contentFontSizePx == 15);
+    assert(loaded.contentLineHeightPercent == 170);
+    assert(loaded.contentMaxWidthPx == 860);
+    config.contentFontSizePx = 19;
+    config.contentLineHeightPercent = 190;
+    config.contentMaxWidthPx = 680;
+    assert(config.Save(iniPath));
+    loaded.Load(iniPath);
+    assert(loaded.contentFontSizePx == 19 && loaded.contentLineHeightPercent == 190 && loaded.contentMaxWidthPx == 680);
+    assert(WritePrivateProfileStringW(L"Settings", L"ContentFontSizePx", L"999", iniPath.c_str()));
+    assert(WritePrivateProfileStringW(L"Settings", L"ContentLineHeightPercent", L"0", iniPath.c_str()));
+    assert(WritePrivateProfileStringW(L"Settings", L"ContentMaxWidthPx", L"NaN", iniPath.c_str()));
+    loaded.Load(iniPath);
+    assert(loaded.contentFontSizePx == 15 && loaded.contentLineHeightPercent == 170 && loaded.contentMaxWidthPx == 860);
+    assert(DeleteFileW(iniPath.c_str()));
+    SetLastError(ERROR_SUCCESS);
+    assert(!config.Save(L""));
+    assert(GetLastError() == ERROR_INVALID_PARAMETER);
+
+    auto doc = MarkdownParser::Parse(L"# Theme check\n");
+    std::string html = HtmlExporter::GeneratePreviewHtml(doc, L"Title", config.theme, 1.0f, false, 0, config.beardedVariant);
+    assert(html.find("body.bearded-v-gold-d-raynh") != std::string::npos);
+    assert(html.find("<body class=\" bearded-v-gold-d-raynh\">") != std::string::npos);
+    assert(html.find("--ink: var(--text-primary)") != std::string::npos);
+    auto imageHeading = MarkdownParser::Parse(L"# ![Logo](logo.png)\n");
+    auto imageHtml = HtmlExporter::GeneratePreviewComponents(imageHeading, L"Image heading", ReaderTheme::Light);
+    assert(imageHtml.bodyHtml.find("id=\"logo\"") != std::string::npos);
+    assert(imageHtml.bodyHtml.find("alt=\"Logo\"") != std::string::npos);
+    auto aliasHeadings = MarkdownParser::Parse(L"# Intro\n\n# Reader Heading 0\n");
+    auto aliasHtml = HtmlExporter::GeneratePreviewComponents(aliasHeadings, L"Canonical headings", ReaderTheme::Light);
+    assert(aliasHtml.bodyHtml.find("id=\"intro\"") != std::string::npos);
+    assert(aliasHtml.bodyHtml.find("id=\"reader-heading-0\"") != std::string::npos);
+    std::cout << "  -> Reader Themes PASS" << std::endl;
+}
 
 void TestWebViewBundleIntegrity() {
     std::cout << "[TEST] WebView2 Bundle Integrity & Reader Shell..." << std::endl;
 
-    std::string shell(s_kelkReaderShellHtml);
+    std::string shell = ReaderShellHtml();
     assert(!shell.empty());
 
     // 1. Strict size check: must be < 700 KB (well below WebView2 NavigateToString 2MB limit)
     assert(shell.size() < 700000);
     assert(shell.size() > 50000);
+    assert(BiDiEngine::Utf8ToWide(shell).size() * sizeof(wchar_t) < 2 * 1024 * 1024);
+    assert(shell.find("id=\"theme-fab\"") != std::string::npos);
+    assert(shell.find("function openSettingsPopover()") != std::string::npos);
+    assert(shell.find("Sync with caret") != std::string::npos);
+    assert(shell.find("Auto-show for Markdown") != std::string::npos);
+    assert(shell.find("reader-theme-select") == std::string::npos);
+    assert(shell.find(s_kelkScripts) != std::string::npos);
 
     // 2. Pure 100% offline security: zero unescaped http:// URLs
     assert(shell.find("http://") == std::string::npos);
@@ -619,6 +742,7 @@ void TestWebViewBundleIntegrity() {
 
 int main() {
     std::cout << "=== Running NppMarkdownPanel Native C++ Unit Tests ===" << std::endl;
+    TestNotificationAbi();
     TestBiDiEngine();
     TestMarkdownParser();
     TestSyntaxHighlighter();
@@ -627,6 +751,8 @@ int main() {
     TestAdvancedDocument();
     TestParserEdgeCases();
     TestWebViewBundleIntegrity();
-    std::cout << "\n>>> ALL 8 TEST SUITES PASSED SUCCESSFULLY! <<<" << std::endl;
+    TestReaderThemes();
+    TestHeadingIds();
+    std::cout << "\n>>> ALL 11 TEST SUITES PASSED SUCCESSFULLY! <<<" << std::endl;
     return 0;
 }

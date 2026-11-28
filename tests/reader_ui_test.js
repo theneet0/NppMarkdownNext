@@ -29,7 +29,7 @@ async () => {
         finishAnimations();
     }
     settings();
-    expect(document.querySelectorAll('#theme-pop-list .theme-pop-item').length === 12, 'All ten legacy settings, Typography and Language are present');
+    expect(document.querySelectorAll('#theme-pop-list .theme-pop-item').length === 14, 'All settings including Hide editor, Reading width, Typography and Language are present');
     expect(document.getElementById('theme-fab').getAttribute('aria-expanded') === 'true', 'Gear opens the settings menu');
     const originalText = document.getElementById('content').textContent;
     const options = [...THEME_LIST, ...window.BEARDED_VARIANTS];
@@ -117,7 +117,7 @@ async () => {
     const [smallWrap, wideWrap] = content.querySelectorAll('.reader-table-wrap');
     expect(smallWrap && wideWrap && smallWrap.querySelectorAll('.reader-col-grip').length === 2, 'Tables are wrapped and get one resize grip per column');
     expect(Math.abs(smallWrap.firstChild.getBoundingClientRect().left - contentBox.left - parseFloat(getComputedStyle(content).paddingLeft)) < 2, 'A narrow table stays aligned with the reading column');
-    expect(wideWrap.firstChild.getBoundingClientRect().width > content.clientWidth || wideWrap.classList.contains('reader-table-overflow'), 'A wide table uses the free pane width or scrolls inside the visible pane');
+    expect(wideWrap.firstChild.getBoundingClientRect().width <= content.clientWidth + 1 || wideWrap.classList.contains('reader-table-overflow'), 'A wide table follows the reading column width or scrolls inside it');
     const firstTable = () => content.querySelector('.reader-table-wrap table');
     const smallFp = tableFingerprint(firstTable(), {});
     receiveTableWidths('31', smallFp + ':120,200;abc:1');
@@ -157,6 +157,16 @@ async () => {
     expect(document.body.classList.contains('toc-open'), 'Outline button opens the outline');
     document.getElementById('toc-fab').click();
     expect(!document.body.classList.contains('toc-open'), 'Outline button closes the outline');
+    const editorFab = document.getElementById('editor-fab');
+    window.__messages.length = 0;
+    editorFab.click();
+    expect(document.body.classList.contains('editor-hidden') && editorFab.getAttribute('aria-pressed') === 'true' && window.__messages.includes('toggleHideEditor'), 'Editor FAB enables Hide editor mode and notifies the host');
+    expect(editorFab.title === window.READER_STRINGS.en['ui.showEditorButton'], 'Editor FAB tooltip switches to Show editor when active');
+    settings();
+    expect(row('Hide editor').getAttribute('aria-pressed') === 'true', 'Settings reflects Hide editor state');
+    row('Hide editor').click();
+    expect(!document.body.classList.contains('editor-hidden') && editorFab.getAttribute('aria-pressed') === 'false', 'Settings Hide editor row restores editor visibility');
+    closeThemePopover();
     setReaderWarning('reader-operation-warning', 'Test warning');
     const warning = document.getElementById('reader-operation-warning');
     expect(!warning.hidden && getComputedStyle(warning).pointerEvents === 'auto', 'Warnings accept the pointer');
@@ -309,7 +319,48 @@ async () => {
     await settled();
     const pane = document.getElementById('reader-wrap'), paneInner = pane.clientWidth - parseFloat(getComputedStyle(pane).paddingLeft) - parseFloat(getComputedStyle(pane).paddingRight);
     expect(Math.abs(document.getElementById('content').getBoundingClientRect().width - paneInner) < 2 && document.getElementById('theme-pop-list').textContent.includes('Whole pane'), 'Reading width "Whole pane" uses the full panel');
+    // Top-level Reading width entry opens directly from Settings and returns there via Back
+    settings();
+    expect(row('Reading width:').textContent.includes('Whole pane'), 'Top-level Settings exposes Reading width');
+    row('Reading width:').click(); finishAnimations();
+    expect(document.querySelector('#theme-pop-list .theme-pop-item:nth-child(2)').textContent.includes('Whole pane'), 'Whole pane is the first Reading width choice');
+    document.querySelector('#theme-pop-list [data-theme="__back"]').click(); finishAnimations();
+    expect(document.querySelector('#theme-popover .theme-pop-title').textContent === 'Settings', 'Back from top-level Reading width returns to Settings');
     for (const [kind, value] of [['fontSize',15],['lineHeight',170],['readingWidth',860]]) setTypographyFromMenu(kind,value);
+
+    // Nested task indents, prose table breakout, code-in-table balancing, and nested table containment
+    await render(
+        'Paragraph anchor\n\n' +
+        '- [ ] Task level 1\n  - [x] Task level 2\n    - [ ] Task level 3\n\n' +
+        '| No | File | Issue | Priority | Status | Detailed resolution description |\n' +
+        '|---:|---|---|---|---|---|\n' +
+        '| 1 | WebView2Viewer | Tab does not close on Ctrl+W | High | Open | Intercept accelerator keys in WebView2 and forward close command to Notepad++ cleanly |\n\n' +
+        '| ID | Name | File path | Problem description |\n' +
+        '|---|---|---|---|\n' +
+        '| 1 | Parser | `src/NppMarkdownNext/VeryLongModuleName/SubmoduleName/ParserImplementation.cpp` | Longer multi-word description that must not be crushed to one narrow word column |\n\n' +
+        '- List item:\n\n  | Key | Value | Comment |\n  |---|---|---|\n  | a | 1 | Nested table inside a list must never overflow the viewport |\n',
+        '39'
+    );
+    const contentLeft39 = document.getElementById('content').getBoundingClientRect().left;
+    const tasks39 = [...document.querySelectorAll('#content li.task-list-item')].map(el => el.getBoundingClientRect().left);
+    expect(Math.abs(tasks39[0] - contentLeft39) < 2 && (tasks39[1] - tasks39[0]) >= 18 && (tasks39[2] - tasks39[1]) >= 18, 'Task lists align level 1 with content and indent each nested level cleanly');
+    const tables39 = [...document.querySelectorAll('#content .reader-table-wrap')];
+    const wideTable860 = tables39[0].querySelector('table').getBoundingClientRect();
+    const content860 = document.getElementById('content').getBoundingClientRect();
+    expect(Math.abs(wideTable860.left - content860.left) < 2 && wideTable860.width <= content860.width + 1, 'Wide prose table aligns with the 860px reading width instead of breaking out');
+    const codeTableCols = [...tables39[1].querySelector('table').rows[0].cells].map(c => c.getBoundingClientRect().width);
+    expect(codeTableCols[3] >= 200, 'Long inline code in a table cell does not crush neighboring prose columns');
+    expect(tables39[2].getBoundingClientRect().right <= content860.right + 1, 'Nested table inside a list stays within the reading column');
+    setTypographyFromMenu('readingWidth', 0);
+    await settled();
+    const wideTableFull = tables39[0].querySelector('table').getBoundingClientRect();
+    expect(wideTableFull.width > 950 && wideTableFull.width <= document.getElementById('content').getBoundingClientRect().width + 1, 'Tables expand together with text when Reading width switches to Whole pane');
+    setTypographyFromMenu('readingWidth', 680);
+    await settled();
+    const wideTable680 = tables39[0].querySelector('table').getBoundingClientRect();
+    expect(wideTable680.width <= 681 && Math.abs(wideTable680.left - document.getElementById('content').getBoundingClientRect().left) < 2, 'Tables shrink together with text when Reading width switches to 680px');
+    setTypographyFromMenu('readingWidth', 860);
+    await settled();
 
     await render('# Same\n\n# Same\n\n# Привет Мир!\n\n# !!!\n');
     expect(window.readerDocumentIndex.headings.map(item => item.id).join(',') === 'same,same-1,привет-мир,section', 'StableHeadingAnchors unicode and duplicates');
@@ -472,7 +523,7 @@ async () => {
     await new Promise(resolve => setTimeout(resolve, 30)); await new Promise(requestAnimationFrame); finishAnimations();
     expect(window.__messages.includes('readerLanguage:ru'), 'Choosing Russian tells the host');
     expect(document.documentElement.dataset.uiLanguage === 'ru', 'The host switches the reader to Russian');
-    expect(document.getElementById('toc-fab').title === ru['ui.outlineButton'] && document.querySelector('.toc-title').textContent === ru['ui.outlineTitle']
+    expect(document.getElementById('toc-fab').title === ru['ui.outlineButton'] && document.getElementById('editor-fab').title === ru['ui.hideEditorButton'] && document.querySelector('.toc-title').textContent === ru['ui.outlineTitle']
         && document.getElementById('theme-fab').getAttribute('aria-label') === ru['ui.settingsButton'], 'Fixed controls switch to Russian');
     expect(document.getElementById('toc-filter').placeholder === ru['ui.filterHeadings'] && document.getElementById('toc-resize').title === ru['ui.resizeOutline'], 'Outline controls switch to Russian');
     expect(document.querySelector('#content .reader-copy-code').title === ru['ui.copyCode'], 'Re-rendered code buttons are in Russian');
@@ -492,5 +543,5 @@ async () => {
     window.__emit({type: 'render', markdown: '', themeId: window._themeId, isDark: true, isBiDi: true});
     finishAnimations();
     expect(document.getElementById('content').textContent.includes('No content to preview'), 'An empty document clears the old preview');
-    return {checks: checks.length, themes: options.length, settings: 12, gold, passed: true};
+    return {checks: checks.length, themes: options.length, settings: 13, gold, passed: true};
 }

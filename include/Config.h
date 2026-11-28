@@ -22,6 +22,7 @@ enum class ReaderTheme {
 struct PluginConfig {
     bool isPanelVisible = false;
     bool autoShowPanel = true;
+    bool hideEditor = false;
     bool syncWithCaret = true;
     bool showOutline = false;
     int darkModeOverride = -1;

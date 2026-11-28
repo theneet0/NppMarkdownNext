@@ -67,6 +67,7 @@ void PluginConfig::Load(const std::wstring& configPath) {
     const wchar_t* sec = L"Settings";
     isPanelVisible = GetPrivateProfileIntW(sec, L"IsPanelVisible", 0, configPath.c_str()) != 0;
     autoShowPanel = GetPrivateProfileIntW(sec, L"AutoShowPanel", 1, configPath.c_str()) != 0;
+    hideEditor = GetPrivateProfileIntW(sec, L"HideEditor", 0, configPath.c_str()) != 0;
     syncWithCaret = GetPrivateProfileIntW(sec, L"SyncWithCaret", 1, configPath.c_str()) != 0;
     showOutline = GetPrivateProfileIntW(sec, L"ShowOutline", 0, configPath.c_str()) != 0;
     darkModeOverride = GetPrivateProfileIntW(sec, L"DarkModeOverride", -1, configPath.c_str());
@@ -101,7 +102,7 @@ void PluginConfig::Load(const std::wstring& configPath) {
     // What the file holds now (absent keys stay absent, so the first Save still writes them).
     m_persisted.clear();
     m_persistedPath = configPath;
-    for (const wchar_t* key : {L"IsPanelVisible", L"AutoShowPanel", L"SyncWithCaret", L"ShowOutline", L"DarkModeOverride",
+    for (const wchar_t* key : {L"IsPanelVisible", L"AutoShowPanel", L"HideEditor", L"SyncWithCaret", L"ShowOutline", L"DarkModeOverride",
                                L"IsSmartBiDiEnabled", L"Theme", L"BeardedVariant", L"ZoomLevelPercent", L"SupportedExtensions",
                                L"ContentFontSizePx", L"ContentLineHeightPercent", L"ContentMaxWidthPx", L"OutlineWidthPx", L"ReaderLanguage"}) {
         wchar_t raw[512] = {};
@@ -136,6 +137,7 @@ bool PluginConfig::Save(const std::wstring& configPath) const {
     };
     write(L"IsPanelVisible", isPanelVisible ? L"1" : L"0");
     write(L"AutoShowPanel", autoShowPanel ? L"1" : L"0");
+    write(L"HideEditor", hideEditor ? L"1" : L"0");
     write(L"SyncWithCaret", syncWithCaret ? L"1" : L"0");
     write(L"ShowOutline", showOutline ? L"1" : L"0");
     write(L"DarkModeOverride", std::to_wstring(darkModeOverride));

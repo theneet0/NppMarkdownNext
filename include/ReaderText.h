@@ -8,7 +8,8 @@ inline bool& ReaderTextRussian() { static bool russian = false; return russian; 
 
 // The Plugins menu text by command index (CMD_* in Resource.h).
 inline constexpr const char* kPluginMenuKeys[] = {"menu.toggle", "menu.sync", "menu.bidi", "menu.themeFollow", "menu.themeLight",
-    "menu.themeDark", "menu.zoomIn", "menu.zoomOut", "menu.zoomReset", "menu.copyHtml", "menu.saveHtml", "menu.about", "menu.settings"};
+    "menu.themeDark", "menu.zoomIn", "menu.zoomOut", "menu.zoomReset", "menu.copyHtml", "menu.saveHtml", "menu.about", "menu.settings",
+    "menu.hideEditor"};
 
 // The text for a key of themes/reader-strings.json in the current language; "{0}" takes the argument.
 // An unknown key returns the key itself: visible in the UI, never an empty message.

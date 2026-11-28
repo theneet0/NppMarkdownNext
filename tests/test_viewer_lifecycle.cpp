@@ -25,6 +25,7 @@ struct ReaderLifecycleTestPeer {
         size_t selectionStart = 0;
         size_t selectionEnd = 0;
         unsigned writes = 0;
+        std::vector<LPARAM> menuCommands;
 
         size_t LineStart(WPARAM line) const {
             size_t start = 0;
@@ -68,6 +69,7 @@ struct ReaderLifecycleTestPeer {
             case NPPM_ISDARKMODEENABLED: return FALSE;
             case NPPM_DMMSHOW: ShowWindow(reinterpret_cast<HWND>(lParam), SW_SHOW); return TRUE;
             case NPPM_DMMHIDE: ShowWindow(reinterpret_cast<HWND>(lParam), SW_HIDE); return TRUE;
+            case NPPM_MENUCOMMAND: editor->menuCommands.push_back(lParam); return TRUE;
             case SCI_GETLENGTH: return static_cast<LRESULT>(editor->text.size());
             case SCI_GETTEXT:
                 strncpy_s(reinterpret_cast<char*>(lParam), static_cast<size_t>(wParam), editor->text.c_str(), _TRUNCATE);
@@ -166,6 +168,10 @@ struct ReaderLifecycleTestPeer {
         void DrainWarnings() {
             MSG message;
             while (PeekMessageW(&message, host.m_hPanel, WM_APP_EXPORT_RESULT, WM_APP_EXPORT_RESULT, PM_REMOVE)) DispatchMessageW(&message);
+        }
+        void DrainHostCommands() {
+            MSG message;
+            while (PeekMessageW(&message, host.m_hPanel, WM_APP_HOST_COMMAND, WM_APP_HOST_COMMAND, PM_REMOVE)) DispatchMessageW(&message);
         }
         std::wstring Checkbox(int line, int column, unsigned state) const {
             return L"toggleCheckbox:" + std::to_wstring(editor.bufferId) + L":" +
@@ -775,6 +781,89 @@ struct ReaderLifecycleTestPeer {
         fixture.host.OnBufferClosed(9007199254740993ULL);
         assert(fixture.Count(L"\"type\":\"bufferClosed\"") == 1);
     }
+
+    static void HostShortcutsForwardCloseSaveAndToggle() {
+        Fixture fixture;
+        auto& viewer = fixture.host.m_webViewViewer;
+        fixture.host.SetPanelVisible(true);
+
+        // Ctrl+W and Ctrl+F4 forward IDM_FILE_CLOSE; auto-repeat is swallowed without closing a second tab.
+        assert(viewer.HandleAcceleratorKey('W', true, false, false, false));
+        assert(viewer.HandleAcceleratorKey('W', true, false, false, true));
+        assert(viewer.HandleAcceleratorKey(VK_F4, true, false, false, false));
+        assert(viewer.HandleAcceleratorKey('S', true, false, false, false));
+        fixture.DrainHostCommands();
+        assert(fixture.editor.menuCommands.size() == 3);
+        assert(fixture.editor.menuCommands[0] == IDM_FILE_CLOSE);
+        assert(fixture.editor.menuCommands[1] == IDM_FILE_CLOSE);
+        assert(fixture.editor.menuCommands[2] == IDM_FILE_SAVE);
+
+        // Ctrl+Shift+M toggles the panel; browser/editor-local or AltGr combinations pass through untouched.
+        assert(viewer.HandleAcceleratorKey('M', true, true, false, false));
+        fixture.DrainHostCommands();
+        assert(!fixture.host.m_isPanelVisible);
+
+        assert(!viewer.HandleAcceleratorKey('C', true, false, false, false));
+        assert(!viewer.HandleAcceleratorKey('V', true, false, false, false));
+        assert(!viewer.HandleAcceleratorKey('W', true, true, false, false));
+        assert(!viewer.HandleAcceleratorKey('W', true, false, true, false));
+        assert(!viewer.HandleAcceleratorKey('W', false, false, true, false));
+        fixture.DrainHostCommands();
+        assert(fixture.editor.menuCommands.size() == 3);
+    }
+
+    static void HideEditorOverlayLifecycle() {
+        auto isShown = [](HWND hwnd) { return hwnd && (GetWindowLongPtrW(hwnd, GWL_STYLE) & WS_VISIBLE) != 0; };
+        Fixture fixture;
+        auto& host = fixture.host;
+        fixture.Ready();
+        host.SetPanelVisible(true);
+        assert(!host.m_config.hideEditor && !host.m_overlayActive);
+        assert(GetParent(host.m_hViewerHost) == host.m_hPanel);
+
+        // Enabling Hide Editor moves the live viewer host into the full-editor overlay without losing visibility.
+        host.ToggleHideEditor();
+        assert(host.m_config.hideEditor && host.m_overlayActive && host.m_isPanelVisible);
+        assert(GetParent(host.m_hViewerHost) == host.m_hOverlay);
+        assert(isShown(host.m_hOverlay) && !isShown(host.m_hPanel));
+        RECT overlayRc = {}, ownerRc = {};
+        assert(GetClientRect(host.m_hOverlay, &overlayRc) && GetClientRect(fixture.owner, &ownerRc));
+        assert(overlayRc.right == ownerRc.right && overlayRc.bottom == ownerRc.bottom);
+        assert(fixture.Count(L"\"hideEditor\":true") >= 1);
+
+        // Switching to a non-Markdown tab suspends the overlay so the user sees the code editor; returning to .md restores it.
+        fixture.editor.path = L"C:\\reader-test\\code.cpp";
+        fixture.editor.bufferId = 43;
+        host.OnBufferActivated();
+        assert(!host.m_isPanelVisible && !host.m_overlayActive && !isShown(host.m_hOverlay));
+        assert(host.m_config.hideEditor);
+
+        fixture.editor.path = L"C:\\reader-test\\one.md";
+        fixture.editor.bufferId = 42;
+        host.OnBufferActivated();
+        assert(host.m_isPanelVisible && host.m_overlayActive && isShown(host.m_hOverlay));
+        assert(GetParent(host.m_hViewerHost) == host.m_hOverlay);
+
+        // Double-clicking text in preview must not unhide the editor (preserves double-click word selection).
+        host.m_webViewViewer.OnWebMessageReceived(L"jumpToLine:0");
+        assert(host.m_config.hideEditor && host.m_overlayActive && host.m_isPanelVisible);
+        assert(GetParent(host.m_hViewerHost) == host.m_hOverlay);
+        assert(isShown(host.m_hOverlay) && !isShown(host.m_hPanel));
+
+        // Ctrl+Shift+E from WebView2 restores the editor, toggles Hide Editor back on, and Ctrl+Shift+M closes cleanly.
+        assert(host.m_webViewViewer.HandleAcceleratorKey('E', true, true, false, false));
+        fixture.DrainHostCommands();
+        assert(!host.m_config.hideEditor && !host.m_overlayActive && host.m_isPanelVisible);
+        assert(GetParent(host.m_hViewerHost) == host.m_hPanel);
+        assert(!isShown(host.m_hOverlay) && isShown(host.m_hPanel));
+
+        assert(host.m_webViewViewer.HandleAcceleratorKey('E', true, true, false, false));
+        fixture.DrainHostCommands();
+        assert(host.m_config.hideEditor && host.m_overlayActive);
+        assert(host.m_webViewViewer.HandleAcceleratorKey('M', true, true, false, false));
+        fixture.DrainHostCommands();
+        assert(!host.m_isPanelVisible && !host.m_overlayActive && !isShown(host.m_hOverlay));
+    }
 };
 
 int main(int argc, char** argv) {
@@ -799,7 +888,9 @@ int main(int argc, char** argv) {
         {"CheckboxChangesOnlyVerifiedMarker", Peer::CheckboxChangesOnlyVerifiedMarker},
         {"CheckboxRejectsStaleBufferRevisionAndContent", Peer::CheckboxRejectsStaleBufferRevisionAndContent},
         {"ReaderLanguageFollowsSetting", Peer::ReaderLanguageFollowsSetting},
-        {"ReadingSettingsAndPalettePriority", Peer::ReadingSettingsAndPalettePriority}
+        {"ReadingSettingsAndPalettePriority", Peer::ReadingSettingsAndPalettePriority},
+        {"HostShortcutsForwardCloseSaveAndToggle", Peer::HostShortcutsForwardCloseSaveAndToggle},
+        {"HideEditorOverlayLifecycle", Peer::HideEditorOverlayLifecycle}
     };
     const char* selected = argc == 3 && std::strcmp(argv[1], "--case") == 0 ? argv[2] : nullptr;
     if (argc != 1 && !selected) { std::cerr << "Usage: test_viewer_lifecycle [--case name]\n"; return 2; }

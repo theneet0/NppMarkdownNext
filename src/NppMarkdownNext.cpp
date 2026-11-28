@@ -29,6 +29,11 @@ extern "C" int GetPluginCmdId(int index);
 
 namespace {
 const wchar_t* s_panelClassName = L"NppMarkdownNextWindowClass";
+const wchar_t* s_overlayClassName = L"NppMarkdownNextOverlayClass";
+const wchar_t* s_viewerHostClassName = L"NppMarkdownNextViewerHostClass";
+constexpr UINT_PTR kSubclassIdNpp = 0x4D4401;
+constexpr UINT_PTR kSubclassIdSciMain = 0x4D4402;
+constexpr UINT_PTR kSubclassIdSciSub = 0x4D4403;
 
 bool IsRequestIdValid(const std::wstring& id) {
     return id.size() <= 64 && std::all_of(id.begin(), id.end(), [](wchar_t ch) {
@@ -151,6 +156,7 @@ void NppMarkdownNext::OnNppReady() {
     if (cmdBiDi > 0) SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdBiDi, (LPARAM)(m_config.isSmartBiDiEnabled ? TRUE : FALSE));
 
     SyncThemeMenuItems();
+    SyncHideEditorMenuItem();
     // With auto-show on, the tab decides; otherwise reopen the panel that was open at the last exit.
     if (!m_config.autoShowPanel && m_restorePanelOnStartup) SetPanelVisible(true);
     OnBufferActivated();
@@ -183,8 +189,20 @@ void NppMarkdownNext::Cleanup() {
     m_pendingExportWarnings.clear();
     ++m_viewerGeneration;
     if (m_hPanel) { KillTimer(m_hPanel, IDT_RENDER_DEBOUNCE); KillTimer(m_hPanel, IDT_VIEWER_LOADING); }
+    RemoveHostSubclasses();
+    m_overlayActive = false;
+    m_suppressDockNotification = false;
+    m_overlaySyncQueued = false;
     SaveConfig(false);
     m_webViewViewer.Close();
+    if (m_hViewerHost && IsWindow(m_hViewerHost)) {
+        DestroyWindow(m_hViewerHost);
+        m_hViewerHost = nullptr;
+    }
+    if (m_hOverlay && IsWindow(m_hOverlay)) {
+        DestroyWindow(m_hOverlay);
+        m_hOverlay = nullptr;
+    }
     if (m_hPanel && IsWindow(m_hPanel)) {
         DestroyWindow(m_hPanel);
         m_hPanel = nullptr;
@@ -209,6 +227,16 @@ bool NppMarkdownNext::CreatePanelWindow() {
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
     RegisterClassEx(&wc);
 
+    WNDCLASSEX overlayWc = wc;
+    overlayWc.lpfnWndProc = OverlayWndProc;
+    overlayWc.lpszClassName = s_overlayClassName;
+    RegisterClassEx(&overlayWc);
+
+    WNDCLASSEX hostWc = wc;
+    hostWc.lpfnWndProc = ViewerHostWndProc;
+    hostWc.lpszClassName = s_viewerHostClassName;
+    RegisterClassEx(&hostWc);
+
     m_hPanel = CreateWindowEx(
         WS_EX_CONTROLPARENT,
         s_panelClassName,
@@ -222,6 +250,31 @@ bool NppMarkdownNext::CreatePanelWindow() {
     );
 
     if (!m_hPanel) return false;
+
+    m_hOverlay = CreateWindowEx(
+        WS_EX_CONTROLPARENT,
+        s_overlayClassName,
+        L"Markdown Reader Overlay",
+        WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
+        0, 0, 450, 700,
+        m_nppData._nppHandle,
+        nullptr,
+        m_hInst,
+        this
+    );
+
+    m_hViewerHost = CreateWindowEx(
+        WS_EX_CONTROLPARENT,
+        s_viewerHostClassName,
+        L"Markdown Reader Host",
+        WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
+        0, 0, 450, 700,
+        m_hPanel,
+        nullptr,
+        m_hInst,
+        this
+    );
+    if (!m_hViewerHost) return false;
 
     m_tbData.hClient = m_hPanel;
     m_tbData.pszName = L"Markdown Reader (Kelk)";
@@ -237,9 +290,9 @@ bool NppMarkdownNext::CreatePanelWindow() {
     m_isPanelRegistered = true;
 
     m_hViewerStatus = CreateWindowExW(0, L"STATIC", L"", WS_CHILD | SS_CENTER, 16, 24, 300, 64,
-        m_hPanel, nullptr, m_hInst, nullptr);
+        m_hViewerHost, nullptr, m_hInst, nullptr);
     m_hRetryViewer = CreateWindowExW(0, L"BUTTON", Tr("status.retry").c_str(), WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON,
-        16, 96, 120, 30, m_hPanel, reinterpret_cast<HMENU>(IDC_RETRY_VIEWER), m_hInst, nullptr);
+        16, 96, 120, 30, m_hViewerHost, reinterpret_cast<HMENU>(IDC_RETRY_VIEWER), m_hInst, nullptr);
     UpdateStatusFont();
 
     m_webViewViewer.SetPageReadyCallback([this]() {
@@ -250,6 +303,10 @@ bool NppMarkdownNext::CreatePanelWindow() {
         ShowWindow(m_hViewerStatus, SW_HIDE);
         ShowWindow(m_hRetryViewer, SW_HIDE);
         m_webViewViewer.SetVisible(m_isPanelVisible);
+        if (m_overlayActive) {
+            UpdateOverlayBounds();
+            m_webViewViewer.Focus();
+        }
         m_webViewViewer.SetTheme(IsDarkThemeEffective(), m_config.ThemeId());
         SyncUiState();
         if (m_isPanelVisible) {
@@ -264,6 +321,8 @@ bool NppMarkdownNext::CreatePanelWindow() {
     m_webViewViewer.SetCheckboxCallback([this](const CheckboxRequest& request) { HandleCheckboxToggle(request); });
 
     m_webViewViewer.SetJumpToLineCallback([this](int lineIdx) {
+        // Keep double-click word selection working undisturbed while the editor is hidden.
+        if (m_overlayActive) return;
         HWND hSci = GetCurrentScintilla();
         if (!hSci || lineIdx < 0) return;
         SendMessage(hSci, SCI_ENSUREVISIBLE, lineIdx, 0);
@@ -299,15 +358,38 @@ bool NppMarkdownNext::CreatePanelWindow() {
         SyncUiState();
     });
 
+    m_webViewViewer.SetHostShortcutCallback([this](UINT vk, bool ctrl, bool shift, bool alt, bool isRepeat) -> bool {
+        if (m_shuttingDown || !m_hPanel) return false;
+        // Post to the panel window so Notepad++ commands (including modal Save prompts) run outside WebView2's COM stack.
+        if (ctrl && !shift && !alt && (vk == 'W' || vk == VK_F4)) {
+            if (!isRepeat) PostMessage(m_hPanel, WM_APP_HOST_COMMAND, IDM_FILE_CLOSE, 0);
+            return true;
+        }
+        if (ctrl && !shift && !alt && vk == 'S') {
+            if (!isRepeat) PostMessage(m_hPanel, WM_APP_HOST_COMMAND, IDM_FILE_SAVE, 0);
+            return true;
+        }
+        if (ctrl && shift && !alt && vk == 'M') {
+            if (!isRepeat) PostMessage(m_hPanel, WM_APP_HOST_COMMAND, 0, 1);
+            return true;
+        }
+        if (ctrl && shift && !alt && vk == 'E') {
+            if (!isRepeat) PostMessage(m_hPanel, WM_APP_HOST_COMMAND, 0, 2);
+            return true;
+        }
+        return false;
+    });
+
     InitializeViewer();
 
     return true;
 }
 
 void NppMarkdownNext::LayoutViewerStatus() {
-    if (!m_hPanel) return;
+    HWND host = m_hViewerHost ? m_hViewerHost : m_hPanel;
+    if (!host) return;
     RECT rect = {};
-    GetClientRect(m_hPanel, &rect);
+    GetClientRect(host, &rect);
     UpdateStatusFont();
     const int dpi = static_cast<int>(m_statusFontDpi ? m_statusFontDpi : 96);
     auto scale = [dpi](int value) { return MulDiv(value, dpi, 96); };
@@ -387,7 +469,7 @@ bool NppMarkdownNext::InitializeViewer() {
         SetViewerStatus(Tr("status.noTemp", std::to_wstring(error)), true);
         return false;
     }
-    bool started = m_webViewViewer.Initialize(m_hPanel, userDataDir);
+    bool started = m_webViewViewer.Initialize(m_hViewerHost ? m_hViewerHost : m_hPanel, userDataDir);
     m_webViewViewer.SetZoom(m_config.zoomLevel);
     return started;
 }
@@ -500,29 +582,176 @@ void NppMarkdownNext::TogglePanel() {
     SetPanelVisible(show);
 }
 
+void NppMarkdownNext::ToggleHideEditor() {
+    SetHideEditor(!m_config.hideEditor);
+}
+
+void NppMarkdownNext::SetHideEditor(bool hide, bool saveConfig) {
+    if (m_shuttingDown) return;
+    m_config.hideEditor = hide;
+    if (hide && !m_isPanelVisible) {
+        m_userClosedPanel = false;
+        SetPanelVisible(true);
+    } else if (m_isPanelRegistered) {
+        UpdateHostLayout();
+    }
+    SyncHideEditorMenuItem();
+    if (saveConfig) SaveConfig();
+    SyncUiState();
+}
+
+void NppMarkdownNext::SyncHideEditorMenuItem() {
+    int cmdHide = GetPluginCmdId(CMD_TOGGLE_HIDE_EDITOR);
+    if (cmdHide > 0 && m_nppData._nppHandle) {
+        SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdHide, (LPARAM)(m_config.hideEditor ? TRUE : FALSE));
+    }
+}
+
+void NppMarkdownNext::InstallHostSubclasses() {
+    if (m_subclassesInstalled) return;
+    if (m_nppData._nppHandle && IsWindow(m_nppData._nppHandle)) {
+        SetWindowSubclass(m_nppData._nppHandle, HostSubclassProc, kSubclassIdNpp, reinterpret_cast<DWORD_PTR>(this));
+    }
+    if (m_nppData._scintillaMainHandle && IsWindow(m_nppData._scintillaMainHandle) &&
+        m_nppData._scintillaMainHandle != m_nppData._nppHandle) {
+        SetWindowSubclass(m_nppData._scintillaMainHandle, HostSubclassProc, kSubclassIdSciMain, reinterpret_cast<DWORD_PTR>(this));
+    }
+    if (m_nppData._scintillaSecondHandle && IsWindow(m_nppData._scintillaSecondHandle) &&
+        m_nppData._scintillaSecondHandle != m_nppData._nppHandle &&
+        m_nppData._scintillaSecondHandle != m_nppData._scintillaMainHandle) {
+        SetWindowSubclass(m_nppData._scintillaSecondHandle, HostSubclassProc, kSubclassIdSciSub, reinterpret_cast<DWORD_PTR>(this));
+    }
+    m_subclassesInstalled = true;
+}
+
+void NppMarkdownNext::RemoveHostSubclasses() {
+    if (!m_subclassesInstalled) return;
+    if (m_nppData._nppHandle && IsWindow(m_nppData._nppHandle)) {
+        RemoveWindowSubclass(m_nppData._nppHandle, HostSubclassProc, kSubclassIdNpp);
+    }
+    if (m_nppData._scintillaMainHandle && IsWindow(m_nppData._scintillaMainHandle) &&
+        m_nppData._scintillaMainHandle != m_nppData._nppHandle) {
+        RemoveWindowSubclass(m_nppData._scintillaMainHandle, HostSubclassProc, kSubclassIdSciMain);
+    }
+    if (m_nppData._scintillaSecondHandle && IsWindow(m_nppData._scintillaSecondHandle) &&
+        m_nppData._scintillaSecondHandle != m_nppData._nppHandle &&
+        m_nppData._scintillaSecondHandle != m_nppData._scintillaMainHandle) {
+        RemoveWindowSubclass(m_nppData._scintillaSecondHandle, HostSubclassProc, kSubclassIdSciSub);
+    }
+    m_subclassesInstalled = false;
+}
+
+void NppMarkdownNext::ScheduleOverlaySync() {
+    if (m_shuttingDown || !m_overlayActive || !m_hOverlay || !IsWindow(m_hOverlay) || m_overlaySyncQueued) return;
+    m_overlaySyncQueued = true;
+    if (!PostMessage(m_hOverlay, WM_APP_SYNC_OVERLAY, 0, 0)) m_overlaySyncQueued = false;
+}
+
+void NppMarkdownNext::UpdateOverlayBounds() {
+    if (m_shuttingDown || !m_overlayActive || !m_hOverlay || !IsWindow(m_hOverlay) || !m_nppData._nppHandle) return;
+    HWND hSci = GetCurrentScintilla();
+    if (!hSci || !IsWindow(hSci)) hSci = m_nppData._scintillaMainHandle;
+    if (!hSci || !IsWindow(hSci)) return;
+
+    RECT rc = {};
+    if (hSci == m_nppData._nppHandle) {
+        GetClientRect(m_nppData._nppHandle, &rc);
+    } else {
+        // Ensure Scintilla clips sibling child windows so GDI painting/caret does not bleed over the overlay.
+        const LONG_PTR style = GetWindowLongPtrW(hSci, GWL_STYLE);
+        if ((style & WS_CLIPSIBLINGS) == 0) SetWindowLongPtrW(hSci, GWL_STYLE, style | WS_CLIPSIBLINGS);
+        if (!GetWindowRect(hSci, &rc)) return;
+        MapWindowPoints(HWND_DESKTOP, m_nppData._nppHandle, reinterpret_cast<POINT*>(&rc), 2);
+    }
+    const int w = static_cast<int>((std::max)(0L, rc.right - rc.left));
+    const int h = static_cast<int>((std::max)(0L, rc.bottom - rc.top));
+    if (w <= 0 || h <= 0) return;
+
+    SetWindowPos(m_hOverlay, HWND_TOP, rc.left, rc.top, w, h, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+    if (m_hViewerHost && GetParent(m_hViewerHost) == m_hOverlay) {
+        SetWindowPos(m_hViewerHost, nullptr, 0, 0, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+    m_webViewViewer.Resize(0, 0, w, h);
+    m_webViewViewer.NotifyParentWindowPositionChanged();
+    LayoutViewerStatus();
+}
+
+void NppMarkdownNext::UpdateHostLayout() {
+    if (m_shuttingDown || !m_isPanelRegistered || !m_hPanel || !m_hViewerHost) return;
+    const bool wantOverlay = m_isPanelVisible && m_config.hideEditor && m_hOverlay && IsWindow(m_hOverlay);
+    if (wantOverlay) {
+        // Hide the docked panel first so Notepad++ expands the tab bar and Scintilla to full width.
+        m_suppressDockNotification = true;
+        SendMessage(m_nppData._nppHandle, NPPM_DMMHIDE, 0, reinterpret_cast<LPARAM>(m_hPanel));
+        m_suppressDockNotification = false;
+
+        const bool reparented = GetParent(m_hViewerHost) != m_hOverlay;
+        if (reparented) SetParent(m_hViewerHost, m_hOverlay);
+        ShowWindow(m_hViewerHost, SW_SHOW);
+        m_overlayActive = true;
+        InstallHostSubclasses();
+        UpdateOverlayBounds();
+        ScheduleOverlaySync();
+        m_webViewViewer.SetVisible(m_webViewViewer.IsPageReady());
+        if (m_viewerStatusVisible) {
+            ShowWindow(m_hViewerStatus, SW_SHOW);
+            ShowWindow(m_hRetryViewer, IsWindowEnabled(m_hRetryViewer) ? SW_SHOW : SW_HIDE);
+        }
+        if (reparented && m_webViewViewer.IsPageReady()) m_webViewViewer.Focus();
+    } else {
+        const bool wasOverlay = m_overlayActive;
+        m_overlayActive = false;
+        m_overlaySyncQueued = false;
+        if (m_hOverlay && IsWindow(m_hOverlay)) ShowWindow(m_hOverlay, SW_HIDE);
+        const bool reparented = GetParent(m_hViewerHost) != m_hPanel;
+        if (reparented) SetParent(m_hViewerHost, m_hPanel);
+        if (m_isPanelVisible) {
+            ShowWindow(m_hViewerHost, SW_SHOW);
+            m_suppressDockNotification = true;
+            SendMessage(m_nppData._nppHandle, NPPM_DMMSHOW, 0, reinterpret_cast<LPARAM>(m_hPanel));
+            m_suppressDockNotification = false;
+            RECT rc = {};
+            GetClientRect(m_hPanel, &rc);
+            const int w = static_cast<int>((std::max)(1L, rc.right - rc.left));
+            const int h = static_cast<int>((std::max)(1L, rc.bottom - rc.top));
+            SetWindowPos(m_hViewerHost, nullptr, 0, 0, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+            m_webViewViewer.Resize(0, 0, w, h);
+            if (reparented || wasOverlay) m_webViewViewer.NotifyParentWindowPositionChanged();
+            m_webViewViewer.SetVisible(m_webViewViewer.IsPageReady());
+            if (m_viewerStatusVisible) {
+                ShowWindow(m_hViewerStatus, SW_SHOW);
+                ShowWindow(m_hRetryViewer, IsWindowEnabled(m_hRetryViewer) ? SW_SHOW : SW_HIDE);
+            }
+        } else {
+            m_suppressDockNotification = true;
+            SendMessage(m_nppData._nppHandle, NPPM_DMMHIDE, 0, reinterpret_cast<LPARAM>(m_hPanel));
+            m_suppressDockNotification = false;
+            m_webViewViewer.SetVisible(false);
+            ShowWindow(m_hViewerStatus, SW_HIDE);
+            ShowWindow(m_hRetryViewer, SW_HIDE);
+        }
+    }
+}
+
 void NppMarkdownNext::SetPanelVisible(bool visible) {
     if (m_shuttingDown) return;
     if (!visible && !m_isPanelRegistered) return;
     EnsurePanelRegistered();
     m_isPanelVisible = visible;
     m_config.isPanelVisible = visible;
-    SendMessage(m_nppData._nppHandle, visible ? NPPM_DMMSHOW : NPPM_DMMHIDE, 0, (LPARAM)m_hPanel);
 
     int cmdId = GetPluginCmdId(CMD_TOGGLE_PANEL);
     if (cmdId > 0) {
         SendMessage(m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdId, (LPARAM)(visible ? TRUE : FALSE));
     }
 
+    UpdateHostLayout();
+
     if (visible) {
-        RECT rc;
-        GetClientRect(m_hPanel, &rc);
-        m_webViewViewer.Resize(0, 0, rc.right - rc.left, rc.bottom - rc.top);
-        m_webViewViewer.SetVisible(m_webViewViewer.IsPageReady());
         RequestRenderDebounced(true);
     } else {
         KillTimer(m_hPanel, IDT_RENDER_DEBOUNCE);
         m_forceRenderPending = false;
-        m_webViewViewer.SetVisible(false);
     }
 }
 
@@ -696,6 +925,9 @@ void NppMarkdownNext::OnSettingsMessage(const std::wstring& message) {
     if (message == L"toggleAutoShow") {
         m_config.autoShowPanel = !m_config.autoShowPanel;
         ApplyAutoShowPanel();
+    } else if (message == L"toggleHideEditor") {
+        ToggleHideEditor();
+        return;
     } else if (message == L"tocStateChanged:true" || message == L"tocStateChanged:false") {
         m_config.showOutline = message == L"tocStateChanged:true";
     } else if (message == L"darkMode:-1" || message == L"darkMode:0" || message == L"darkMode:1") {
@@ -1198,6 +1430,7 @@ void NppMarkdownNext::OnBufferActivated() {
     m_activeBufferId = GetCurrentBufferId();
     m_activeBufferPath = GetCurrentBufferPath();
     ApplyAutoShowPanel();
+    if (m_overlayActive) ScheduleOverlaySync();
     if (m_isPanelVisible) {
         RequestRenderDebounced(true);
     }
@@ -1238,15 +1471,19 @@ LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wPara
 
     switch (msg) {
         case WM_SHOWWINDOW: {
+            if (self->m_suppressDockNotification) return 0;
             self->m_isPanelVisible = (wParam != FALSE);
             int cmdId = GetPluginCmdId(CMD_TOGGLE_PANEL);
             if (cmdId > 0) {
                 SendMessage(self->m_nppData._nppHandle, NPPM_SETMENUITEMCHECK, (WPARAM)cmdId, (LPARAM)(self->m_isPanelVisible ? TRUE : FALSE));
             }
             if (self->m_isPanelVisible) {
-                RECT rc;
-                GetClientRect(hwnd, &rc);
-                self->m_webViewViewer.Resize(0, 0, rc.right - rc.left, rc.bottom - rc.top);
+                if (!self->m_overlayActive && self->m_hViewerHost) {
+                    RECT rc;
+                    GetClientRect(hwnd, &rc);
+                    SetWindowPos(self->m_hViewerHost, nullptr, 0, 0, rc.right - rc.left, rc.bottom - rc.top, SWP_NOZORDER | SWP_NOACTIVATE);
+                    self->m_webViewViewer.Resize(0, 0, rc.right - rc.left, rc.bottom - rc.top);
+                }
                 self->m_webViewViewer.SetVisible(self->m_webViewViewer.IsPageReady());
                 self->RequestRenderDebounced(true);
                 if (self->m_viewerStatusVisible) {
@@ -1266,6 +1503,7 @@ LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wPara
         case WM_NOTIFY: {
             NMHDR* pnm = reinterpret_cast<NMHDR*>(lParam);
             if (pnm && pnm->code == DMN_CLOSE) {
+                if (self->m_suppressDockNotification) return 0;
                 self->m_isPanelVisible = false;
                 self->m_config.isPanelVisible = false;
                 self->m_userClosedPanel = true;
@@ -1302,8 +1540,9 @@ LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wPara
         case WM_SIZE: {
             UINT width = LOWORD(lParam);
             UINT height = HIWORD(lParam);
-            self->m_webViewViewer.Resize(0, 0, width, height);
-            self->LayoutViewerStatus();
+            if (!self->m_overlayActive && self->m_hViewerHost && GetParent(self->m_hViewerHost) == hwnd) {
+                SetWindowPos(self->m_hViewerHost, nullptr, 0, 0, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+            }
             return 0;
         }
 
@@ -1330,6 +1569,14 @@ LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wPara
             if (!self->m_shuttingDown) for (const auto& warning : warnings) self->ShowExportWarning(warning);
             return 0;
         }
+
+        case WM_APP_HOST_COMMAND:
+            if (!self->m_shuttingDown) {
+                if (lParam == 1) self->TogglePanel();
+                else if (lParam == 2) self->ToggleHideEditor();
+                else if (wParam) SendMessage(self->m_nppData._nppHandle, NPPM_MENUCOMMAND, 0, static_cast<LPARAM>(wParam));
+            }
+            return 0;
 
         case WM_COMMAND:
             if (LOWORD(wParam) == IDC_RETRY_VIEWER && HIWORD(wParam) == BN_CLICKED) {
@@ -1369,4 +1616,110 @@ LRESULT CALLBACK NppMarkdownNext::PanelWndProc(HWND hwnd, UINT msg, WPARAM wPara
     }
 
     return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+LRESULT CALLBACK NppMarkdownNext::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    NppMarkdownNext* self = nullptr;
+    if (msg == WM_NCCREATE) {
+        auto* cs = reinterpret_cast<CREATESTRUCT*>(lParam);
+        self = reinterpret_cast<NppMarkdownNext*>(cs->lpCreateParams);
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
+    } else {
+        self = reinterpret_cast<NppMarkdownNext*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    }
+    if (!self) return DefWindowProc(hwnd, msg, wParam, lParam);
+
+    switch (msg) {
+        case WM_SIZE: {
+            UINT width = LOWORD(lParam);
+            UINT height = HIWORD(lParam);
+            if (self->m_overlayActive && self->m_hViewerHost && GetParent(self->m_hViewerHost) == hwnd) {
+                SetWindowPos(self->m_hViewerHost, nullptr, 0, 0, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+            return 0;
+        }
+        case WM_APP_SYNC_OVERLAY:
+            self->m_overlaySyncQueued = false;
+            if (self->m_overlayActive && !self->m_shuttingDown) self->UpdateOverlayBounds();
+            return 0;
+        case WM_ERASEBKGND: {
+            RECT rect;
+            GetClientRect(hwnd, &rect);
+            HDC dc = reinterpret_cast<HDC>(wParam);
+            SetDCBrushColor(dc, self->StatusColor(true));
+            FillRect(dc, &rect, static_cast<HBRUSH>(GetStockObject(DC_BRUSH)));
+            return TRUE;
+        }
+        case WM_PAINT: {
+            PAINTSTRUCT ps;
+            BeginPaint(hwnd, &ps);
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
+    }
+    return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+LRESULT CALLBACK NppMarkdownNext::ViewerHostWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    NppMarkdownNext* self = nullptr;
+    if (msg == WM_NCCREATE) {
+        auto* cs = reinterpret_cast<CREATESTRUCT*>(lParam);
+        self = reinterpret_cast<NppMarkdownNext*>(cs->lpCreateParams);
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
+    } else {
+        self = reinterpret_cast<NppMarkdownNext*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    }
+    if (!self) return DefWindowProc(hwnd, msg, wParam, lParam);
+
+    switch (msg) {
+        case WM_SIZE: {
+            UINT width = LOWORD(lParam);
+            UINT height = HIWORD(lParam);
+            self->m_webViewViewer.Resize(0, 0, width, height);
+            self->LayoutViewerStatus();
+            return 0;
+        }
+        case WM_COMMAND:
+            if (LOWORD(wParam) == IDC_RETRY_VIEWER && HIWORD(wParam) == BN_CLICKED) {
+                self->HandleViewerRecovery(true);
+                return 0;
+            }
+            break;
+        case WM_CTLCOLORSTATIC: {
+            HDC dc = reinterpret_cast<HDC>(wParam);
+            SetTextColor(dc, self->StatusColor(false));
+            SetBkColor(dc, self->StatusColor(true));
+            SetDCBrushColor(dc, self->StatusColor(true));
+            return reinterpret_cast<LRESULT>(GetStockObject(DC_BRUSH));
+        }
+        case WM_ERASEBKGND: {
+            RECT rect;
+            GetClientRect(hwnd, &rect);
+            HDC dc = reinterpret_cast<HDC>(wParam);
+            SetDCBrushColor(dc, self->StatusColor(true));
+            FillRect(dc, &rect, static_cast<HBRUSH>(GetStockObject(DC_BRUSH)));
+            return TRUE;
+        }
+        case WM_PAINT: {
+            PAINTSTRUCT ps;
+            BeginPaint(hwnd, &ps);
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
+    }
+    return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+LRESULT CALLBACK NppMarkdownNext::HostSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData) {
+    auto* self = reinterpret_cast<NppMarkdownNext*>(refData);
+    if (msg == WM_NCDESTROY) {
+        RemoveWindowSubclass(hwnd, HostSubclassProc, subclassId);
+        return DefSubclassProc(hwnd, msg, wParam, lParam);
+    }
+    const LRESULT result = DefSubclassProc(hwnd, msg, wParam, lParam);
+    if (self && !self->m_shuttingDown && self->m_overlayActive &&
+        (msg == WM_SIZE || msg == WM_MOVE || msg == WM_WINDOWPOSCHANGED)) {
+        self->ScheduleOverlaySync();
+    }
+    return result;
 }

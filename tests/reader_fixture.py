@@ -49,7 +49,7 @@ data = {'type': 'render', 'title': 'Preview smoke test', 'markdown': markdown, '
 bridge = '''<script>
 window.__initialRender=DATA;
 window.__listeners=[]; window.__messages=[];
-window.__state={type:'settings',sync:true,bidi:true,autoShow:true,outline:false,darkMode:-1,zoomPercent:115,fontSizePx:15,lineHeightPercent:170,maxWidthPx:860,outlineWidthPx:280,language:'en',languageSetting:'auto',themeId:'bearded-v-gold-d-raynh',darkModeApplicable:false};
+window.__state={type:'settings',sync:true,bidi:true,autoShow:true,hideEditor:false,outline:false,darkMode:-1,zoomPercent:115,fontSizePx:15,lineHeightPercent:170,maxWidthPx:860,outlineWidthPx:280,language:'en',languageSetting:'auto',themeId:'bearded-v-gold-d-raynh',darkModeApplicable:false};
 window.__emit=function(data){if(data&&data.type==='render')window.__lastRender=data;window.__listeners.forEach(function(fn){fn({data:data});});};
 window.chrome={webview:{addEventListener:function(type,fn){window.__listeners.push(fn);},postMessage:function(message){
  window.__messages.push(message);
@@ -63,6 +63,7 @@ window.chrome={webview:{addEventListener:function(type,fn){window.__listeners.pu
  if(message==='toggleSync') window.__state.sync=!window.__state.sync;
  if(message==='toggleBiDi') window.__state.bidi=!window.__state.bidi;
  if(message==='toggleAutoShow') window.__state.autoShow=!window.__state.autoShow;
+ if(message==='toggleHideEditor') window.__state.hideEditor=!window.__state.hideEditor;
  if(message.indexOf('tocStateChanged:')===0) window.__state.outline=message==='tocStateChanged:true';
  if(message.indexOf('darkMode:')===0 && window.__state.darkModeApplicable) {
   window.__state.darkMode=Number(message.slice(9));

@@ -271,7 +271,19 @@ body:not(.toc-open) #toc-drawer {
     background: rgba(0, 90, 193, 0.06);
 }
 .toc-item[aria-current="location"] { color: var(--link-color); background: var(--quote-bg); font-weight: 600; }
-#content { font-size: var(--reader-font-size, 15px); line-height: var(--reader-line-height, 1.7); max-width: var(--reader-max-width, 860px); }
+#reader-wrap { padding: 14px 20px 48px; }
+#content { font-size: var(--reader-font-size, 15px); line-height: var(--reader-line-height, 1.7); max-width: var(--reader-max-width, 860px); padding: 4px 0 24px; }
+/* Unified list and task-list indentation: avoid Kelk/BidiView conflicts and broken 6px nested task steps */
+.doc ul { padding-inline-start: 1.8em; margin: 0.55em 0; }
+.doc ol { padding-inline-start: 2.2em; margin: 0.55em 0; }
+.doc :is(ul, ol) :is(ul, ol) { margin: 0.25em 0; }
+.doc li { margin-block: 0.25em; margin-inline: 0; }
+.doc li > p:first-child { margin-top: 0; }
+.doc li > p:last-child { margin-bottom: 0; }
+.doc li.task-list-item { list-style-type: none; margin-inline-start: 0; }
+.doc > ul:has(> li.task-list-item):not(:has(> li:not(.task-list-item))),
+.doc blockquote > ul:has(> li.task-list-item):not(:has(> li:not(.task-list-item))) { padding-inline-start: 0; }
+.doc li ul:has(> li.task-list-item):not(:has(> li:not(.task-list-item))) { padding-inline-start: 1.6em; }
 .doc .alert-callout { border-inline-start-color: var(--alert-color); background: var(--alert-background); }
 .alert-title { color: var(--alert-color); font-weight: 600; margin-bottom: 0.4em; }
 .alert-note { --alert-color: var(--alert-note-bar); --alert-background: var(--alert-note-bg); }
@@ -447,6 +459,12 @@ function selectThemeFromMenu(themeName) {
 /* Floating theme picker (gear button): settings menu root + theme list,
    Bearded variants, zoom and dark mode subviews */
 var _themePopView = 'settings';
+var _readingWidthBackView = 'settings';
+
+function openReadingWidth(fromView) {
+    _readingWidthBackView = fromView || 'settings';
+    openThemeView('readingWidth');
+}
 
 function positionThemePopover() {
     var pop = document.getElementById('theme-popover');
@@ -615,9 +633,11 @@ function refreshThemePopover() {
         html += themePopRow(rt('set.theme', themeItemLabelById(current)), "openThemeView('themes')", false, true);
         html += themePopRow(rt('set.sync'), 'toggleSyncFromMenu(); refreshThemePopover();', !!window._syncEnabled, false);
         html += themePopRow(rt('set.outline'), 'toggleTocFromMenu(); refreshThemePopover();', document.body.classList.contains('toc-open'), false);
+        html += themePopRow(rt('set.hideEditor'), 'toggleHideEditorFromMenu(); refreshThemePopover();', !!window._hideEditor, false);
         html += themePopRow(rt('set.bidi'), 'toggleBiDiFromMenu(); refreshThemePopover();', !!window._bidiEnabled, false);
         html += themePopRow(rt('set.autoShow'), 'toggleAutoShowFromMenu(); refreshThemePopover();', !!window._autoShowPanel, false);
         html += themePopRow(rt('set.zoom', zoomPercentLabel()), "openThemeView('zoom')", false, true);
+        html += themePopRow(rt('set.readingWidth', presetLabel('readingWidth', window._maxWidthPx)), "openReadingWidth('settings')", false, true);
         html += themePopRow(rt('set.typography'), "openThemeView('typography')", false, true);
         html += themePopRow(rt('set.copyHtml'), 'copyHtmlFromMenu(); closeThemePopover();', false, false, null, !!pendingExport);
         html += themePopRow(rt('set.saveHtml'), 'closeThemePopover(); saveAsHtmlFromMenu();', false, false, null, !!pendingExport);
@@ -626,15 +646,16 @@ function refreshThemePopover() {
         html += themePopRow(rt('set.about'), "openThemeView('about')", false, false);
     } else if (_themePopView === 'typography') {
         if (title) title.textContent = rt('set.typography');
-        html += themePopRow('< Back', 'backToThemeList()', false, false, '__back');
+        html += themePopRow(rt('set.back'), 'backToThemeList()', false, false, '__back');
         html += themePopRow(rt('set.textSize', window._fontSizePx + 'px'), "openThemeView('fontSize')", false, true);
         html += themePopRow(rt('set.lineHeight', window._lineHeightPercent + '%'), "openThemeView('lineHeight')", false, true);
-        html += themePopRow(rt('set.readingWidth', presetLabel('readingWidth', window._maxWidthPx)), "openThemeView('readingWidth')", false, true);
+        html += themePopRow(rt('set.readingWidth', presetLabel('readingWidth', window._maxWidthPx)), "openReadingWidth('typography')", false, true);
     } else if (['fontSize', 'lineHeight', 'readingWidth'].includes(_themePopView)) {
         var presets = readingPresets(_themePopView);
         var field = _themePopView === 'fontSize' ? '_fontSizePx' : (_themePopView === 'lineHeight' ? '_lineHeightPercent' : '_maxWidthPx');
         if (title) title.textContent = rt(_themePopView === 'fontSize' ? 'set.textSizeTitle' : (_themePopView === 'lineHeight' ? 'set.lineHeightTitle' : 'set.readingWidthTitle'));
-        html += themePopRow('< Back', "openThemeView('typography')", false, false, '__back');
+        var backTarget = _themePopView === 'readingWidth' ? _readingWidthBackView : 'typography';
+        html += themePopRow(rt('set.back'), "openThemeView('" + backTarget + "')", false, false, '__back');
         presets.forEach(function(value) { html += themePopRow(presetLabel(_themePopView, value), "setTypographyFromMenu('" + _themePopView + "'," + value + ')', window[field] === value, false); });
     } else if (_themePopView === 'zoom') {
         if (title) title.textContent = rt('set.zoomTitle', zoomPercentLabel());
@@ -760,7 +781,28 @@ function toggleAutoShowFromMenu() {
     if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage("toggleAutoShow");
     }
-    showToast(window._autoShowPanel ? "Auto-show for Markdown enabled" : "Auto-show for Markdown disabled");
+    showToast(rt(window._autoShowPanel ? 'toast.autoShowOn' : 'toast.autoShowOff'));
+}
+
+function updateHideEditorUi() {
+    var hidden = !!window._hideEditor;
+    document.body.classList.toggle('editor-hidden', hidden);
+    var btn = document.getElementById('editor-fab');
+    if (btn) {
+        var label = rt(hidden ? 'ui.showEditorButton' : 'ui.hideEditorButton');
+        btn.title = label;
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    }
+}
+
+function toggleHideEditorFromMenu() {
+    window._hideEditor = !window._hideEditor;
+    updateHideEditorUi();
+    if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage('toggleHideEditor');
+    }
+    showToast(rt(window._hideEditor ? 'toast.hideEditorOn' : 'toast.hideEditorOff'));
 }
 
 function toggleBiDiFromMenu() {
@@ -970,10 +1012,12 @@ function applyReaderSettings(data) {
     window._darkMode = data.darkMode;
     window._zoomPercent = data.zoomPercent;
     window._autoShowPanel = !!data.autoShow;
+    window._hideEditor = !!data.hideEditor;
     if (LANGUAGE_NAMES[data.language]) window._language = data.language;
     window._languageSetting = LANGUAGE_NAMES[data.languageSetting] ? data.languageSetting : 'auto';
     document.documentElement.dataset.uiLanguage = document.documentElement.lang = window._language;
     localizeStatic();
+    updateHideEditorUi();
     if (readingPresets('fontSize').includes(data.fontSizePx)) window._fontSizePx = data.fontSizePx;
     if (readingPresets('lineHeight').includes(data.lineHeightPercent)) window._lineHeightPercent = data.lineHeightPercent;
     if (readingPresets('readingWidth').includes(data.maxWidthPx)) window._maxWidthPx = data.maxWidthPx;
@@ -1039,6 +1083,7 @@ function initializeReaderSettings() {
     document.addEventListener('scroll', scheduleCurrentSection, {passive: true, capture: true});
     window.addEventListener('resize', function() { positionThemePopover(); scheduleCurrentSection(); });
     if (window.readerDocumentIndex) updateReaderOutline(window.readerDocumentIndex);
+    updateHideEditorUi();
     applyContentTypography();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeReaderSettings);

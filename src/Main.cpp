@@ -62,6 +62,10 @@ void CommandSettings() {
     NppMarkdownNext::Instance().OpenSettings();
 }
 
+void CommandToggleHideEditor() {
+    NppMarkdownNext::Instance().ToggleHideEditor();
+}
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
     switch (fdwReason) {
         case DLL_PROCESS_ATTACH:
@@ -169,6 +173,16 @@ __declspec(dllexport) FuncItem * getFuncsArray(int *nbF) {
 
     g_funcItems[CMD_SETTINGS]._pFunc = CommandSettings;
     g_funcItems[CMD_SETTINGS]._cmdID = CMD_SETTINGS;
+
+    // 13: Hide Editor / Reader-only mode (Ctrl+Shift+E)
+    g_funcItems[CMD_TOGGLE_HIDE_EDITOR]._pFunc = CommandToggleHideEditor;
+    g_funcItems[CMD_TOGGLE_HIDE_EDITOR]._cmdID = CMD_TOGGLE_HIDE_EDITOR;
+    g_funcItems[CMD_TOGGLE_HIDE_EDITOR]._init2Check = false;
+    g_shortcuts[CMD_TOGGLE_HIDE_EDITOR]._isCtrl = true;
+    g_shortcuts[CMD_TOGGLE_HIDE_EDITOR]._isAlt = false;
+    g_shortcuts[CMD_TOGGLE_HIDE_EDITOR]._isShift = true;
+    g_shortcuts[CMD_TOGGLE_HIDE_EDITOR]._key = 'E';
+    g_funcItems[CMD_TOGGLE_HIDE_EDITOR]._pShKey = &g_shortcuts[CMD_TOGGLE_HIDE_EDITOR];
     return g_funcItems;
 }
 

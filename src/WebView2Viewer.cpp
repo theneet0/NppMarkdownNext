@@ -203,6 +203,26 @@ public:
     }
 };
 
+class AcceleratorKeyPressedHandler : public ICoreWebView2AcceleratorKeyPressedEventHandler {
+    LONG m_ref = 1;
+    std::function<HRESULT(ICoreWebView2Controller*, ICoreWebView2AcceleratorKeyPressedEventArgs*)> m_func;
+public:
+    explicit AcceleratorKeyPressedHandler(std::function<HRESULT(ICoreWebView2Controller*, ICoreWebView2AcceleratorKeyPressedEventArgs*)> func) : m_func(std::move(func)) {}
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override {
+        if (!object) return E_POINTER;
+        *object = nullptr;
+        if (riid != IID_IUnknown && riid != IID_ICoreWebView2AcceleratorKeyPressedEventHandler) return E_NOINTERFACE;
+        *object = static_cast<ICoreWebView2AcceleratorKeyPressedEventHandler*>(this);
+        AddRef();
+        return S_OK;
+    }
+    ULONG STDMETHODCALLTYPE AddRef() override { return InterlockedIncrement(&m_ref); }
+    ULONG STDMETHODCALLTYPE Release() override { ULONG ref = InterlockedDecrement(&m_ref); if (!ref) delete this; return ref; }
+    HRESULT STDMETHODCALLTYPE Invoke(ICoreWebView2Controller* sender, ICoreWebView2AcceleratorKeyPressedEventArgs* args) override {
+        return m_func ? m_func(sender, args) : S_OK;
+    }
+};
+
 class ProcessFailedHandler : public ICoreWebView2ProcessFailedEventHandler {
     LONG m_ref = 1;
     std::function<HRESULT(ICoreWebView2ProcessFailedEventArgs*)> m_func;
@@ -532,6 +552,32 @@ void WebView2Viewer::OnControllerCreated(HRESULT result, ICoreWebView2Controller
         m_pController->add_ZoomFactorChanged(zoomHandler, &zoomToken);
         zoomHandler->Release();
 
+        // Forward host-level shortcuts (Ctrl+W, Ctrl+F4, Ctrl+S, Ctrl+Shift+M) back to Notepad++
+        EventRegistrationToken accelToken;
+        auto* accelHandler = new AcceleratorKeyPressedHandler(
+            [this, lifetime = m_lifetime](ICoreWebView2Controller*, ICoreWebView2AcceleratorKeyPressedEventArgs* args) -> HRESULT {
+                if (!lifetime->active || !args) return S_OK;
+                COREWEBVIEW2_KEY_EVENT_KIND kind = COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN;
+                if (FAILED(args->get_KeyEventKind(&kind)) ||
+                    (kind != COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN && kind != COREWEBVIEW2_KEY_EVENT_KIND_SYSTEM_KEY_DOWN)) {
+                    return S_OK;
+                }
+                COREWEBVIEW2_PHYSICAL_KEY_STATUS status = {};
+                const bool isRepeat = SUCCEEDED(args->get_PhysicalKeyStatus(&status)) && status.WasKeyDown;
+                UINT vk = 0;
+                if (FAILED(args->get_VirtualKey(&vk))) return S_OK;
+                const bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+                const bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+                const bool alt = (GetKeyState(VK_MENU) & 0x8000) != 0;
+                if (HandleAcceleratorKey(vk, ctrl, shift, alt, isRepeat)) {
+                    args->put_Handled(TRUE);
+                }
+                return S_OK;
+            }
+        );
+        m_pController->add_AcceleratorKeyPressed(accelHandler, &accelToken);
+        accelHandler->Release();
+
         EventRegistrationToken processToken;
         auto* processHandler = new ProcessFailedHandler([this, lifetime = m_lifetime](ICoreWebView2ProcessFailedEventArgs* args) {
             if (!lifetime->active) return S_OK;
@@ -595,6 +641,18 @@ void WebView2Viewer::SetVisible(bool visible) {
     m_visible = visible;
     if (m_pController) {
         m_pController->put_IsVisible(visible ? TRUE : FALSE);
+    }
+}
+
+void WebView2Viewer::NotifyParentWindowPositionChanged() {
+    if (m_pController) {
+        m_pController->NotifyParentWindowPositionChanged();
+    }
+}
+
+void WebView2Viewer::Focus() {
+    if (m_pController) {
+        m_pController->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
     }
 }
 
@@ -707,6 +765,7 @@ void WebView2Viewer::SyncUiState(const PluginConfig& config) {
          << L",\"themeId\":\"" << EscapeJsonString(config.ThemeId()) << L"\""
          << L",\"zoomPercent\":" << static_cast<int>(config.zoomLevel * 100.0f + 0.5f)
          << L",\"autoShow\":" << (config.autoShowPanel ? L"true" : L"false")
+         << L",\"hideEditor\":" << (config.hideEditor ? L"true" : L"false")
          << L",\"outline\":" << (config.showOutline ? L"true" : L"false")
          << L",\"fontSizePx\":" << config.contentFontSizePx
          << L",\"lineHeightPercent\":" << config.contentLineHeightPercent
@@ -805,6 +864,10 @@ bool WebView2Viewer::UpdateMarkdown(const std::string& markdownUtf8, const std::
     }
     NppLog("UpdateMarkdown: posted=%d (bytes=%u)", (int)posted, (unsigned)markdownUtf8.size());
     return posted;
+}
+
+bool WebView2Viewer::HandleAcceleratorKey(UINT virtualKey, bool ctrl, bool shift, bool alt, bool isRepeat) {
+    return m_hostShortcutCallback && m_hostShortcutCallback(virtualKey, ctrl, shift, alt, isRepeat);
 }
 
 void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {

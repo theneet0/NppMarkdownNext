@@ -3,21 +3,25 @@
 // copy helpers, link routing, find/print requests, the outline button and dismissable warnings.
 
 inline constexpr const char* s_readerToolsCss = R"TOOLS_CSS(
-/* Tables: a table that does not fit the reading column grows into the free pane width (centered on the column),
-   and scrolls only when even the whole pane is too narrow. Track 2 = fit-content(column width), tracks 1/3 = the gutters. */
+/* Tables: tables follow the document reading width (#content) together with surrounding text, align with the
+   reading column, and scroll horizontally inside #content only when genuinely wider than the column. */
 #reader-wrap { container-type: inline-size; }
-#content { --reader-doc-pad: 22px; padding-inline: var(--reader-doc-pad); }
+#content { --reader-doc-pad: 0px; padding-inline: var(--reader-doc-pad); }
 #content .reader-table-wrap {
-    --reader-gutter: calc((100cqw - min(100cqw, var(--reader-max-width, 860px))) / 2 + var(--reader-doc-pad));
-    display: grid;
-    grid-template-columns: minmax(0, var(--reader-gutter)) fit-content(calc(100cqw - 2 * var(--reader-gutter))) minmax(0, var(--reader-gutter));
-    width: 100cqw;
+    display: block;
+    width: 100%;
+    max-width: 100%;
     margin: 1em 0;
-    margin-inline-start: calc(-1 * var(--reader-gutter));
+    margin-inline-start: 0;
     overflow-x: auto;
 }
-#content .reader-table-wrap > table { grid-column: 2; display: table; width: auto; margin: 0; overflow: visible; }
-#content .reader-table-wrap th { position: relative; }
+#content .reader-table-wrap > table { display: table; width: auto; max-width: 100%; margin: 0; overflow: visible; }
+#content .reader-table-wrap > table.reader-cols-fixed { max-width: none; }
+#content .reader-table-wrap th { position: relative; vertical-align: top; }
+#content .reader-table-wrap td { vertical-align: top; }
+/* Long unbroken inline code or URLs in table cells wrap instead of crushing sibling prose columns. */
+#content .reader-table-wrap :is(th, td) :is(code, a) { overflow-wrap: anywhere; word-break: break-word; }
+#content .reader-table-wrap > table.reader-cols-fixed :is(th, td) { overflow-wrap: anywhere; overflow: hidden; }
 /* still too wide: cap the height so the horizontal scrollbar stays on screen instead of below a long table */
 #content .reader-table-wrap.reader-table-overflow { max-height: calc(100vh - 48px); overflow: auto; }
 #content .reader-table-overflow thead th { position: sticky; top: 0; z-index: 1; }
@@ -38,19 +42,22 @@ body.reader-col-resizing { cursor: col-resize; user-select: none; }
 .reader-copy-code.copied { color: var(--link-color); }
 .reader-copy-code svg { width: 15px; height: 15px; pointer-events: none; }
 
-/* Outline button, next to the settings button */
-#toc-fab {
-    position: fixed; right: 58px; bottom: 16px; width: 34px; height: 34px; z-index: 9985;
+/* Outline and Hide-Editor floating buttons, next to the settings button */
+#toc-fab, #editor-fab {
+    position: fixed; bottom: 16px; width: 34px; height: 34px; z-index: 9985;
     display: flex; align-items: center; justify-content: center;
     background: var(--toolbar-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--border-color); border-radius: 50%; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
     color: var(--text-secondary); cursor: pointer; transition: color 0.15s ease, border-color 0.15s ease;
 }
-#toc-fab:hover, body.toc-open #toc-fab { color: var(--link-color); border-color: var(--link-color); }
+#toc-fab { right: 58px; }
+#editor-fab { right: 100px; }
+#toc-fab:hover, body.toc-open #toc-fab, #editor-fab:hover, body.editor-hidden #editor-fab { color: var(--link-color); border-color: var(--link-color); }
 body.toc-open #toc-fab { right: calc(var(--toc-width, 280px) + 52px); }
-#toc-fab:focus-visible, .reader-warning-close:focus-visible { outline: 2px solid var(--link-color); outline-offset: 2px; }
+body.toc-open #editor-fab { right: calc(var(--toc-width, 280px) + 94px); }
+#toc-fab:focus-visible, #editor-fab:focus-visible, .reader-warning-close:focus-visible { outline: 2px solid var(--link-color); outline-offset: 2px; }
 .reader-menu-item:focus-visible { outline: none; background: rgba(128, 128, 128, 0.16); }
-@media (max-width: 650px) { body.toc-open #toc-fab { right: 58px; } }
+@media (max-width: 650px) { body.toc-open #toc-fab { right: 58px; } body.toc-open #editor-fab { right: 100px; } }
 
 /* Context menu: the settings popover's look */
 #reader-menu {
@@ -123,7 +130,7 @@ body.toc-open #toc-fab { right: calc(var(--toc-width, 280px) + 52px); }
 .reader-remote-image:hover { color: var(--link-color); border-color: var(--link-color); }
 
 @media print {
-    #toc-fab, #reader-menu, #reader-back, .reader-copy-code, .reader-col-grip, .reader-remote-image, .reader-table-filter { display: none !important; }
+    #toc-fab, #editor-fab, #reader-menu, #reader-back, .reader-copy-code, .reader-col-grip, .reader-remote-image, .reader-table-filter { display: none !important; }
     /* paper has no scrollbars: tables print whole, at page width, and the outline drawer's space is not reserved */
     body.toc-open #reader-wrap { padding-right: 20px; }
     #content .reader-table-wrap, #content .reader-table-wrap.reader-table-overflow {
@@ -137,6 +144,9 @@ body.toc-open #toc-fab { right: calc(var(--toc-width, 280px) + 52px); }
 )TOOLS_CSS";
 
 inline constexpr const char* s_readerToolsHtml = R"TOOLS_HTML(
+<button id="editor-fab" title="Hide editor (Ctrl+Shift+E)" aria-label="Hide editor (Ctrl+Shift+E)" aria-pressed="false" onclick="toggleHideEditorFromMenu()">
+  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="14" y1="4" x2="14" y2="20"/></svg>
+</button>
 <button id="toc-fab" title="Outline" aria-label="Outline" data-i18n-title="ui.outlineButton" data-i18n-aria="ui.outlineButton" aria-controls="toc-drawer" onclick="toggleTocFromMenu()">
   <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>
 </button>
@@ -225,7 +235,7 @@ function cleanReaderClone(node) {
             if (/^(?:https?:)?\/\//i.test(remote)) element.setAttribute('src', remote); // the address the reader moved aside
         }
         if (element.matches('a[href]') && !READER_SAFE_LINK.test(element.getAttribute('href').trim())) element.removeAttribute('href');
-        element.classList && element.classList.remove('caret-target');
+        element.classList && element.classList.remove('caret-target', 'reader-cols-fixed');
     });
     // a top-level table is its own wrapper: the copy is the table itself
     return clone.matches && clone.matches('.reader-table-wrap') ? clone.querySelector('table') || clone : clone;
@@ -410,7 +420,8 @@ function readerMenuItems(target) {
         'separator',
         {label: rt('menu.find'), key: 'Ctrl+F', run: findInPreview},
         {label: rt('menu.print'), key: 'Ctrl+P', run: printPreview},
-        {label: rt(document.body.classList.contains('toc-open') ? 'menu.hideOutline' : 'menu.showOutline'), run: toggleTocFromMenu}
+        {label: rt(document.body.classList.contains('toc-open') ? 'menu.hideOutline' : 'menu.showOutline'), run: toggleTocFromMenu},
+        {label: rt(window._hideEditor ? 'menu.showEditorCtx' : 'menu.hideEditorCtx'), key: 'Ctrl+Shift+E', run: toggleHideEditorFromMenu}
     ];
     return items.filter(Boolean);
 }
@@ -479,6 +490,7 @@ function markOverflowingTables() {
 }
 function applyColumnWidths(table, widths) {
     var cells = Array.from(table.rows[0].cells);
+    table.classList.toggle('reader-cols-fixed', !!widths);
     table.style.tableLayout = widths ? 'fixed' : '';
     table.style.width = widths ? widths.reduce(function(sum, w) { return sum + w; }, 0) + 'px' : '';
     cells.forEach(function(cell, i) { cell.style.width = widths ? widths[i] + 'px' : ''; });
@@ -669,7 +681,10 @@ function layoutReaderTables(detail) {
         if (readerTableFilters.has(key)) openTableFilter(table, readerTableFilters.get(key));
         if (readerTableScroll.has(key)) restore.push([wrap, readerTableScroll.get(key)]);
     });
-    if (readerTableObserver) readerTableObserver.observe(document.getElementById('reader-wrap'));
+    if (readerTableObserver) {
+        readerTableObserver.observe(document.getElementById('reader-wrap'));
+        readerTableObserver.observe(content);
+    }
     markOverflowingTables();
     // after the overflow class: only then do overflowing wraps have their own vertical scroll range
     restore.forEach(function(pair) { pair[0].scrollLeft = pair[1].left; pair[0].scrollTop = pair[1].top; });

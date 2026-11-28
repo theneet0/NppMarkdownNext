@@ -24,6 +24,8 @@ public:
 
     // Menu Command Handlers
     void TogglePanel();
+    void ToggleHideEditor();
+    void SetHideEditor(bool hide, bool saveConfig = true);
     void ToggleSyncWithCaret();
     void ToggleBiDi();
     void SetTheme(ReaderTheme theme);
@@ -69,6 +71,12 @@ private:
     void SetViewerStatus(const std::wstring& text, bool retry);
     void LayoutViewerStatus();
     void SetPanelVisible(bool visible);
+    void SyncHideEditorMenuItem();
+    void UpdateHostLayout();
+    void UpdateOverlayBounds();
+    void ScheduleOverlaySync();
+    void InstallHostSubclasses();
+    void RemoveHostSubclasses();
     void ApplyAutoShowPanel();
     void RequestRenderDebounced(bool force = false);
     bool ExecuteRender(bool force = false);
@@ -94,10 +102,15 @@ private:
     bool IsCurrentBufferMarkdown() const;
 
     static LRESULT CALLBACK PanelWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    static LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    static LRESULT CALLBACK ViewerHostWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    static LRESULT CALLBACK HostSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData);
 
     HINSTANCE m_hInst = nullptr;
     NppData m_nppData = {};
     HWND m_hPanel = nullptr;
+    HWND m_hOverlay = nullptr;
+    HWND m_hViewerHost = nullptr;
     HWND m_hViewerStatus = nullptr;
     HWND m_hRetryViewer = nullptr;
     tTbData m_tbData = {};
@@ -114,6 +127,10 @@ private:
     bool m_isPanelRegistered = false;
     bool m_isPanelVisible = false;
     bool m_userClosedPanel = false;
+    bool m_overlayActive = false;
+    bool m_suppressDockNotification = false;
+    bool m_overlaySyncQueued = false;
+    bool m_subclassesInstalled = false;
     bool m_documentStateWarningReported = false; // a failing documents.ini is reported once per session
     bool m_nativeLanguageRussian = false; // Notepad++ itself is shown in Russian
     bool m_restorePanelOnStartup = false; // the panel was open when Notepad++ closed (used when auto-show is off)

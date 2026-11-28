@@ -23,6 +23,8 @@ struct NppDarkModeColors {
     COLORREF linkText;
 };
 
+#define IDM_FILE_CLOSE                 41003
+#define IDM_FILE_SAVE                  41006
 #define IDM_VIEW_RTL                   44072
 #define IDM_VIEW_LTR                   44073
 

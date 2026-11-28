@@ -180,7 +180,10 @@ $converted = Join-Path $runRoot 'after-save.md'
 $inlineCode = [string][char]96 + 'inline' + [char]96
 $nl = [Environment]::NewLine
 $longBody = (@(1..140 | ForEach-Object { "Paragraph $_ for scrolling and source synchronization.$nl" }) -join $nl)
-$document = [string]::Join($nl,@("# $marker",'',"**Bold** and *italic* with $inlineCode and [a link](https://example.invalid/smoke).",'','> A quote.','','- [x] literal [ ]','','## Reading section','',$longBody))
+$document = [string]::Join($nl,@("# $marker",'',"**Bold** and *italic* with $inlineCode and [a link](https://example.invalid/smoke).",'','> A quote.','','- [x] literal [ ]','','![dot](img/dot.png)','','| Col A | Col B |','|---|---|','| 1 | 2 |','','## Reading section','',$longBody))
+# A 1x1 PNG next to the document: the reader must load it through the document-folder virtual host.
+New-Item -ItemType Directory -Path (Join-Path $runRoot 'img') -Force | Out-Null
+[IO.File]::WriteAllBytes((Join-Path $runRoot 'img\dot.png'), [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='))
 [IO.File]::WriteAllText($initial,$document,[Text.UTF8Encoding]::new($false))
 [IO.File]::WriteAllText($plain,$document.Replace($marker,$marker + '_SAVEAS'),[Text.UTF8Encoding]::new($false))
 $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0)
@@ -251,6 +254,8 @@ function Invoke-Probe([string]$Command='state',[string]$Expression='',[string]$S
     $info.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
     $info.RedirectStandardOutput = $true
     $info.RedirectStandardError = $true
+    $info.StandardOutputEncoding = [Text.Encoding]::UTF8 # the probe writes UTF-8 JSON; the console code page would garble non-ASCII text
+    $info.StandardErrorEncoding = [Text.Encoding]::UTF8
     foreach ($argument in @($probe,'--port',[string]$port,'--command',$Command)) { $info.ArgumentList.Add($argument) }
     if ($Expression) {
         $info.ArgumentList.Add('--expression-base64')
@@ -317,12 +322,32 @@ try {
     Assert-Check ([string]::Equals($actualConfig.TrimEnd('\'),$config,[StringComparison]::OrdinalIgnoreCase)) 'IsolatedConfigurationRoot' $actualConfig
     Assert-Restored $state 'InitialRender'
     $state = Invoke-Probe 'inspect' '' (Join-Path $runRoot 'initial-gold.png')
-    Assert-Check ($state.settings.Count -eq 11 -and @($state.settings | Where-Object { $_ -eq 'Typography' }).Count -eq 1) 'FullSettingsMenu' 'All eleven root rows including Typography are present.'
+    Assert-Check ($state.settings.Count -eq 12 -and @($state.settings | Where-Object { $_ -eq 'Typography' }).Count -eq 1) 'FullSettingsMenu' 'All twelve root rows including Typography and Language are present.'
     Assert-Check ($state.colors.background -eq 'rgb(15, 22, 40)' -and $state.colors.heading -eq 'rgb(255, 208, 0)' -and
         $state.colors.strong -eq 'rgb(237, 242, 247)' -and $state.colors.emphasis -eq 'rgb(255, 130, 63)' -and
         $state.colors.code -eq 'rgb(161, 103, 255)' -and $state.colors.quote -eq 'rgb(228, 172, 115)' -and
         $state.colors.link -eq 'rgb(62, 178, 255)') 'NativeGoldMarkdownRoles'
     $report.states.initial = $state
+
+    # Reader tools in the real WebView2: the document-relative image, then Edge's own find bar.
+    $image = Invoke-Probe 'evaluate' '(async()=>{const img=document.querySelector("#content img");if(!img)return "missing";if(!img.complete||!img.naturalWidth)await new Promise(r=>{img.addEventListener("load",r);img.addEventListener("error",r);setTimeout(r,5000);});return img.src+"|"+img.naturalWidth;})()'
+    Assert-Check ($image.value -eq 'https://npp-reader-document.local/img/dot.png|1') 'DocumentRelativeImage' ([string]$image.value)
+    Invoke-Probe 'evaluate' 'window.chrome.webview.postMessage("find:Reading")' | Out-Null
+    Start-Sleep -Milliseconds 800
+    $toast = Invoke-Probe 'evaluate' 'document.getElementById("toast-msg").textContent'
+    Assert-Check (!([string]$toast.value).Contains('newer')) 'NativeFindBarStarts' ([string]$toast.value)
+
+    # Language: the reader asks for Russian; the host saves it, renames its Plugins menu and re-renders the document.
+    Invoke-Probe 'evaluate' 'window.chrome.webview.postMessage("readerLanguage:ru")' | Out-Null
+    Start-Sleep -Milliseconds 900
+    $language = Invoke-Probe 'evaluate' 'document.documentElement.dataset.uiLanguage + "|" + document.getElementById("toc-fab").title'
+    Assert-Check ([string]$language.value -eq 'ru|Оглавление') 'NativeLanguageSwitch' ([string]$language.value)
+    $languageMenu = [IntPtr][NppSmokeApi]::Scalar($nppPid,$main,2049,0,0)
+    Assert-Check ([NppSmokeApi]::FindCommand($languageMenu,'Показать/скрыть Markdown Reader') -ne 0) 'PluginMenuRenamed'
+    Assert-Check ((Get-Content -LiteralPath $ini -Raw) -match 'ReaderLanguage=ru') 'LanguageSaved'
+    Invoke-Probe 'evaluate' 'window.chrome.webview.postMessage("readerLanguage:auto")' | Out-Null
+    Start-Sleep -Milliseconds 900
+    Assert-Check ([NppSmokeApi]::FindCommand($languageMenu,'Toggle Markdown Reader') -ne 0) 'PluginMenuRestored'
 
     Assert-Check ([NppSmokeApi]::PathCommand($nppPid,$main,2101,0,$plain) -ne 0) 'OpenPlainTextSdk'
     $watch.Restart()
@@ -396,10 +421,19 @@ try {
         [IO.File]::ReadAllText($ini) -match '(?m)^Theme=12\r?$'
     } 'NativeGoldPaletteRestored'
     Assert-Restored $state 'GoldRestoredBeforeCrashes'
+    # Column widths: the reader sends them, the host writes them to its own file...
+    $tablesIni = Join-Path $config 'NppMarkdownNext.documents.ini'
+    $fingerprint = (Invoke-Probe 'evaluate' '(()=>{const t=document.querySelector("#content table");const fp=tableFingerprint(t,{});window.chrome.webview.postMessage("tableWidths:"+window.readerDocumentIndex.bufferId+":"+fp+":111,222");return fp;})()').value
+    $watch.Restart()
+    while (!((Test-Path -LiteralPath $tablesIni) -and [IO.File]::ReadAllText($tablesIni).Contains("=$($fingerprint):111,222")) -and $watch.Elapsed.TotalSeconds -lt 10) { Start-Sleep -Milliseconds 100 }
+    Assert-Check ((Test-Path -LiteralPath $tablesIni) -and [IO.File]::ReadAllText($tablesIni).Contains("=$($fingerprint):111,222")) 'TableWidthsWrittenToFile' ([string]$fingerprint)
     $oldTarget = $state.targetId
     Invoke-Probe 'crash-renderer' | Out-Null
     $state = Wait-State {param($s) $s.targetId -ne $oldTarget -and $s.state -eq 'ready' -and $s.text.Contains($marker)} 'RendererRecovery'
     Assert-Restored $state 'RendererRecovery'
+    # ...and a fresh page (no reader state left) gets them back from the host.
+    $width = Invoke-Probe 'evaluate' '(async()=>{for(let i=0;i<50;i++){const t=document.querySelector("#content table");if(t&&t.rows[0].cells[1].style.width)return t.rows[0].cells[1].style.width;await new Promise(r=>setTimeout(r,100));}return "none";})()'
+    Assert-Check ($width.value -eq '222px') 'TableWidthsRestoredAfterReload' ([string]$width.value)
     $report.states.rendererRecovery = $state
 
     Invoke-Probe 'crash-renderer' | Out-Null
@@ -429,6 +463,11 @@ try {
     $state = Wait-State {param($s) $s.targetId -ne $oldTarget -and $s.state -eq 'ready' -and $s.text.Contains($marker)} 'BrowserRecovery'
     Assert-Restored $state 'BrowserRecovery'
     $report.states.final = Invoke-Probe 'inspect' '' (Join-Path $runRoot 'final-gold.png')
+    # Last, because the print preview stays open until the instance closes.
+    Invoke-Probe 'evaluate' 'window.chrome.webview.postMessage("print")' | Out-Null
+    Start-Sleep -Milliseconds 1200
+    $toast = Invoke-Probe 'evaluate' 'document.getElementById("toast-msg").textContent'
+    Assert-Check (!([string]$toast.value).Contains('newer')) 'NativePrintDialogOpens' ([string]$toast.value)
     $report.passed = $true
 } catch {
     $failure = $_

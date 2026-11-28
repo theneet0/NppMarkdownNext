@@ -32,7 +32,7 @@ class ThemeCatalogTests(unittest.TestCase):
         expected={'heading':'#ffd000','bold':'#ff3d3d','italic':'#ff823f','inlineCode':'#a167ff','quote':'#e4ac73','link':'#3eb2ff','comment':'#334984'}
         gold=next(t for t in self.data['themes'] if t['id']=='bearded-v-gold-d-raynh')
         self.assertEqual(gold['markdown'],expected)
-        self.assertEqual(gold['markdownOverrides'],{'bold':'#edf2f7'})
+        self.assertEqual(gold['markdownOverrides'],{'bold':'#edf2f7','comment':'#7186c0'})
         for role,color in {**expected,**gold['markdownOverrides']}.items():
             self.assertIn('--reader-'+role+': '+color+';',palette)
         invalid=json.loads(json.dumps(self.data))

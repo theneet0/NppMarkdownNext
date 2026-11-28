@@ -1,12 +1,22 @@
 #include "../include/Config.h"
 #include "../include/ThemeCatalog.h"
+#include "../include/ReaderPresets.inc"
 #include <sstream>
 #include <algorithm>
 #include <iterator>
 
 namespace {
-int ReadingChoice(int value, std::initializer_list<int> choices, int fallback) {
-    return std::find(choices.begin(), choices.end(), value) != choices.end() ? value : fallback;
+template <size_t N> int ReadingChoice(int value, const int (&choices)[N], int fallback) {
+    return std::find(std::begin(choices), std::end(choices), value) != std::end(choices) ? value : fallback;
+}
+
+// GetPrivateProfileInt reads "NaN" as 0, and 0 is a real choice (reading width = the whole pane): parse strictly.
+int ReadStrictInt(const wchar_t* section, const wchar_t* key, int fallback, const std::wstring& path) {
+    wchar_t raw[32] = {};
+    GetPrivateProfileStringW(section, key, L"", raw, 32, path.c_str());
+    wchar_t* end = nullptr;
+    const long value = wcstol(raw, &end, 10);
+    return raw[0] && end && *end == L'\0' ? static_cast<int>(value) : fallback;
 }
 }
 
@@ -57,6 +67,7 @@ void PluginConfig::Load(const std::wstring& configPath) {
     const wchar_t* sec = L"Settings";
     isPanelVisible = GetPrivateProfileIntW(sec, L"IsPanelVisible", 0, configPath.c_str()) != 0;
     autoShowPanel = GetPrivateProfileIntW(sec, L"AutoShowPanel", 1, configPath.c_str()) != 0;
+    hideEditor = GetPrivateProfileIntW(sec, L"HideEditor", 0, configPath.c_str()) != 0;
     syncWithCaret = GetPrivateProfileIntW(sec, L"SyncWithCaret", 1, configPath.c_str()) != 0;
     showOutline = GetPrivateProfileIntW(sec, L"ShowOutline", 0, configPath.c_str()) != 0;
     darkModeOverride = GetPrivateProfileIntW(sec, L"DarkModeOverride", -1, configPath.c_str());
@@ -76,13 +87,29 @@ void PluginConfig::Load(const std::wstring& configPath) {
     zoomLevel = static_cast<float>(zoomInt) / 100.0f;
     if (zoomLevel < 0.3f) zoomLevel = 0.3f;
     if (zoomLevel > 3.0f) zoomLevel = 3.0f;
-    contentFontSizePx = ReadingChoice(GetPrivateProfileIntW(sec, L"ContentFontSizePx", 15, configPath.c_str()), {15, 17, 19}, 15);
-    contentLineHeightPercent = ReadingChoice(GetPrivateProfileIntW(sec, L"ContentLineHeightPercent", 170, configPath.c_str()), {150, 170, 190}, 170);
-    contentMaxWidthPx = ReadingChoice(GetPrivateProfileIntW(sec, L"ContentMaxWidthPx", 860, configPath.c_str()), {680, 860, 1100}, 860);
+    contentFontSizePx = ReadingChoice(ReadStrictInt(sec, L"ContentFontSizePx", 15, configPath), kFontSizePresets, 15);
+    contentLineHeightPercent = ReadingChoice(ReadStrictInt(sec, L"ContentLineHeightPercent", 170, configPath), kLineHeightPresets, 170);
+    contentMaxWidthPx = ReadingChoice(ReadStrictInt(sec, L"ContentMaxWidthPx", 860, configPath), kReadingWidthPresets, 860);
+    wchar_t language[8] = {};
+    GetPrivateProfileStringW(sec, L"ReaderLanguage", L"auto", language, 8, configPath.c_str());
+    readerLanguage = (std::wstring(language) == L"en" || std::wstring(language) == L"ru") ? language : L"auto";
+    outlineWidthPx = std::clamp(ReadStrictInt(sec, L"OutlineWidthPx", kOutlineWidthDefault, configPath), kOutlineWidthMin, kOutlineWidthMax);
 
     wchar_t buf[512] = { 0 };
     GetPrivateProfileStringW(sec, L"SupportedExtensions", L".md,.markdown,.mdown,.mkd,.rst", buf, 512, configPath.c_str());
     supportedExtensions = buf;
+
+    // What the file holds now (absent keys stay absent, so the first Save still writes them).
+    m_persisted.clear();
+    m_persistedPath = configPath;
+    for (const wchar_t* key : {L"IsPanelVisible", L"AutoShowPanel", L"HideEditor", L"SyncWithCaret", L"ShowOutline", L"DarkModeOverride",
+                               L"IsSmartBiDiEnabled", L"Theme", L"BeardedVariant", L"ZoomLevelPercent", L"SupportedExtensions",
+                               L"ContentFontSizePx", L"ContentLineHeightPercent", L"ContentMaxWidthPx", L"OutlineWidthPx", L"ReaderLanguage"}) {
+        wchar_t raw[512] = {};
+        const wchar_t* absent = L"\x1f<absent>";
+        GetPrivateProfileStringW(sec, key, absent, raw, 512, configPath.c_str());
+        if (wcscmp(raw, absent) != 0) m_persisted[key] = raw;
+    }
 }
 
 bool PluginConfig::Save(const std::wstring& configPath) const {
@@ -93,15 +120,24 @@ bool PluginConfig::Save(const std::wstring& configPath) const {
 
     const wchar_t* sec = L"Settings";
     DWORD firstError = ERROR_SUCCESS;
+    // Only keys this instance changed are written: a second Notepad++ instance that changed another setting
+    // keeps its value instead of having it overwritten by this instance's startup snapshot.
     auto write = [&](const wchar_t* key, const std::wstring& value) {
+        if (configPath == m_persistedPath) {
+            auto known = m_persisted.find(key);
+            if (known != m_persisted.end() && known->second == value) return;
+        }
         SetLastError(ERROR_SUCCESS);
         if (!WritePrivateProfileStringW(sec, key, value.c_str(), configPath.c_str())) {
             DWORD error = GetLastError();
             if (firstError == ERROR_SUCCESS) firstError = error ? error : ERROR_WRITE_FAULT;
+        } else if (configPath == m_persistedPath) {
+            m_persisted[key] = value;
         }
     };
     write(L"IsPanelVisible", isPanelVisible ? L"1" : L"0");
     write(L"AutoShowPanel", autoShowPanel ? L"1" : L"0");
+    write(L"HideEditor", hideEditor ? L"1" : L"0");
     write(L"SyncWithCaret", syncWithCaret ? L"1" : L"0");
     write(L"ShowOutline", showOutline ? L"1" : L"0");
     write(L"DarkModeOverride", std::to_wstring(darkModeOverride));
@@ -115,6 +151,8 @@ bool PluginConfig::Save(const std::wstring& configPath) const {
     write(L"ContentFontSizePx", std::to_wstring(contentFontSizePx));
     write(L"ContentLineHeightPercent", std::to_wstring(contentLineHeightPercent));
     write(L"ContentMaxWidthPx", std::to_wstring(contentMaxWidthPx));
+    write(L"OutlineWidthPx", std::to_wstring(outlineWidthPx));
+    write(L"ReaderLanguage", readerLanguage);
     if (firstError != ERROR_SUCCESS) {
         SetLastError(firstError);
         return false;

@@ -1,6 +1,7 @@
 #include "../include/MarkdownParser.h"
 #include "../include/BiDiEngine.h"
 #include "CalloutRegistry.inc"
+#include <windows.h>
 #include <sstream>
 #include <cwctype>
 #include <algorithm>
@@ -683,10 +684,12 @@ MarkdownDocument MarkdownParser::Parse(const std::wstring& markdownText) {
             std::wstring trimmedBq = block.rawText;
             while (!trimmedBq.empty() && (trimmedBq.front() == L' ' || trimmedBq.front() == L'\t')) trimmedBq.erase(0, 1);
 
-            auto startsWithNoCase = [](const std::wstring& str, const std::wstring& prefix) {
+            // CharLowerW folds every script (towlower in the C locale folds ASCII only, e.g. not [!ВАЖНО]).
+            auto fold = [](wchar_t c) { return static_cast<wchar_t>(reinterpret_cast<ULONG_PTR>(CharLowerW(reinterpret_cast<LPWSTR>(static_cast<ULONG_PTR>(c))))); };
+            auto startsWithNoCase = [&fold](const std::wstring& str, const std::wstring& prefix) {
                 if (str.size() < prefix.size()) return false;
                 for (size_t k = 0; k < prefix.size(); ++k) {
-                    if (::towlower(str[k]) != ::towlower(prefix[k])) return false;
+                    if (fold(str[k]) != fold(prefix[k])) return false;
                 }
                 return true;
             };

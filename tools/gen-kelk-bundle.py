@@ -53,6 +53,8 @@ if "--import-heading-policy" in sys.argv:
         fp.write("\n")
     print("Imported heading policy Unicode " + unicodedata.unidata_version)
     sys.exit(0)
+# The committed bundle is reproduced byte for byte from Kelk 4beee81 (2026-10-16):
+#   git clone https://github.com/mohsen-1984/kelk ../kelk_repo && git -C ../kelk_repo checkout 4beee81
 default_kelk = os.path.abspath(os.path.join(repo_root, "..", "kelk_repo"))
 
 kelk_dir = sys.argv[1] if len(sys.argv) > 1 else default_kelk
@@ -195,8 +197,9 @@ html, body {
 .doc th, .doc td {
   border: 1px solid var(--line-strong);
   padding: 6px 12px;
-  text-align: start;
 }
+/* a column's own alignment (|:---:|, |---:|) wins; only unaligned cells follow the text direction */
+.doc :is(th, td):not([align]) { text-align: start; }
 .doc th {
   background: var(--table-head);
   font-weight: 600;
@@ -354,7 +357,7 @@ with open(os.path.join(repo_root, "include", "HeadingPolicy.inc"), "w", encoding
 callout_rows = []
 for item in callouts:
     for index, alias in enumerate(item["aliases"]):
-        title = item["title"] if index == 0 else item["localizedTitle"]
+        title = item.get("aliasTitles", {}).get(alias) or (item["title"] if index == 0 else item["localizedTitle"])
         callout_rows.append("    {L" + json.dumps(alias, ensure_ascii=False) + ", AlertType::" + item["nativeType"] + ", L" + json.dumps(title, ensure_ascii=False) + "},")
 with open(os.path.join(repo_root, "src", "CalloutRegistry.inc"), "w", encoding="utf-8") as fp:
     fp.write("// Generated from themes/callouts.json.\nstruct CalloutRegistryEntry { const wchar_t* alias; AlertType type; const wchar_t* title; };\n")
@@ -382,6 +385,7 @@ controller_js = r"""
   var readingPositions = new Map();
   var taskSources = new Map();
   var taskSourceLines = [];
+  var highlightCache = new Map(); // blocks of the last render only, so it never outgrows one document
 
   // Safe HTML entity escaping
   function escapeHtml(s) {
@@ -405,12 +409,81 @@ controller_js = r"""
     }
   });
 
+  // The reader's translated text (rt in ReaderThemes.inc); a page without the reader keeps English.
+  function readerText(key, fallback) { return typeof window.rt === 'function' ? window.rt(key) : fallback; }
+
   // Configure marked for GFM
   if (typeof marked !== 'undefined') {
     marked.setOptions({
       gfm: true,
       breaks: false
     });
+  }
+
+  // Footnotes as GitHub shows them: "[^id]" becomes a numbered superscript (in order of first reference),
+  // "[^id]: text" definitions (continuation lines indented) are collected into a list at the end.
+  var footnotes = null; // {order: [id], numbers: {id: n}, refs: {id: count}, notes: {id: html}} for one top-level parse
+  if (typeof marked !== 'undefined' && marked.use) {
+    marked.use({extensions: [{
+      name: 'footnoteDef', level: 'block',
+      start: function(src) { var m = /^\[\^[^\]\s]+\]:/m.exec(src); return m ? m.index : undefined; },
+      tokenizer: function(src) {
+        var m = /^\[\^([^\]\s]+)\]:[ \t]*([^\n]*(?:\n(?:[ \t]{2,}|\t)[^\n]*)*)(?:\n|$)/.exec(src);
+        if (m) return {type: 'footnoteDef', raw: m[0], id: m[1], tokens: this.lexer.inlineTokens(m[2].replace(/\n[ \t]+/g, ' '))};
+      },
+      renderer: function(token) {
+        if (!footnotes) return '<p>' + escapeHtml(token.raw) + '</p>'; // fallback parse: keep the note visible
+        if (!(token.id in footnotes.notes)) footnotes.notes[token.id] = this.parser.parseInline(token.tokens);
+        return '';
+      }
+    }, {
+      name: 'footnoteRef', level: 'inline',
+      start: function(src) { var i = src.indexOf('[^'); return i < 0 ? undefined : i; },
+      tokenizer: function(src) {
+        var m = /^\[\^([^\]\s]+)\](?!:)/.exec(src);
+        if (m) return {type: 'footnoteRef', raw: m[0], id: m[1]};
+      },
+      renderer: function(token) {
+        if (!footnotes) return escapeHtml(token.raw);
+        if (!footnotes.numbers[token.id]) { footnotes.order.push(token.id); footnotes.numbers[token.id] = footnotes.order.length; }
+        var k = footnotes.refs[token.id] = (footnotes.refs[token.id] || 0) + 1, id = escapeHtml(token.id);
+        return '<sup class="footnote-ref"><a href="#fn-' + id + '" id="fnref-' + id + (k > 1 ? '-' + k : '') + '">' + footnotes.numbers[token.id] + '</a></sup>';
+      }
+    }]});
+  }
+
+  // Privacy: nothing in a document may fetch from the network on its own. The sanitizer parses in an inert
+  // document, so moving remote sources aside here happens before any request; the reader offers a
+  // "load" button per image (data-remote-src). Media and inline-style URLs are dropped outright.
+  var REMOTE_URL = /^\s*(?:[a-z][a-z0-9+.-]*:)?\/\//i;
+  if (typeof DOMPurify !== 'undefined' && DOMPurify.addHook) {
+    // "C:\x.png" looks like an unknown URL scheme to the sanitizer, which drops it: keep the written path as plain
+    // text so the reader can say why the picture is not shown.
+    DOMPurify.addHook('uponSanitizeAttribute', function(node, data) {
+      if (node.nodeName === 'IMG' && data.attrName === 'src' && /^[a-z]:(?:[\\/]|%5c)/i.test(data.attrValue || '')) node.setAttribute('data-local-path', data.attrValue);
+    });
+    DOMPurify.addHook('afterSanitizeAttributes', function(node) {
+      if (node.nodeName === 'IMG' && REMOTE_URL.test(node.getAttribute('src') || '')) {
+        node.setAttribute('data-remote-src', node.getAttribute('src'));
+        node.removeAttribute('src');
+      }
+      if (node.hasAttribute('srcset')) node.removeAttribute('srcset');
+      ['poster', 'background'].forEach(function(name) { if (node.hasAttribute(name)) node.removeAttribute(name); });
+      if (/^(?:VIDEO|AUDIO|SOURCE|TRACK|INPUT)$/.test(node.nodeName) && REMOTE_URL.test(node.getAttribute('src') || '')) node.removeAttribute('src');
+      if (node.namespaceURI === 'http://www.w3.org/2000/svg' && node.nodeName.toLowerCase() !== 'a') {
+        ['href', 'xlink:href'].forEach(function(name) { if (REMOTE_URL.test(node.getAttribute(name) || '')) node.removeAttribute(name); });
+      }
+      // url(), image-set() and CSS escapes (which can spell either) never reach the page
+      if (/url\s*\(|image-set|\\/i.test(node.getAttribute('style') || '')) node.removeAttribute('style');
+    });
+  }
+
+  function renderFootnotes() {
+    var items = footnotes.order.filter(function(id) { return id in footnotes.notes; }).map(function(id) {
+      var safe = escapeHtml(id);
+      return '<li id="fn-' + safe + '">' + footnotes.notes[id] + ' <a href="#fnref-' + safe + '" class="footnote-back" aria-label="' + readerText('ui.backToText', 'Back to the text') + '">↩</a></li>';
+    });
+    return items.length ? '<section class="footnotes" data-source-unmapped="true"><hr><ol>' + items.join('') + '</ol></section>\n' : '';
   }
 
   function captureBlockSources(lexer) {
@@ -454,7 +527,8 @@ controller_js = r"""
       ' data-line="' + token.sourceLine + '"' : ' data-source-unmapped="true"';
   }
 
-  function slugHeading(text, usedIds) {
+  // suffixes (optional): base -> last suffix tried, so N identical headings cost O(N) instead of O(N^2).
+  function slugHeading(text, usedIds, suffixes) {
     var policy = window.READER_HEADING_POLICY;
     var ranges = policy.acceptedRanges;
     var lowercase = Array.from(String(text)).map(function(character) {
@@ -470,8 +544,10 @@ controller_js = r"""
       while (left < right) { var middle = (left + right) >>> 1; if (ranges[middle][1] < codepoint) left = middle + 1; else right = middle; }
       return left < ranges.length && ranges[left][0] <= codepoint;
     }).join('').trim().replace(/\s+/gu, '-') || 'section';
-    var id = base, number = 0;
+    var number = suffixes ? suffixes.get(base) || 0 : 0;
+    var id = number ? base + '-' + number : base;
     while (usedIds.has(id)) id = base + '-' + (++number);
+    if (suffixes) suffixes.set(base, number);
     usedIds.add(id);
     return id;
   }
@@ -491,10 +567,10 @@ controller_js = r"""
       if (used.has(element.id)) element.removeAttribute('id');
       else used.add(element.id);
     });
-    var headings = [];
+    var headings = [], suffixes = new Map();
     root.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(function(heading, index) {
       var text = headingText(heading);
-      if (!heading.id) heading.id = slugHeading(text, used);
+      if (!heading.id) heading.id = slugHeading(text, used, suffixes);
       var line = Number(heading.getAttribute('data-line'));
       headings.push({id: heading.id, level: Number(heading.tagName.slice(1)), text: text,
                      line: heading.hasAttribute('data-line') && Number.isInteger(line) ? line : null, element: heading});
@@ -528,20 +604,36 @@ controller_js = r"""
     var preceding = currentDocument.index.headings.filter(function(heading) { return heading.line !== null && heading.line <= anchor.line; });
     readingPositions.delete(currentDocument.bufferId);
     var heading = preceding.length ? preceding[preceding.length - 1] : null;
-    readingPositions.set(currentDocument.bufferId, {line: anchor.line, heading: heading ? heading.id : '', relativeLine: heading ? anchor.line - heading.line : 0, offset: anchor.element.getBoundingClientRect().top});
+    var position = {line: anchor.line, heading: heading ? heading.id : '', relativeLine: heading ? anchor.line - heading.line : 0, offset: Math.round(anchor.element.getBoundingClientRect().top)};
+    readingPositions.set(currentDocument.bufferId, position);
     while (readingPositions.size > 100) readingPositions.delete(readingPositions.keys().next().value);
+    // The host keeps it per file ("line:offset"), so the place survives closing the tab and restarting.
+    var wire = position.line + ':' + Math.max(-99999, Math.min(99999, position.offset));
+    if (/^\d+$/.test(currentDocument.bufferId) && sentReadingPositions.get(currentDocument.bufferId) !== wire && window.chrome && window.chrome.webview) {
+      sentReadingPositions.set(currentDocument.bufferId, wire);
+      window.chrome.webview.postMessage('readingPosition:' + currentDocument.bufferId + ':' + wire);
+    }
   }
+  var sentReadingPositions = new Map();
+  // Scrolling alone (no edit, no tab switch) also moves the place: capture once the reader stops scrolling.
+  var readingScrollTimer = 0;
+  document.addEventListener('scroll', function() {
+    clearTimeout(readingScrollTimer);
+    readingScrollTimer = setTimeout(captureReadingPosition, 600);
+  }, {passive: true, capture: true});
 
   function finalizeDocument(data, state, sequence) {
     var index = state === 'ready' ? buildDocumentIndex(contentEl) : {headings: [], blocks: []};
     var bufferId = typeof data.bufferId === 'string' ? data.bufferId : '';
-    currentDocument = {bufferId: bufferId, sync: typeof data.caretLine === 'number' && data.caretLine >= 0, closed: false, index: index};
-    window.readerDocumentIndex = {bufferId: bufferId, renderRevision: data.renderRevision, sequence: sequence, state: state, headings: index.headings, blocks: index.blocks};
+    var sync = typeof data.caretLine === 'number' && data.caretLine >= 0;
+    currentDocument = {bufferId: bufferId, sync: sync, caretLine: sync ? data.caretLine : null, closed: false, index: index};
+    window.readerDocumentIndex = {bufferId: bufferId, renderRevision: data.renderRevision, sequence: sequence, state: state, headings: index.headings, blocks: index.blocks,
+                                  docBase: typeof data.docBase === 'string' ? data.docBase : ''};
     document.dispatchEvent(new CustomEvent('readerRendered', {detail: window.readerDocumentIndex}));
     var saved = readingPositions.get(bufferId);
+    // Restored synchronously: a frame at the previous document's offset would flash, and a smooth scroll would animate.
     if (!currentDocument.sync && saved && index.blocks.length) {
-      requestAnimationFrame(function() {
-        if (sequence !== renderSequence || !currentDocument || currentDocument.closed || currentDocument.bufferId !== bufferId || currentDocument.sync) return;
+      (function() {
         var headingIndex = index.headings.findIndex(function(heading) { return heading.id === saved.heading && heading.line !== null; });
         var targetLine = headingIndex >= 0 ? index.headings[headingIndex].line + saved.relativeLine : saved.line;
         var candidates = index.blocks;
@@ -552,7 +644,7 @@ controller_js = r"""
         }
         var nearest = candidates.reduce(function(best, block) { return Math.abs(block.line - targetLine) < Math.abs(best.line - targetLine) ? block : best; });
         getReaderScrollRoot().scrollTop += nearest.element.getBoundingClientRect().top - saved.offset;
-      });
+      })();
     } else if (!currentDocument.sync && !saved) {
       getReaderScrollRoot().scrollTop = 0;
     }
@@ -563,6 +655,7 @@ controller_js = r"""
     if (!markdown || !markdown.trim()) return '';
     try {
       var source = markdown.replace(/\r\n?|\n/g, '\n');
+      var topLevel = startLine === undefined && !footnotes;
       if (startLine === undefined) {
         taskSources = new Map();
         taskSourceLines = source.split('\n');
@@ -602,9 +695,13 @@ controller_js = r"""
         var firstLine = (obj.text || '').split('\n')[0];
         var marker = firstLine.match(/^\[!([^\]\r\n]+)\][ \t]*$/);
         var registry = window.READER_CALLOUTS || [];
-        var callout = marker && registry.find(function(item) { return item.aliases.some(function(alias) { return alias.toLowerCase() === marker[1].toLowerCase(); }); });
+        var alias = null;
+        var callout = marker && registry.find(function(item) {
+          alias = item.aliases.find(function(candidate) { return candidate.toLowerCase() === marker[1].toLowerCase(); }) || null;
+          return alias !== null;
+        });
         if (callout) {
-          var title = marker[1].toLowerCase() === callout.aliases[0].toLowerCase() ? callout.title : callout.localizedTitle;
+          var title = (callout.aliasTitles && callout.aliasTitles[alias]) || (alias === callout.aliases[0] ? callout.title : callout.localizedTitle);
           var body = (obj.text || '').slice(firstLine.length).replace(/^\n/, '');
           var bodyLine = Number.isInteger(obj.sourceLine) ? obj.sourceLine + 1 : null;
           return '<blockquote class="alert-callout alert-' + escapeHtml(callout.type) + '"' + sourceAttributes(obj) + '><div class="alert-title">' + escapeHtml(title) + '</div>' + parseWithLines(body, bodyLine) + '</blockquote>\n';
@@ -632,8 +729,13 @@ controller_js = r"""
         return '<li' + sourceAttributes(obj) + '>' + text + '</li>\n';
       };
 
+      // GFM table rows are one source line each: header = the table's line, then the delimiter row, then the body.
       customRenderer.table = function(obj) {
         var text = marked.Renderer.prototype.table.call(this, obj);
+        if (Number.isInteger(obj.sourceLine) && obj.sourceLine >= 0) {
+          var row = 0;
+          text = text.replace(/<tr>/g, function() { return '<tr data-line="' + (obj.sourceLine + (row++ === 0 ? 0 : row)) + '">'; });
+        }
         return text.replace(/^<table/, '<table' + sourceAttributes(obj));
       };
 
@@ -641,8 +743,16 @@ controller_js = r"""
         return '<hr' + sourceAttributes(obj) + '>\n';
       };
 
-      var parser = new marked.Parser({ renderer: customRenderer });
-      return parser.parse(tokens);
+      // Lexing (above) only builds tokens; references are numbered and notes collected while rendering.
+      if (topLevel) footnotes = {order: [], numbers: {}, refs: {}, notes: {}};
+      try {
+        // marked.defaults carries the footnote extensions; a bare {renderer} would drop them.
+        var parser = new marked.Parser(Object.assign({}, marked.defaults, { renderer: customRenderer }));
+        var html = parser.parse(tokens);
+        return topLevel ? html + renderFootnotes() : html;
+      } finally {
+        if (topLevel) footnotes = null;
+      }
     } catch(err) {
       console.error('Markdown parse error:', err);
       return marked.parse(markdown);
@@ -652,6 +762,8 @@ controller_js = r"""
   function applyRender(data) {
     captureReadingPosition();
     var sequence = ++renderSequence;
+    var switched = !currentDocument || currentDocument.closed || currentDocument.bufferId !== data.bufferId;
+    var previousCaretLine = currentDocument ? currentDocument.caretLine : null;
     try {
       if (!contentEl) contentEl = document.getElementById('content');
       if (!contentEl) return;
@@ -671,14 +783,14 @@ controller_js = r"""
 
       var mdText = data.markdown || '';
       if (!mdText.trim()) {
-        contentEl.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px 20px;"><em>(No content to preview)</em></div>';
+        contentEl.innerHTML = '<div style="color:var(--muted);text-align:center;padding:60px 20px;"><em>' + readerText('ui.noContent', '(No content to preview)') + '</em></div>';
         finalizeDocument(data, 'empty', sequence);
         return;
       }
 
       var html = parseWithLines(mdText);
       if (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function') {
-        html = DOMPurify.sanitize(html, { ADD_ATTR: ['data-line', 'data-source-unmapped', 'data-task-key', 'target', 'dir', 'align'] });
+        html = DOMPurify.sanitize(html, { FORBID_TAGS: ['style'], ADD_ATTR: ['data-line', 'data-source-unmapped', 'data-task-key', 'data-remote-src', 'data-local-path', 'target', 'dir', 'align'] });
       }
 
       contentEl.innerHTML = html;
@@ -690,12 +802,23 @@ controller_js = r"""
         links[l].rel = 'noopener';
       }
 
-      // Syntax highlighting with highlight.js
+      // Syntax highlighting with highlight.js; unchanged blocks reuse the previous render's result
+      // (keyed by language class + text), so typing in prose does not re-highlight every code block.
       if (typeof hljs !== 'undefined') {
         var codeBlocks = contentEl.querySelectorAll('pre code');
+        var nextCache = new Map();
         for (var c = 0; c < codeBlocks.length; c++) {
-          try { hljs.highlightElement(codeBlocks[c]); } catch(e) {}
+          var code = codeBlocks[c], key = code.className + '\u0000' + code.textContent;
+          var hit = highlightCache.get(key) || nextCache.get(key);
+          if (hit) {
+            code.className = hit.className; code.innerHTML = hit.html; code.dataset.highlighted = 'yes';
+          } else {
+            try { hljs.highlightElement(code); } catch(e) {}
+            hit = {className: code.className, html: code.innerHTML};
+          }
+          nextCache.set(key, hit);
         }
+        highlightCache = nextCache;
       }
 
       // Apply Kelk BiDi engine
@@ -738,9 +861,11 @@ controller_js = r"""
       }
 
       finalizeDocument(data, 'ready', sequence);
-      // Scroll to caret if specified
+      // Another document jumps to its caret at once (no animation from the old document's offset);
+      // the same document follows only a caret that moved, so typing on a line does not re-centre the page.
       if (typeof data.caretLine === 'number' && data.caretLine >= 0) {
-        scrollToLine(data.caretLine, false);
+        if (switched) scrollToLine(data.caretLine, false, 'instant');
+        else if (previousCaretLine !== data.caretLine) scrollToLine(data.caretLine, false);
       }
     } catch(err) {
       console.error('applyRender fatal error:', err);
@@ -749,7 +874,7 @@ controller_js = r"""
       }
       if (contentEl) {
         contentEl.innerHTML = '<div style="color:var(--danger);padding:24px;border:1px solid var(--danger);border-radius:8px;background:var(--code-bg);">' +
-                              '<h3 style="margin-top:0;">Preview Error</h3>' +
+                              '<h3 style="margin-top:0;">' + readerText('ui.previewError', 'Preview Error') + '</h3>' +
                               '<p>' + escapeHtml(err ? err.message : 'Error') + '</p>' +
                               '</div>';
         finalizeDocument(data, 'error', sequence);
@@ -757,26 +882,26 @@ controller_js = r"""
     }
   }
 
-  function scrollToLine(targetLine, highlight) {
+  // The block that contains the line: the last block starting at or before it (document order, so the
+  // innermost of nested blocks sharing a start line); before the first block, the first one.
+  function scrollToLine(targetLine, highlight, behavior) {
     if (!contentEl) contentEl = document.getElementById('content');
     if (!contentEl) return;
 
-    var elements = currentDocument ? currentDocument.index.blocks.map(function(block) { return block.element; }) : [];
-    if (elements.length === 0) return;
+    var blocks = currentDocument ? currentDocument.index.blocks : [];
+    if (blocks.length === 0) return;
 
-    var bestEl = null;
-    var minDiff = 999999;
-    for (var i = 0; i < elements.length; i++) {
-      var l = parseInt(elements[i].getAttribute('data-line'), 10);
-      var diff = Math.abs(l - targetLine);
-      if (diff < minDiff) {
-        minDiff = diff;
-        bestEl = elements[i];
+    var bestEl = blocks[0].element, bestLine = -1;
+    for (var i = 0; i < blocks.length; i++) {
+      if (blocks[i].line <= targetLine && blocks[i].line >= bestLine) {
+        bestLine = blocks[i].line;
+        bestEl = blocks[i].element;
       }
     }
+    if (currentDocument) currentDocument.caretLine = targetLine;
 
     if (bestEl) {
-      bestEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      bestEl.scrollIntoView({ behavior: behavior || 'smooth', block: 'center' });
       if (highlight) {
         var old = contentEl.querySelector('.caret-target');
         if (old) old.classList.remove('caret-target');
@@ -813,6 +938,14 @@ controller_js = r"""
 
       if (data.type === 'render') {
         applyRender(data);
+      } else if (data.type === 'documentState' && data.kind === 'readingPosition') {
+        // the place saved for this file: used only when the reader has none fresher for the buffer
+        var saved = /^(\d{1,7}):(-?\d{1,6})$/.exec(String(data.value || ''));
+        var buffer = String(data.bufferId || '');
+        if (saved && !readingPositions.has(buffer)) {
+          readingPositions.set(buffer, {line: Number(saved[1]), heading: '', relativeLine: 0, offset: Number(saved[2])});
+          sentReadingPositions.set(buffer, data.value);
+        }
       } else if (data.type === 'bufferClosed') {
         readingPositions.delete(data.bufferId);
         if (currentDocument && currentDocument.bufferId === data.bufferId) currentDocument.closed = true;

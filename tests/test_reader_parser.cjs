@@ -93,4 +93,32 @@ test('CalloutLookalikesUntouched', () => {
     const nested = parseWithLines('> [!NOTE]\n> Body\n>\n> > nested\n');
     assert.match(nested, /<blockquote data-line="3"/);
 });
+test('RussianCalloutTitles', () => {
+    assert.match(parseWithLines('> [!важно]\n> Текст\n'), /alert-important"[^>]*><div class="alert-title">Важно<\/div>/);
+    assert.match(parseWithLines('> [!NOTE]\n> Body\n'), /<div class="alert-title">Note<\/div>/);
+});
+test('TableRowsAndAlignment', () => {
+    const html = parseWithLines('Intro\n\n| a | b |\n|:--|--:|\n| 1 | 2 |\n| 3 | 4 |\n');
+    assert.deepEqual([...html.matchAll(/<tr data-line="(\d+)">/g)].map(m => Number(m[1])), [2, 4, 5]);
+    assert.match(html, /<td align="right">2<\/td>/);
+});
+test('Footnotes', () => {
+    const html = parseWithLines('Text[^b] and again[^a] and[^b].\n\n[^a]: First note\n[^b]: Second\n  continued\n[^unused]: x\n');
+    assert.match(html, /<sup class="footnote-ref"><a href="#fn-b" id="fnref-b">1<\/a><\/sup>/);
+    assert.match(html, /<a href="#fn-b" id="fnref-b-2">1<\/a>/);
+    assert.match(html, /<a href="#fn-a" id="fnref-a">2<\/a>/);
+    assert.match(html, /<section class="footnotes"[^>]*><hr><ol><li id="fn-b">Second continued <a href="#fnref-b"/);
+    assert.ok(!html.includes('unused') && !html.includes('[^'));
+    assert.ok(!parseWithLines('No notes.\n').includes('footnotes'));
+});
+test('DuplicateHeadingIdsStayLinear', () => {
+    const used = new Set(['a-2']), suffixes = new Map();
+    assert.deepEqual(['A', 'A', 'A', 'A'].map(text => slugHeading(text, used, suffixes)), ['a', 'a-1', 'a-3', 'a-4']);
+    const many = new Set(), cache = new Map();
+    let probes = 0;
+    const origHas = many.has.bind(many);
+    many.has = key => { probes++; return origHas(key); };
+    for (let i = 0; i < 5000; i++) slugHeading('Same heading', many, cache);
+    assert.ok(many.size === 5000 && probes <= 10000, '5000 identical headings stay O(N) (' + probes + ' probes)');
+});
 process.stdout.write('All ' + passed + ' parser suites passed.\n');

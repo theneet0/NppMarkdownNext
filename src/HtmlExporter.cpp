@@ -3,7 +3,11 @@
 #include "KelkBundle.inc"
 #include "ReaderThemes.inc"
 #include "../include/HeadingIds.h"
+#include "../include/LinkPolicy.h"
+#include "../include/ReaderText.h"
 #include <fstream>
+#include <cctype>
+#include <cwctype>
 #include <sstream>
 #include <algorithm>
 #include <array>
@@ -65,19 +69,19 @@ bool MatchesOriginal(HANDLE original, const std::wstring& path) {
 
 OperationResult WriteHtmlAtomically(const std::wstring& path, std::string_view htmlUtf8) {
     if (path.empty() || path.find(L'\0') != std::wstring::npos)
-        return {OperationStatus::Failed, ERROR_INVALID_PARAMETER, L"Invalid export path."};
+        return {OperationStatus::Failed, ERROR_INVALID_PARAMETER, Tr("export.badPath")};
     DWORD attributes = GetFileAttributesW(path.c_str());
     bool existed = attributes != INVALID_FILE_ATTRIBUTES;
     if (!existed && GetLastError() != ERROR_FILE_NOT_FOUND && GetLastError() != ERROR_PATH_NOT_FOUND)
-        return {OperationStatus::Failed, IoError(), L"Cannot inspect the destination file."};
+        return {OperationStatus::Failed, IoError(), Tr("export.inspectFailed")};
     if (existed && (attributes & FILE_ATTRIBUTE_DIRECTORY))
-        return {OperationStatus::Failed, ERROR_DIRECTORY, L"The destination is a directory."};
+        return {OperationStatus::Failed, ERROR_DIRECTORY, Tr("export.isDirectory")};
     ReadHandle original;
     if (existed) {
         original.value = ::CreateFileW(path.c_str(), GENERIC_READ,
             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0, nullptr);
         if (original.value == INVALID_HANDLE_VALUE)
-            return {OperationStatus::Failed, IoError(), L"Cannot preserve the existing export."};
+            return {OperationStatus::Failed, IoError(), Tr("export.preserveFailed")};
     }
     static std::atomic<unsigned long> counter{0};
     std::wstring temporary;
@@ -90,7 +94,7 @@ OperationResult WriteHtmlAtomically(const std::wstring& path, std::string_view h
         if (output != INVALID_HANDLE_VALUE || GetLastError() != ERROR_FILE_EXISTS) break;
     }
     if (output == INVALID_HANDLE_VALUE)
-        return {OperationStatus::Failed, IoError(), L"Cannot create the temporary export file."};
+        return {OperationStatus::Failed, IoError(), Tr("export.tempFailed")};
     DWORD error = ERROR_SUCCESS;
     size_t position = 0;
     while (position < htmlUtf8.size()) {
@@ -106,19 +110,19 @@ OperationResult WriteHtmlAtomically(const std::wstring& path, std::string_view h
     if (!EXPORT_IO(closeHandle, output) && !error) error = IoError();
     if (error) {
         DeleteFileW(temporary.c_str());
-        return {OperationStatus::Failed, error, L"The export could not be written completely."};
+        return {OperationStatus::Failed, error, Tr("export.writeFailed")};
     }
     if (!existed) {
         if (EXPORT_IO(moveFile, temporary.c_str(), path.c_str(), 0))
             return {OperationStatus::Succeeded};
         error = IoError();
         DeleteFileW(temporary.c_str());
-        return {OperationStatus::Failed, error, L"The new export could not be committed; no existing file was overwritten."};
+        return {OperationStatus::Failed, error, Tr("export.commitFailed")};
     }
     std::wstring backup = temporary + L".bak";
     if (GetFileAttributesW(backup.c_str()) != INVALID_FILE_ATTRIBUTES) {
         DeleteFileW(temporary.c_str());
-        return {OperationStatus::Failed, ERROR_FILE_EXISTS, L"The export backup path is already in use."};
+        return {OperationStatus::Failed, ERROR_FILE_EXISTS, Tr("export.backupInUse")};
     }
     if (EXPORT_IO(replaceFile, path.c_str(), temporary.c_str(), backup.c_str(), 0, nullptr, nullptr)) {
         DeleteFileW(backup.c_str());
@@ -137,8 +141,8 @@ OperationResult WriteHtmlAtomically(const std::wstring& path, std::string_view h
     }
     if (!recovery.empty()) DeleteFileW(temporary.c_str());
     return {OperationStatus::Failed, error,
-        recovery.empty() ? L"Export replacement failed; temporary and backup files were retained for recovery." :
-                           L"Export replacement failed; the original bytes are available at the recovery path.", recovery};
+        recovery.empty() ? Tr("export.replaceRetained") :
+                           Tr("export.replaceRecovery"), recovery};
 }
 
 struct ClipboardMemory {
@@ -247,11 +251,18 @@ std::wstring HtmlExporter::InlinesToHtml(const std::vector<MarkdownSpan>& inline
                    << EscapeHtml(span.text) << L"$</bdi></span>";
                 break;
             case InlineStyleType::Link:
-                ss << L"<a href=\"" << EscapeHtml(span.extra) << L"\" target=\"_blank\" rel=\"noopener\">"
-                   << EscapeHtml(span.text) << L"</a>";
+                // A shared file must not carry script links (javascript:, vbscript:, data:...): keep the text only.
+                if (IsSafeLinkScheme(LinkScheme(span.extra)))
+                    ss << L"<a href=\"" << EscapeHtml(span.extra) << L"\" target=\"_blank\" rel=\"noopener\">"
+                       << EscapeHtml(span.text) << L"</a>";
+                else
+                    ss << EscapeHtml(span.text);
                 break;
             case InlineStyleType::Image:
-                ss << L"<img src=\"" << EscapeHtml(span.extra) << L"\" alt=\"" << EscapeHtml(span.text) << L"\" />";
+                if (IsSafeImageScheme(LinkScheme(span.extra)))
+                    ss << L"<img src=\"" << EscapeHtml(span.extra) << L"\" alt=\"" << EscapeHtml(span.text) << L"\" />";
+                else
+                    ss << EscapeHtml(span.text);
                 break;
             case InlineStyleType::Normal:
             default:
@@ -273,23 +284,37 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
 ) {
     std::wstringstream bodyStream;
     std::wstringstream tocStream;
+    size_t tocEntries = 0;
     std::set<std::wstring> headingIds = ReservedReaderHeadingIds();
 
-    bool inUnorderedList = false;
-    bool inOrderedList = false;
-
-    auto closeOpenLists = [&]() {
-        if (inUnorderedList) { bodyStream << L"</ul>\n"; inUnorderedList = false; }
-        if (inOrderedList) { bodyStream << L"</ol>\n"; inOrderedList = false; }
+    // Open lists, innermost last; each one has an open <li> that a deeper list nests into.
+    struct OpenList { bool ordered; int level; };
+    std::vector<OpenList> openLists;
+    auto closeListsDeeperThan = [&](int level) {
+        while (!openLists.empty() && openLists.back().level > level) {
+            bodyStream << L"</li>\n" << (openLists.back().ordered ? L"</ol>\n" : L"</ul>\n");
+            openLists.pop_back();
+        }
+    };
+    auto closeOpenLists = [&]() { closeListsDeeperThan(-1); };
+    // Starts the item's <li> (left open): closes deeper lists and the previous sibling, opens a list if needed.
+    auto beginListItem = [&](const MarkdownBlock& block, bool ordered) {
+        int level = (std::max)(0, block.level);
+        closeListsDeeperThan(level);
+        if (!openLists.empty() && openLists.back().level == level) {
+            if (openLists.back().ordered == ordered) bodyStream << L"</li>\n";
+            else closeListsDeeperThan(level - 1);
+        }
+        if (openLists.empty() || openLists.back().level < level) {
+            if (ordered) bodyStream << L"<ol" << (block.listIndex != 1 ? L" start=\"" + std::to_wstring(block.listIndex) + L"\"" : L"") << L">\n";
+            else bodyStream << L"<ul>\n";
+            openLists.push_back({ordered, level});
+        }
     };
 
     for (const auto& block : doc.blocks) {
-        if (block.type != MarkdownBlockType::UnorderedListItem && block.type != MarkdownBlockType::TaskListItem) {
-            if (inUnorderedList) { bodyStream << L"</ul>\n"; inUnorderedList = false; }
-        }
-        if (block.type != MarkdownBlockType::OrderedListItem) {
-            if (inOrderedList) { bodyStream << L"</ol>\n"; inOrderedList = false; }
-        }
+        if (block.type != MarkdownBlockType::UnorderedListItem && block.type != MarkdownBlockType::TaskListItem &&
+            block.type != MarkdownBlockType::OrderedListItem) closeOpenLists();
 
         const wchar_t* dirAttr = block.isRTL ? L" dir=\"rtl\"" : L" dir=\"ltr\"";
 
@@ -317,6 +342,7 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
                 std::wstring tocText = InlinesToPlainText(block.inlines);
                 tocStream << L"<a href=\"#" << hId << L"\" class=\"toc-item toc-l" << hNum << L"\""
                           << dirAttr << L">" << EscapeHtml(tocText) << L"</a>\n";
+                ++tocEntries;
                 break;
             }
 
@@ -421,36 +447,20 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
                 break;
             }
 
-            case MarkdownBlockType::UnorderedListItem: {
-                if (!inUnorderedList) {
-                    bodyStream << L"<ul>\n";
-                    inUnorderedList = true;
-                }
-                bodyStream << L"  <li data-source-line=\"" << block.sourceLineStart << L"\"" << dirAttr << L">"
-                           << InlinesToHtml(block.inlines) << L"</li>\n";
-                break;
-            }
-
+            case MarkdownBlockType::UnorderedListItem:
             case MarkdownBlockType::OrderedListItem: {
-                if (!inOrderedList) {
-                    bodyStream << L"<ol>\n";
-                    inOrderedList = true;
-                }
+                beginListItem(block, block.type == MarkdownBlockType::OrderedListItem);
                 bodyStream << L"  <li data-source-line=\"" << block.sourceLineStart << L"\"" << dirAttr << L">"
-                           << InlinesToHtml(block.inlines) << L"</li>\n";
+                           << InlinesToHtml(block.inlines);
                 break;
             }
 
             case MarkdownBlockType::TaskListItem: {
-                if (!inUnorderedList) {
-                    bodyStream << L"<ul>\n";
-                    inUnorderedList = true;
-                }
+                beginListItem(block, false);
                 bodyStream << L"  <li class=\"task-list-item\" data-source-line=\"" << block.sourceLineStart << L"\"" << dirAttr << L">\n";
                 bodyStream << L"    <input type=\"checkbox\" class=\"task-checkbox\" data-line=\""
                            << block.sourceLineStart << L"\" " << (block.isTaskChecked ? L"checked" : L"") << L"> ";
-                bodyStream << L"<span>" << InlinesToHtml(block.inlines) << L"</span>\n";
-                bodyStream << L"  </li>\n";
+                bodyStream << L"<span>" << InlinesToHtml(block.inlines) << L"</span>";
                 break;
             }
 
@@ -467,6 +477,16 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
     std::string bodyHtmlUtf8 = WideToUtf8(bodyStream.str());
     std::string tocHtmlUtf8 = WideToUtf8(tocStream.str());
 
+    // A shared file has no reader outline drawer: longer documents get their contents list on top.
+    const std::string fullHtml = WrapDocument(bodyHtmlUtf8, tocEntries >= 3 ? tocHtmlUtf8 : std::string(), title, theme, darkModeOverride, beardedVariant, true);
+    return PreviewComponents{ fullHtml, bodyHtmlUtf8, tocHtmlUtf8 };
+}
+
+// The document around a rendered body: theme styles, the page structure, optionally the contents list and the
+// reader's scripts (highlighting and BiDi run on open). A body taken from the live preview is already highlighted
+// and laid out, so it is shared without scripts.
+std::string HtmlExporter::WrapDocument(const std::string& bodyHtmlUtf8, const std::string& tocHtmlUtf8, const std::wstring& title,
+                                       PreviewTheme theme, int darkModeOverride, const std::wstring& beardedVariant, bool includeScripts) {
     bool isDark = (theme == PreviewTheme::Dark) || (darkModeOverride == 1);
     std::string bodyClass = isDark ? "dark" : "";
     PluginConfig themeConfig;
@@ -477,21 +497,115 @@ PreviewComponents HtmlExporter::GeneratePreviewComponents(
     }
 
     std::stringstream html;
-    html << "<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"" << (isDark ? "dark" : "light") << "\">\n<head>\n";
+    html << "<!DOCTYPE html>\n<html lang=\"" << BiDiEngine::DocumentLanguage(bodyHtmlUtf8) << "\" data-theme=\"" << (isDark ? "dark" : "light") << "\">\n<head>\n";
     html << "<meta charset=\"UTF-8\">\n";
     html << "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n";
     html << "<title>" << WideToUtf8(title) << "</title>\n";
     html << "<style>\n" << s_kelkCss << "\n" << s_readerPaletteCss << "\n" << s_readerThemeCss
          << "\n" << s_readerSemanticCss << "\n</style>\n";
-    html << "<script>\n" << s_kelkScripts << "\n</script>\n";
+    if (includeScripts) html << "<script>\n" << s_kelkScripts << "\n</script>\n";
     html << "</head>\n<body class=\"" << bodyClass << "\">\n";
     html << "<div id=\"reader-wrap\">\n";
     html << "  <main id=\"content\" class=\"doc\" dir=\"auto\">\n";
+    if (!tocHtmlUtf8.empty()) html << "<nav class=\"export-toc\" aria-label=\"" << WideToUtf8(Tr("ui.contents")) << "\">\n" << tocHtmlUtf8 << "</nav>\n";
     html << bodyHtmlUtf8;
     html << "\n  </main>\n</div>\n";
     html << "</body>\n</html>\n";
+    return html.str();
+}
 
-    return PreviewComponents{ html.str(), bodyHtmlUtf8, tocHtmlUtf8 };
+namespace {
+// "%D0%BF%20x&amp;y" -> UTF-8 bytes "п x&y" (an attribute value as innerHTML serializes it, percent-encoded by the reader)
+std::string DecodeAttributeUrl(const std::string& value) {
+    std::string unescaped;
+    for (size_t i = 0; i < value.size(); ++i) {
+        if (value.compare(i, 5, "&amp;") == 0) { unescaped += '&'; i += 4; }
+        else if (value[i] == '%' && i + 2 < value.size() && isxdigit(static_cast<unsigned char>(value[i + 1])) && isxdigit(static_cast<unsigned char>(value[i + 2]))) {
+            unescaped += static_cast<char>(std::stoi(value.substr(i + 1, 2), nullptr, 16));
+            i += 2;
+        } else unescaped += value[i];
+    }
+    return unescaped;
+}
+
+const char* ImageMimeType(std::wstring extension) {
+    for (auto& c : extension) c = static_cast<wchar_t>(towlower(c));
+    if (extension == L".png") return "image/png";
+    if (extension == L".jpg" || extension == L".jpeg") return "image/jpeg";
+    if (extension == L".gif") return "image/gif";
+    if (extension == L".webp") return "image/webp";
+    if (extension == L".bmp") return "image/bmp";
+    if (extension == L".svg") return "image/svg+xml"; // shown through <img>: its scripts never run
+    if (extension == L".ico") return "image/x-icon";
+    return nullptr;
+}
+}
+
+// Pictures the reader loaded from the document's folder (its virtual host) become data: URIs, so a shared file
+// keeps them; one that cannot be read (missing, too large, unknown type) keeps its path relative to the document.
+// The path comes from the reader's message, so it is checked again here: no "..", no drive, no stream, no device.
+namespace {
+// The real location of an open file or folder: symbolic links and junctions resolved.
+std::wstring FinalPath(HANDLE handle) {
+    wchar_t buffer[4 * MAX_PATH];
+    const DWORD length = GetFinalPathNameByHandleW(handle, buffer, static_cast<DWORD>(std::size(buffer)), FILE_NAME_NORMALIZED);
+    return length && length < std::size(buffer) ? std::wstring(buffer, length) : std::wstring();
+}
+}
+
+std::string HtmlExporter::EmbedDocumentImages(const std::string& htmlUtf8, const std::wstring& folder) {
+    std::wstring root; // the document folder's real path + '\\', resolved on the first picture
+    const std::string marker = std::string("src=\"") + kDocumentHostUrlUtf8;
+    std::string out;
+    size_t position = 0;
+    for (size_t at; (at = htmlUtf8.find(marker, position)) != std::string::npos;) {
+        const size_t start = at + marker.size(), end = htmlUtf8.find('"', start);
+        if (end == std::string::npos) break;
+        out.append(htmlUtf8, position, at - position);
+        const std::string relative = DecodeAttributeUrl(htmlUtf8.substr(start, end - start));
+        std::wstring path = BiDiEngine::Utf8ToWide(relative);
+        std::replace(path.begin(), path.end(), L'/', L'\\');
+        std::string replacement = EscapeHtmlUtf8(relative);
+        const bool safe = !folder.empty() && !path.empty() && path.find(L"..") == std::wstring::npos &&
+                          path.find_first_of(L":*?\"<>|") == std::wstring::npos && path.front() != L'\\';
+        const size_t dot = path.find_last_of(L'.'), slash = path.find_last_of(L'\\');
+        const std::wstring extension = dot == std::wstring::npos || (slash != std::wstring::npos && dot < slash) ? L"" : path.substr(dot);
+        const char* mime = safe ? ImageMimeType(extension) : nullptr;
+        if (mime) {
+            const std::wstring file = folder + L"\\" + path;
+            HANDLE handle = CreateFileW(file.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            LARGE_INTEGER size = {};
+            if (handle != INVALID_HANDLE_VALUE && root.empty()) {
+                HANDLE directory = CreateFileW(folder.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                               nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+                if (directory != INVALID_HANDLE_VALUE) { root = FinalPath(directory) + L"\\"; CloseHandle(directory); }
+            }
+            // a link inside the folder may point anywhere: its target must still be inside before it is shared
+            const std::wstring real = handle != INVALID_HANDLE_VALUE ? FinalPath(handle) : std::wstring();
+            const bool inside = root.size() > 1 && real.size() > root.size() &&
+                                CompareStringOrdinal(real.c_str(), static_cast<int>(root.size()), root.c_str(), static_cast<int>(root.size()), TRUE) == CSTR_EQUAL;
+            if (inside && GetFileSizeEx(handle, &size) && size.QuadPart > 0 && size.QuadPart <= 8 * 1024 * 1024) {
+                std::string bytes(static_cast<size_t>(size.QuadPart), '\0');
+                DWORD read = 0;
+                if (ReadFile(handle, bytes.data(), static_cast<DWORD>(bytes.size()), &read, nullptr) && read == bytes.size())
+                    replacement = std::string("data:") + mime + ";base64," + BiDiEngine::Base64Encode(reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size());
+            }
+            if (handle != INVALID_HANDLE_VALUE) CloseHandle(handle);
+        }
+        out += "src=\"" + replacement + "\"";
+        position = end + 1;
+    }
+    out.append(htmlUtf8, position, std::string::npos);
+    return out;
+}
+
+OperationResult HtmlExporter::SaveRenderedToFile(const std::wstring& filePath, const std::string& bodyHtmlUtf8, const std::wstring& title,
+                                                 PreviewTheme theme, const std::wstring& beardedVariant) {
+    return WriteHtmlAtomically(filePath, WrapDocument(bodyHtmlUtf8, std::string(), title, theme, 0, beardedVariant, false));
+}
+
+OperationResult HtmlExporter::CopyRenderedToClipboard(HWND hwndOwner, const std::string& fragmentUtf8, const std::wstring& plainText) {
+    return CopyFragmentToClipboard(hwndOwner, fragmentUtf8, plainText);
 }
 
 std::string HtmlExporter::GeneratePreviewHtml(
@@ -544,20 +658,23 @@ std::wstring HtmlExporter::DocumentToPlainText(const MarkdownDocument& doc) {
 
 OperationResult HtmlExporter::CopyToClipboard(HWND hwndOwner, const MarkdownDocument& doc, const std::wstring& title, PreviewTheme theme, const std::wstring& beardedVariant) {
     auto components = GeneratePreviewComponents(doc, title, theme, 1.0f, false, 0, beardedVariant);
-    std::string cfHtml = GenerateCfHtml(components.bodyHtml);
-    std::wstring plain = DocumentToPlainText(doc);
+    return CopyFragmentToClipboard(hwndOwner, components.bodyHtml, DocumentToPlainText(doc));
+}
+
+OperationResult HtmlExporter::CopyFragmentToClipboard(HWND hwndOwner, const std::string& fragmentUtf8, const std::wstring& plain) {
+    std::string cfHtml = GenerateCfHtml(fragmentUtf8);
     UINT format = EXPORT_IO(registerFormat, "HTML Format");
-    if (!format) return {OperationStatus::Failed, IoError(), L"Cannot register the HTML clipboard format."};
+    if (!format) return {OperationStatus::Failed, IoError(), Tr("clip.registerFailed")};
     ClipboardMemory htmlMemory, textMemory;
     if (!PrepareClipboardMemory(htmlMemory, cfHtml.c_str(), cfHtml.size() + 1) ||
         !PrepareClipboardMemory(textMemory, plain.c_str(), (plain.size() + 1) * sizeof(wchar_t)))
-        return {OperationStatus::Failed, IoError(), L"Cannot prepare clipboard data; the clipboard was not changed."};
+        return {OperationStatus::Failed, IoError(), Tr("clip.prepareFailed")};
     if (!EXPORT_IO(openClipboard, hwndOwner))
-        return {OperationStatus::Failed, IoError(), L"The clipboard is busy; try copying again."};
+        return {OperationStatus::Failed, IoError(), Tr("clip.busy")};
     if (!EXPORT_IO(emptyClipboard)) {
         DWORD error = IoError();
         EXPORT_IO(closeClipboard);
-        return {OperationStatus::Failed, error, L"Cannot clear the clipboard."};
+        return {OperationStatus::Failed, error, Tr("clip.clearFailed")};
     }
     DWORD error = ERROR_SUCCESS;
     bool htmlCopied = EXPORT_IO(setClipboardData, format, htmlMemory.value) != nullptr;
@@ -569,14 +686,14 @@ OperationResult HtmlExporter::CopyToClipboard(HWND hwndOwner, const MarkdownDocu
     if (!EXPORT_IO(closeClipboard)) {
         DWORD closeError = IoError();
         return {OperationStatus::Failed, closeError,
-            htmlCopied || textCopied ? L"Clipboard data was transferred, but the clipboard could not be closed." :
-                                       L"Copying failed and the clipboard could not be closed."};
+            htmlCopied || textCopied ? Tr("clip.closeAfterCopy") :
+                                       Tr("clip.closeAfterFail")};
     }
     if (htmlCopied && textCopied) return {OperationStatus::Succeeded};
     if (htmlCopied || textCopied) return {OperationStatus::Partial, error,
-        htmlCopied ? L"HTML was copied, but the plain-text fallback could not be copied." :
-                     L"Plain text was copied, but the formatted HTML could not be copied."};
-    return {OperationStatus::Failed, error, L"Neither clipboard format could be copied."};
+        htmlCopied ? Tr("clip.textMissing") :
+                     Tr("clip.htmlMissing")};
+    return {OperationStatus::Failed, error, Tr("clip.nothing")};
 }
 
 std::string HtmlExporter::GenerateCfHtml(const std::string& htmlFragment) {

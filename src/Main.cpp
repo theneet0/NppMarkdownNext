@@ -2,6 +2,7 @@
 #include "../include/PluginInterface.h"
 #include "../include/Resource.h"
 #include "../include/NppMarkdownNext.h"
+#include "../include/ReaderText.h"
 
 HINSTANCE g_hInst = nullptr;
 bool g_isDllDetaching = false;
@@ -46,11 +47,11 @@ void CommandZoomReset() {
 }
 
 void CommandCopyHtml() {
-    NppMarkdownNext::Instance().CopyRenderedHtml();
+    NppMarkdownNext::Instance().RequestHtmlExport(L"copyHtml");
 }
 
 void CommandSaveHtml() {
-    NppMarkdownNext::Instance().SaveAsHtml();
+    NppMarkdownNext::Instance().RequestHtmlExport(L"saveAsHtml");
 }
 
 void CommandAbout() {
@@ -59,6 +60,10 @@ void CommandAbout() {
 
 void CommandSettings() {
     NppMarkdownNext::Instance().OpenSettings();
+}
+
+void CommandToggleHideEditor() {
+    NppMarkdownNext::Instance().ToggleHideEditor();
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
@@ -87,9 +92,10 @@ __declspec(dllexport) const wchar_t * getName() {
 
 __declspec(dllexport) FuncItem * getFuncsArray(int *nbF) {
     *nbF = NB_PLUGIN_COMMANDS;
+    static_assert(std::size(kPluginMenuKeys) == NB_PLUGIN_COMMANDS);
+    for (int i = 0; i < NB_PLUGIN_COMMANDS; ++i) wcscpy_s(g_funcItems[i]._itemName, Tr(kPluginMenuKeys[i]).c_str());
 
     // 0: Toggle Markdown Reader Panel (Ctrl+Shift+M)
-    wcscpy_s(g_funcItems[CMD_TOGGLE_PANEL]._itemName, L"Toggle Markdown Reader (Kelk)");
     g_funcItems[CMD_TOGGLE_PANEL]._pFunc = CommandTogglePanel;
     g_funcItems[CMD_TOGGLE_PANEL]._cmdID = CMD_TOGGLE_PANEL;
     g_funcItems[CMD_TOGGLE_PANEL]._init2Check = false;
@@ -100,85 +106,83 @@ __declspec(dllexport) FuncItem * getFuncsArray(int *nbF) {
     g_funcItems[CMD_TOGGLE_PANEL]._pShKey = &g_shortcuts[CMD_TOGGLE_PANEL];
 
     // 1: Synchronize with Caret Position
-    wcscpy_s(g_funcItems[CMD_SYNC_CARET]._itemName, L"Synchronize reader with caret position");
     g_funcItems[CMD_SYNC_CARET]._pFunc = CommandSyncCaret;
     g_funcItems[CMD_SYNC_CARET]._cmdID = CMD_SYNC_CARET;
     g_funcItems[CMD_SYNC_CARET]._init2Check = true;
     g_funcItems[CMD_SYNC_CARET]._pShKey = nullptr;
 
     // 2: Smart BiDi (Persian/Arabic RTL)
-    wcscpy_s(g_funcItems[CMD_TOGGLE_BIDI]._itemName, L"Smart BiDi (Persian/Arabic RTL)");
     g_funcItems[CMD_TOGGLE_BIDI]._pFunc = CommandToggleBiDi;
     g_funcItems[CMD_TOGGLE_BIDI]._cmdID = CMD_TOGGLE_BIDI;
     g_funcItems[CMD_TOGGLE_BIDI]._init2Check = true;
     g_funcItems[CMD_TOGGLE_BIDI]._pShKey = nullptr;
 
     // 3: Theme - Follow Notepad++
-    wcscpy_s(g_funcItems[CMD_THEME_FOLLOW_NPP]._itemName, L"Theme: Follow Notepad++");
     g_funcItems[CMD_THEME_FOLLOW_NPP]._pFunc = CommandThemeFollowNpp;
     g_funcItems[CMD_THEME_FOLLOW_NPP]._cmdID = CMD_THEME_FOLLOW_NPP;
     g_funcItems[CMD_THEME_FOLLOW_NPP]._init2Check = false;
     g_funcItems[CMD_THEME_FOLLOW_NPP]._pShKey = nullptr;
 
     // 4: Theme - Light
-    wcscpy_s(g_funcItems[CMD_THEME_LIGHT]._itemName, L"Theme: Light");
     g_funcItems[CMD_THEME_LIGHT]._pFunc = CommandThemeLight;
     g_funcItems[CMD_THEME_LIGHT]._cmdID = CMD_THEME_LIGHT;
     g_funcItems[CMD_THEME_LIGHT]._init2Check = false;
     g_funcItems[CMD_THEME_LIGHT]._pShKey = nullptr;
 
     // 5: Theme - Dark
-    wcscpy_s(g_funcItems[CMD_THEME_DARK]._itemName, L"Theme: Dark");
     g_funcItems[CMD_THEME_DARK]._pFunc = CommandThemeDark;
     g_funcItems[CMD_THEME_DARK]._cmdID = CMD_THEME_DARK;
     g_funcItems[CMD_THEME_DARK]._init2Check = false;
     g_funcItems[CMD_THEME_DARK]._pShKey = nullptr;
 
     // 6: Zoom In
-    wcscpy_s(g_funcItems[CMD_ZOOM_IN]._itemName, L"Zoom In");
     g_funcItems[CMD_ZOOM_IN]._pFunc = CommandZoomIn;
     g_funcItems[CMD_ZOOM_IN]._cmdID = CMD_ZOOM_IN;
     g_funcItems[CMD_ZOOM_IN]._init2Check = false;
     g_funcItems[CMD_ZOOM_IN]._pShKey = nullptr;
 
     // 7: Zoom Out
-    wcscpy_s(g_funcItems[CMD_ZOOM_OUT]._itemName, L"Zoom Out");
     g_funcItems[CMD_ZOOM_OUT]._pFunc = CommandZoomOut;
     g_funcItems[CMD_ZOOM_OUT]._cmdID = CMD_ZOOM_OUT;
     g_funcItems[CMD_ZOOM_OUT]._init2Check = false;
     g_funcItems[CMD_ZOOM_OUT]._pShKey = nullptr;
 
     // 8: Reset Zoom
-    wcscpy_s(g_funcItems[CMD_ZOOM_RESET]._itemName, L"Reset Zoom (100%)");
     g_funcItems[CMD_ZOOM_RESET]._pFunc = CommandZoomReset;
     g_funcItems[CMD_ZOOM_RESET]._cmdID = CMD_ZOOM_RESET;
     g_funcItems[CMD_ZOOM_RESET]._init2Check = false;
     g_funcItems[CMD_ZOOM_RESET]._pShKey = nullptr;
 
     // 9: Copy HTML
-    wcscpy_s(g_funcItems[CMD_COPY_HTML]._itemName, L"Copy rendered HTML to clipboard");
     g_funcItems[CMD_COPY_HTML]._pFunc = CommandCopyHtml;
     g_funcItems[CMD_COPY_HTML]._cmdID = CMD_COPY_HTML;
     g_funcItems[CMD_COPY_HTML]._init2Check = false;
     g_funcItems[CMD_COPY_HTML]._pShKey = nullptr;
 
     // 10: Save As HTML
-    wcscpy_s(g_funcItems[CMD_SAVE_HTML]._itemName, L"Save As HTML...");
     g_funcItems[CMD_SAVE_HTML]._pFunc = CommandSaveHtml;
     g_funcItems[CMD_SAVE_HTML]._cmdID = CMD_SAVE_HTML;
     g_funcItems[CMD_SAVE_HTML]._init2Check = false;
     g_funcItems[CMD_SAVE_HTML]._pShKey = nullptr;
 
     // 11: About
-    wcscpy_s(g_funcItems[CMD_ABOUT]._itemName, L"About Markdown Reader...");
     g_funcItems[CMD_ABOUT]._pFunc = CommandAbout;
     g_funcItems[CMD_ABOUT]._cmdID = CMD_ABOUT;
     g_funcItems[CMD_ABOUT]._init2Check = false;
     g_funcItems[CMD_ABOUT]._pShKey = nullptr;
 
-    wcscpy_s(g_funcItems[CMD_SETTINGS]._itemName, L"Settings...");
     g_funcItems[CMD_SETTINGS]._pFunc = CommandSettings;
     g_funcItems[CMD_SETTINGS]._cmdID = CMD_SETTINGS;
+
+    // 13: Hide Editor / Reader-only mode (Ctrl+Shift+E)
+    g_funcItems[CMD_TOGGLE_HIDE_EDITOR]._pFunc = CommandToggleHideEditor;
+    g_funcItems[CMD_TOGGLE_HIDE_EDITOR]._cmdID = CMD_TOGGLE_HIDE_EDITOR;
+    g_funcItems[CMD_TOGGLE_HIDE_EDITOR]._init2Check = false;
+    g_shortcuts[CMD_TOGGLE_HIDE_EDITOR]._isCtrl = true;
+    g_shortcuts[CMD_TOGGLE_HIDE_EDITOR]._isAlt = false;
+    g_shortcuts[CMD_TOGGLE_HIDE_EDITOR]._isShift = true;
+    g_shortcuts[CMD_TOGGLE_HIDE_EDITOR]._key = 'E';
+    g_funcItems[CMD_TOGGLE_HIDE_EDITOR]._pShKey = &g_shortcuts[CMD_TOGGLE_HIDE_EDITOR];
     return g_funcItems;
 }
 

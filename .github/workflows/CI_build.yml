@@ -54,6 +54,11 @@ jobs:
         if ($LASTEXITCODE -ne 0) { throw "Theme catalog tests failed" }
         node tests/test_reader_parser.cjs
         if ($LASTEXITCODE -ne 0) { throw "Reader parser tests failed" }
+        # The reader UI runs in the runner's own Edge, so Playwright needs no browser download.
+        python -m pip install --disable-pip-version-check --quiet playwright==1.56.0
+        if ($LASTEXITCODE -ne 0) { throw "Playwright install failed" }
+        python tests/run_reader_ui.py
+        if ($LASTEXITCODE -ne 0) { throw "Reader UI tests failed" }
         foreach ($test in @('test_package.ps1', 'test_install.ps1')) {
           & powershell -NoProfile -File "tests/$test"
           if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell test failed: $test" }

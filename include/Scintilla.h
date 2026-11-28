@@ -24,6 +24,9 @@
 #define SCI_LINELENGTH                 2350
 #define SCI_GOTOLINE                   2024
 #define SCI_ENSUREVISIBLE              2232
+#define SCI_GETCODEPAGE                2137
+#define SC_CP_UTF8                     65001
+#define SCI_GETANCHOR                  2009
 
 #define SCI_GETBIDIRECTIONAL           2700
 #define SCI_SETBIDIRECTIONAL           2701

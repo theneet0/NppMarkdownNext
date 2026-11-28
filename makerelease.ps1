@@ -2,7 +2,9 @@
 param([switch]$FunctionsOnly)
 $ErrorActionPreference = 'Stop'
 $script:PluginRoot = $PSScriptRoot
-$script:PluginVersion = '1.6.0'
+# The version lives in include/Version.h (also read by the resource file and the About texts).
+$script:PluginVersion = [regex]::Match((Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'include\Version.h')), '#define NPPMD_VERSION_STRING "([^"]+)"').Groups[1].Value
+if (!$script:PluginVersion) { throw 'Cannot read the version from include/Version.h.' }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression
 

@@ -1,5 +1,8 @@
 #include "../include/NppMarkdownNext.h"
 #include "../include/Resource.h"
+#include "../include/BiDiEngine.h"
+#include "../include/Scintilla.h"
+#include "../include/ReaderText.h"
 #include <cassert>
 #include <cstring>
 #include <iostream>
@@ -16,10 +19,13 @@ struct ReaderLifecycleTestPeer {
         std::wstring path = L"C:\\reader-test\\one.md";
         std::wstring configRoot;
         UINT_PTR bufferId = 42;
+        UINT codePage = SC_CP_UTF8;
+        std::wstring lastOpened;
         bool readOnly = false;
         size_t selectionStart = 0;
         size_t selectionEnd = 0;
         unsigned writes = 0;
+        std::vector<LPARAM> menuCommands;
 
         size_t LineStart(WPARAM line) const {
             size_t start = 0;
@@ -54,15 +60,23 @@ struct ReaderLifecycleTestPeer {
                 return TRUE;
             }
             case NPPM_GETCURRENTBUFFERID: return editor->bufferId;
+            case NPPM_DOOPEN: editor->lastOpened = reinterpret_cast<const wchar_t*>(lParam); return TRUE;
+            case NPPM_GETFULLPATHFROMBUFFERID:
+                if (wParam != editor->bufferId) return -1;
+                if (lParam) wcscpy_s(reinterpret_cast<wchar_t*>(lParam), editor->path.size() + 1, editor->path.c_str());
+                return static_cast<LRESULT>(editor->path.size());
             case NPPM_GETCURRENTSCINTILLA: *reinterpret_cast<int*>(lParam) = 0; return TRUE;
             case NPPM_ISDARKMODEENABLED: return FALSE;
             case NPPM_DMMSHOW: ShowWindow(reinterpret_cast<HWND>(lParam), SW_SHOW); return TRUE;
             case NPPM_DMMHIDE: ShowWindow(reinterpret_cast<HWND>(lParam), SW_HIDE); return TRUE;
+            case NPPM_MENUCOMMAND: editor->menuCommands.push_back(lParam); return TRUE;
             case SCI_GETLENGTH: return static_cast<LRESULT>(editor->text.size());
             case SCI_GETTEXT:
                 strncpy_s(reinterpret_cast<char*>(lParam), static_cast<size_t>(wParam), editor->text.c_str(), _TRUNCATE);
                 return static_cast<LRESULT>(editor->text.size());
-            case SCI_GETCURRENTPOS:
+            case SCI_GETCURRENTPOS: return static_cast<LRESULT>(editor->selectionEnd);
+            case SCI_GETANCHOR: return static_cast<LRESULT>(editor->selectionStart);
+            case SCI_GETCODEPAGE: return static_cast<LRESULT>(editor->codePage);
             case SCI_LINEFROMPOSITION: return 0;
             case SCI_GETREADONLY: return editor->readOnly;
             case SCI_POSITIONFROMLINE: {
@@ -132,6 +146,7 @@ struct ReaderLifecycleTestPeer {
             host.Cleanup();
             if (owner) DestroyWindow(owner);
             DeleteFileW(iniPath.c_str());
+            DeleteFileW((editor.configRoot + L"\\NppMarkdownNext.documents.ini").c_str());
             assert(RemoveDirectoryW(editor.configRoot.c_str()));
         }
 
@@ -153,6 +168,10 @@ struct ReaderLifecycleTestPeer {
         void DrainWarnings() {
             MSG message;
             while (PeekMessageW(&message, host.m_hPanel, WM_APP_EXPORT_RESULT, WM_APP_EXPORT_RESULT, PM_REMOVE)) DispatchMessageW(&message);
+        }
+        void DrainHostCommands() {
+            MSG message;
+            while (PeekMessageW(&message, host.m_hPanel, WM_APP_HOST_COMMAND, WM_APP_HOST_COMMAND, PM_REMOVE)) DispatchMessageW(&message);
         }
         std::wstring Checkbox(int line, int column, unsigned state) const {
             return L"toggleCheckbox:" + std::to_wstring(editor.bufferId) + L":" +
@@ -317,7 +336,7 @@ struct ReaderLifecycleTestPeer {
         fixture.messages.clear();
         fixture.editor.text = "# Edited\n";
         ULONGLONG started = GetTickCount64();
-        fixture.host.RequestRenderDebounced();
+        fixture.host.OnDocModified();
         MSG message;
         while (fixture.Count(L"\"type\":\"render\"") == 0 && GetTickCount64() - started < 2000) {
             if (PeekMessageW(&message, fixture.host.m_hPanel, WM_TIMER, WM_TIMER, PM_REMOVE)) DispatchMessageW(&message);
@@ -377,6 +396,180 @@ struct ReaderLifecycleTestPeer {
         fixture.editor.path = L"C:\\reader-test\\saved-again.md";
         fixture.host.OnDocumentPathChanged(fixture.editor.bufferId);
         assert(!fixture.host.m_isPanelVisible);
+    }
+
+    static void EditorIntegrationDetails() {
+        Fixture fixture;
+        auto& host = fixture.host;
+        // An "ANSI" buffer (code page 0) reaches the reader as UTF-8 in the system code page's meaning
+        fixture.editor.codePage = 0;
+        fixture.editor.text = "caf\xE9";
+        wchar_t expected[8] = {};
+        assert(MultiByteToWideChar(CP_ACP, 0, "caf\xE9", 4, expected, 8) == 4);
+        assert(host.GetScintillaText(fixture.owner) == BiDiEngine::WideToUtf8(expected));
+        fixture.editor.codePage = SC_CP_UTF8;
+
+        // Toggling a task keeps the user's selection; a read-only file explains why nothing changed
+        fixture.editor.text = "- [ ] Task\nsome text\n";
+        host.SetPanelVisible(true);
+        fixture.Ready();
+        fixture.Tick();
+        fixture.editor.selectionStart = 13;
+        fixture.editor.selectionEnd = 17;
+        fixture.SendCheckbox(fixture.Checkbox(0, 2, 0));
+        assert(fixture.editor.text.starts_with("- [x] Task") && fixture.editor.selectionStart == 13 && fixture.editor.selectionEnd == 17);
+        fixture.Tick();
+        fixture.messages.clear();
+        fixture.editor.readOnly = true;
+        fixture.SendCheckbox(fixture.Checkbox(0, 2, 1));
+        assert(fixture.Count(L"\"type\":\"notice\"") == 1 && fixture.Count(L"read-only") == 1);
+        fixture.editor.readOnly = false;
+
+        // A render request without any edit copies nothing and posts nothing
+        fixture.Tick();
+        fixture.messages.clear();
+        host.RequestRenderDebounced();
+        fixture.Tick();
+        assert(fixture.Count(L"\"type\":\"render\"") == 0);
+
+        // A manually previewed non-Markdown file stays live while it is edited (auto-show would hide the panel there)
+        host.m_config.autoShowPanel = false;
+        fixture.editor.path = L"C:\\reader-test\\notes.txt";
+        host.OnBufferActivated();
+        fixture.Tick();
+        fixture.messages.clear();
+        fixture.editor.text = "# Edited notes\n";
+        host.OnDocModified();
+        fixture.Tick();
+        assert(fixture.Count(L"\"type\":\"render\"") == 1 && fixture.Count(L"Edited notes") == 1);
+        assert(fixture.Count(L"\"docBase\":\"https://npp-reader-document.local/\"") == 0); // no webview in the test: no mapping
+
+        // Reading width presets come from one list: 0 (the whole pane) is a valid choice, other values are not
+        host.OnSettingsMessage(L"readingWidth:0");
+        assert(host.m_config.contentMaxWidthPx == 0);
+        host.OnSettingsMessage(L"readingWidth:999");
+        assert(host.m_config.contentMaxWidthPx == 0);
+        host.OnSettingsMessage(L"readingWidth:860");
+        assert(host.m_config.contentMaxWidthPx == 860);
+    }
+
+    static void LinksOpenOnlySafeTargets() {
+        Fixture fixture;
+        fixture.Ready();
+        const std::wstring folder = fixture.editor.configRoot, plan = folder + L"\\plan.md";
+        HANDLE file = CreateFileW(plan.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+        assert(file != INVALID_HANDLE_VALUE);
+        CloseHandle(file);
+        fixture.editor.path = folder + L"\\doc.md";
+        fixture.host.SetPanelVisible(true);
+        fixture.host.OnSettingsMessage(L"openLink:plan.md#%D1%80%D0%B8%D1%81%D0%BA%D0%B8");
+        assert(fixture.editor.lastOpened == plan);
+        // the opened document scrolls to the section once it is rendered (Notepad++ activates it)
+        fixture.messages.clear();
+        fixture.editor.path = plan;
+        fixture.host.OnBufferActivated();
+        fixture.Tick();
+        assert(fixture.Count(L"\"type\":\"scrollToAnchor\"") == 1 && fixture.Count(L"\"id\":\"%D1%80%D0%B8%D1%81%D0%BA%D0%B8\"") == 1);
+        // a section link into the document already on screen scrolls at once
+        fixture.messages.clear();
+        fixture.host.OnSettingsMessage(L"openLink:plan.md#next");
+        assert(fixture.Count(L"\"id\":\"next\"") == 1);
+        fixture.editor.path = folder + L"\\doc.md";
+        fixture.editor.lastOpened.clear();
+        fixture.messages.clear();
+        fixture.host.OnSettingsMessage(L"openLink:\\\\attacker.example\\share\\x.md");
+        fixture.host.OnSettingsMessage(L"openLink:file://attacker.example/share/x.md");
+        assert(fixture.editor.lastOpened.empty() && fixture.Count(L"network locations") == 2);
+        fixture.host.OnSettingsMessage(L"openLink:ms-settings:privacy");
+        fixture.host.OnSettingsMessage(L"openLink:missing.md");
+        assert(fixture.editor.lastOpened.empty() && fixture.Count(L"not opened from the preview: ms-settings") == 1 && fixture.Count(L"was not found") == 1);
+        // .svg opens as text; shell links are refused before anything is touched
+        const std::wstring svg = folder + L"\\pic.svg", shortcut = folder + L"\\run.lnk";
+        for (const auto& name : {svg, shortcut}) { HANDLE created = CreateFileW(name.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, 0, nullptr); assert(created != INVALID_HANDLE_VALUE); CloseHandle(created); }
+        fixture.host.OnSettingsMessage(L"openLink:pic.svg");
+        assert(fixture.editor.lastOpened == svg);
+        fixture.editor.lastOpened.clear();
+        fixture.host.OnSettingsMessage(L"openLink:run.lnk");
+        assert(fixture.editor.lastOpened.empty() && fixture.Count(L"Shortcut files are not opened") == 1);
+        // a document on a share does not make every \\?\UNC\ or //host link "the same share"
+        fixture.messages.clear();
+        fixture.editor.path = L"\\\\server\\share\\doc.md";
+        fixture.host.OnSettingsMessage(L"openLink:\\\\?\\UNC\\evil\\share\\x.md");
+        fixture.host.OnSettingsMessage(L"openLink://evil/share/x.md");
+        fixture.host.OnSettingsMessage(L"openLink:\\\\.\\pipe\\x");
+        assert(fixture.editor.lastOpened.empty() && fixture.Count(L"network locations") == 3);
+        DeleteFileW(svg.c_str());
+        DeleteFileW(shortcut.c_str());
+        DeleteFileW(plan.c_str());
+    }
+
+    static void ReadingPlaceAndRenames() {
+        Fixture fixture;
+        fixture.host.SetPanelVisible(true);
+        fixture.Ready();
+        const std::wstring id = std::to_wstring(fixture.editor.bufferId);
+        fixture.host.OnSettingsMessage(L"readingPosition:" + id + L":120:-40");
+        fixture.host.OnSettingsMessage(L"readingPosition:" + id + L":12;x");
+        assert(fixture.host.LoadDocumentState(DocumentState::ReadingPosition, fixture.editor.path) == L"120:-40");
+        fixture.host.OnSettingsMessage(L"tableWidths:" + id + L":0a1b2c3d:150,250");
+        fixture.messages.clear();
+        fixture.host.OnBufferActivated();
+        fixture.Tick();
+        assert(fixture.Count(L"\"kind\":\"readingPosition\"") == 1 && fixture.Count(L"\"value\":\"120:-40\"") == 1);
+        // Save As / rename: the state follows the document to its new path (and the old path keeps it)
+        const std::wstring oldPath = fixture.editor.path;
+        fixture.editor.path = L"C:\\reader-test\\renamed.md";
+        fixture.host.OnDocumentPathChanged(fixture.editor.bufferId);
+        assert(fixture.host.LoadDocumentState(DocumentState::ReadingPosition, fixture.editor.path) == L"120:-40");
+        assert(fixture.host.LoadDocumentState(DocumentState::TableWidths, fixture.editor.path) == L"0a1b2c3d:150,250");
+        assert(fixture.host.LoadDocumentState(DocumentState::TableWidths, oldPath) == L"0a1b2c3d:150,250");
+        // it reached the file, not just the session cache
+        fixture.host.m_documentStateCache.clear();
+        assert(fixture.host.LoadDocumentState(DocumentState::ReadingPosition, fixture.editor.path) == L"120:-40");
+
+        // the first version's NppMarkdownNext.tables.ini moves to the new name once, keeping its widths
+        const std::wstring documents = fixture.editor.configRoot + L"\\NppMarkdownNext.documents.ini";
+        const std::wstring legacy = fixture.editor.configRoot + L"\\NppMarkdownNext.tables.ini";
+        assert(MoveFileExW(documents.c_str(), legacy.c_str(), 0));
+        fixture.host.Init(GetModuleHandleW(nullptr), fixture.host.m_nppData);
+        assert(GetFileAttributesW(legacy.c_str()) == INVALID_FILE_ATTRIBUTES && GetFileAttributesW(documents.c_str()) != INVALID_FILE_ATTRIBUTES);
+        fixture.host.m_documentStateCache.clear();
+        assert(fixture.host.LoadDocumentState(DocumentState::TableWidths, oldPath) == L"0a1b2c3d:150,250");
+    }
+
+    static void TableWidthsPersistPerDocument() {
+        Fixture fixture;
+        fixture.host.SetPanelVisible(true);
+        fixture.Ready();
+        const std::wstring id = std::to_wstring(fixture.editor.bufferId);
+        fixture.host.OnSettingsMessage(L"tableWidths:" + id + L":0a1b2c3d:120,200");
+        fixture.host.OnSettingsMessage(L"tableWidths:" + id + L":bad=value");
+        fixture.host.OnSettingsMessage(L"tableWidths:x1:0a1b2c3d:1");
+        fixture.host.OnSettingsMessage(L"tableWidths:999:0a1b2c3d:1");
+        assert(fixture.host.LoadDocumentState(DocumentState::TableWidths, fixture.editor.path) == L"0a1b2c3d:120,200");
+        assert(fixture.host.LoadDocumentState(DocumentState::TableWidths, L"C:\\READER-TEST\\ONE.MD") == L"0a1b2c3d:120,200");
+        fixture.host.m_documentStateCache.clear(); // a restarted Notepad++ has only the file
+        assert(fixture.host.LoadDocumentState(DocumentState::TableWidths, fixture.editor.path) == L"0a1b2c3d:120,200");
+        fixture.messages.clear();
+        fixture.host.OnBufferActivated();
+        fixture.Tick();
+        assert(fixture.Count(L"\"kind\":\"tableWidths\"") == 1 && fixture.Count(L"\"value\":\"0a1b2c3d:120,200\"") == 1);
+        fixture.messages.clear();
+        fixture.editor.text = "# Typed\n";
+        fixture.host.OnDocModified();
+        fixture.Tick();
+        assert(fixture.Count(L"\"type\":\"render\"") == 1 && fixture.Count(L"\"kind\":\"tableWidths\"") == 0);
+        fixture.host.OnSettingsMessage(L"tableWidths:" + id + L":");
+        assert(fixture.host.LoadDocumentState(DocumentState::TableWidths, fixture.editor.path).empty());
+        fixture.editor.path = L"new 1";
+        fixture.host.OnSettingsMessage(L"tableWidths:" + id + L":0a1b2c3d:1");
+        assert(fixture.host.LoadDocumentState(DocumentState::TableWidths, L"new 1").empty());
+        // an unwritable state file: reported once, not after every scroll; an unchanged value is not rewritten
+        fixture.editor.path = L"C:\\Reader-Test\\one.md";
+        fixture.host.m_documentStatePath = L"Z:\\no-such-folder-reader-test\\documents.ini";
+        fixture.messages.clear();
+        for (const wchar_t* place : {L"10", L"20", L"20", L"30"}) fixture.host.OnSettingsMessage(L"readingPosition:" + id + L":" + place);
+        assert(fixture.Count(L"saveSettings") == 1);
     }
 
     static void SettingsWarningLifecycle() {
@@ -549,6 +742,25 @@ struct ReaderLifecycleTestPeer {
         assert(fixture.editor.writes == 1 && fixture.editor.text == "- [x] Task\n");
     }
 
+    static void ReaderLanguageFollowsSetting() {
+        Fixture fixture;
+        fixture.Ready();
+        fixture.host.OnSettingsMessage(L"readerLanguage:ru");
+        assert(fixture.host.m_config.readerLanguage == L"ru" && ReaderTextRussian());
+        assert(fixture.Count(L"\"language\":\"ru\",\"languageSetting\":\"ru\"") >= 1);
+        assert(Tr("status.retry") != L"Retry preview");
+        assert(Tr("link.notFound", L"x.md").find(L"x.md") != std::wstring::npos);
+        assert(Tr("no.such.key") == L"no.such.key");
+        for (const char* key : kPluginMenuKeys) assert(Tr(key) != std::wstring(key, key + std::strlen(key)));
+        fixture.host.OnSettingsMessage(L"readerLanguage:de");
+        assert(fixture.host.m_config.readerLanguage == L"ru");
+        fixture.host.OnSettingsMessage(L"readerLanguage:auto");
+        // the test host has no Notepad++ window to report a language, so Auto means English here
+        assert(fixture.host.m_config.readerLanguage == L"auto" && !ReaderTextRussian());
+        assert(fixture.Count(L"\"language\":\"en\",\"languageSetting\":\"auto\"") >= 1);
+        assert(Tr("status.retry") == L"Retry preview");
+    }
+
     static void ReadingSettingsAndPalettePriority() {
         Fixture fixture;
         fixture.Ready();
@@ -569,6 +781,89 @@ struct ReaderLifecycleTestPeer {
         fixture.host.OnBufferClosed(9007199254740993ULL);
         assert(fixture.Count(L"\"type\":\"bufferClosed\"") == 1);
     }
+
+    static void HostShortcutsForwardCloseSaveAndToggle() {
+        Fixture fixture;
+        auto& viewer = fixture.host.m_webViewViewer;
+        fixture.host.SetPanelVisible(true);
+
+        // Ctrl+W and Ctrl+F4 forward IDM_FILE_CLOSE; auto-repeat is swallowed without closing a second tab.
+        assert(viewer.HandleAcceleratorKey('W', true, false, false, false));
+        assert(viewer.HandleAcceleratorKey('W', true, false, false, true));
+        assert(viewer.HandleAcceleratorKey(VK_F4, true, false, false, false));
+        assert(viewer.HandleAcceleratorKey('S', true, false, false, false));
+        fixture.DrainHostCommands();
+        assert(fixture.editor.menuCommands.size() == 3);
+        assert(fixture.editor.menuCommands[0] == IDM_FILE_CLOSE);
+        assert(fixture.editor.menuCommands[1] == IDM_FILE_CLOSE);
+        assert(fixture.editor.menuCommands[2] == IDM_FILE_SAVE);
+
+        // Ctrl+Shift+M toggles the panel; browser/editor-local or AltGr combinations pass through untouched.
+        assert(viewer.HandleAcceleratorKey('M', true, true, false, false));
+        fixture.DrainHostCommands();
+        assert(!fixture.host.m_isPanelVisible);
+
+        assert(!viewer.HandleAcceleratorKey('C', true, false, false, false));
+        assert(!viewer.HandleAcceleratorKey('V', true, false, false, false));
+        assert(!viewer.HandleAcceleratorKey('W', true, true, false, false));
+        assert(!viewer.HandleAcceleratorKey('W', true, false, true, false));
+        assert(!viewer.HandleAcceleratorKey('W', false, false, true, false));
+        fixture.DrainHostCommands();
+        assert(fixture.editor.menuCommands.size() == 3);
+    }
+
+    static void HideEditorOverlayLifecycle() {
+        auto isShown = [](HWND hwnd) { return hwnd && (GetWindowLongPtrW(hwnd, GWL_STYLE) & WS_VISIBLE) != 0; };
+        Fixture fixture;
+        auto& host = fixture.host;
+        fixture.Ready();
+        host.SetPanelVisible(true);
+        assert(!host.m_config.hideEditor && !host.m_overlayActive);
+        assert(GetParent(host.m_hViewerHost) == host.m_hPanel);
+
+        // Enabling Hide Editor moves the live viewer host into the full-editor overlay without losing visibility.
+        host.ToggleHideEditor();
+        assert(host.m_config.hideEditor && host.m_overlayActive && host.m_isPanelVisible);
+        assert(GetParent(host.m_hViewerHost) == host.m_hOverlay);
+        assert(isShown(host.m_hOverlay) && !isShown(host.m_hPanel));
+        RECT overlayRc = {}, ownerRc = {};
+        assert(GetClientRect(host.m_hOverlay, &overlayRc) && GetClientRect(fixture.owner, &ownerRc));
+        assert(overlayRc.right == ownerRc.right && overlayRc.bottom == ownerRc.bottom);
+        assert(fixture.Count(L"\"hideEditor\":true") >= 1);
+
+        // Switching to a non-Markdown tab suspends the overlay so the user sees the code editor; returning to .md restores it.
+        fixture.editor.path = L"C:\\reader-test\\code.cpp";
+        fixture.editor.bufferId = 43;
+        host.OnBufferActivated();
+        assert(!host.m_isPanelVisible && !host.m_overlayActive && !isShown(host.m_hOverlay));
+        assert(host.m_config.hideEditor);
+
+        fixture.editor.path = L"C:\\reader-test\\one.md";
+        fixture.editor.bufferId = 42;
+        host.OnBufferActivated();
+        assert(host.m_isPanelVisible && host.m_overlayActive && isShown(host.m_hOverlay));
+        assert(GetParent(host.m_hViewerHost) == host.m_hOverlay);
+
+        // Double-clicking text in preview must not unhide the editor (preserves double-click word selection).
+        host.m_webViewViewer.OnWebMessageReceived(L"jumpToLine:0");
+        assert(host.m_config.hideEditor && host.m_overlayActive && host.m_isPanelVisible);
+        assert(GetParent(host.m_hViewerHost) == host.m_hOverlay);
+        assert(isShown(host.m_hOverlay) && !isShown(host.m_hPanel));
+
+        // Ctrl+Shift+E from WebView2 restores the editor, toggles Hide Editor back on, and Ctrl+Shift+M closes cleanly.
+        assert(host.m_webViewViewer.HandleAcceleratorKey('E', true, true, false, false));
+        fixture.DrainHostCommands();
+        assert(!host.m_config.hideEditor && !host.m_overlayActive && host.m_isPanelVisible);
+        assert(GetParent(host.m_hViewerHost) == host.m_hPanel);
+        assert(!isShown(host.m_hOverlay) && isShown(host.m_hPanel));
+
+        assert(host.m_webViewViewer.HandleAcceleratorKey('E', true, true, false, false));
+        fixture.DrainHostCommands();
+        assert(host.m_config.hideEditor && host.m_overlayActive);
+        assert(host.m_webViewViewer.HandleAcceleratorKey('M', true, true, false, false));
+        fixture.DrainHostCommands();
+        assert(!host.m_isPanelVisible && !host.m_overlayActive && !isShown(host.m_hOverlay));
+    }
 };
 
 int main(int argc, char** argv) {
@@ -583,12 +878,19 @@ int main(int argc, char** argv) {
         {"ForceEmptyAndManualText", Peer::ForceEmptyAndManualText},
         {"SaveAsAndRenamePolicy", Peer::SaveAsAndRenamePolicy},
         {"SettingsWarningLifecycle", Peer::SettingsWarningLifecycle},
+        {"TableWidthsPersistPerDocument", Peer::TableWidthsPersistPerDocument},
+        {"ReadingPlaceAndRenames", Peer::ReadingPlaceAndRenames},
+        {"LinksOpenOnlySafeTargets", Peer::LinksOpenOnlySafeTargets},
+        {"EditorIntegrationDetails", Peer::EditorIntegrationDetails},
         {"TypedOperationResultsAndRequests", Peer::TypedOperationResultsAndRequests},
         {"ExportWarningsReachNativeUi", Peer::ExportWarningsReachNativeUi},
         {"CheckboxProtocolIsStrict", Peer::CheckboxProtocolIsStrict},
         {"CheckboxChangesOnlyVerifiedMarker", Peer::CheckboxChangesOnlyVerifiedMarker},
         {"CheckboxRejectsStaleBufferRevisionAndContent", Peer::CheckboxRejectsStaleBufferRevisionAndContent},
-        {"ReadingSettingsAndPalettePriority", Peer::ReadingSettingsAndPalettePriority}
+        {"ReaderLanguageFollowsSetting", Peer::ReaderLanguageFollowsSetting},
+        {"ReadingSettingsAndPalettePriority", Peer::ReadingSettingsAndPalettePriority},
+        {"HostShortcutsForwardCloseSaveAndToggle", Peer::HostShortcutsForwardCloseSaveAndToggle},
+        {"HideEditorOverlayLifecycle", Peer::HideEditorOverlayLifecycle}
     };
     const char* selected = argc == 3 && std::strcmp(argv[1], "--case") == 0 ? argv[2] : nullptr;
     if (argc != 1 && !selected) { std::cerr << "Usage: test_viewer_lifecycle [--case name]\n"; return 2; }

@@ -1,7 +1,7 @@
 [
-  {"type":"note","nativeType":"Note","aliases":["NOTE","نکته","یادداشت"],"title":"Note","localizedTitle":"نکته"},
-  {"type":"tip","nativeType":"Tip","aliases":["TIP","راهنما","ترفند"],"title":"Tip","localizedTitle":"ترفند"},
-  {"type":"important","nativeType":"Important","aliases":["IMPORTANT","مهم"],"title":"Important","localizedTitle":"مهم"},
-  {"type":"warning","nativeType":"Warning","aliases":["WARNING","هشدار"],"title":"Warning","localizedTitle":"هشدار"},
-  {"type":"caution","nativeType":"Caution","aliases":["CAUTION","احتیاط","خطر"],"title":"Caution","localizedTitle":"احتیاط"}
+  {"type":"note","nativeType":"Note","aliases":["NOTE","نکته","یادداشت","ЗАМЕТКА","ПРИМЕЧАНИЕ"],"title":"Note","localizedTitle":"نکته","aliasTitles":{"ЗАМЕТКА":"Заметка","ПРИМЕЧАНИЕ":"Примечание"}},
+  {"type":"tip","nativeType":"Tip","aliases":["TIP","راهنما","ترفند","СОВЕТ","ПОДСКАЗКА"],"title":"Tip","localizedTitle":"ترفند","aliasTitles":{"СОВЕТ":"Совет","ПОДСКАЗКА":"Подсказка"}},
+  {"type":"important","nativeType":"Important","aliases":["IMPORTANT","مهم","ВАЖНО"],"title":"Important","localizedTitle":"مهم","aliasTitles":{"ВАЖНО":"Важно"}},
+  {"type":"warning","nativeType":"Warning","aliases":["WARNING","هشدار","ВНИМАНИЕ","ПРЕДУПРЕЖДЕНИЕ"],"title":"Warning","localizedTitle":"هشدار","aliasTitles":{"ВНИМАНИЕ":"Внимание","ПРЕДУПРЕЖДЕНИЕ":"Предупреждение"}},
+  {"type":"caution","nativeType":"Caution","aliases":["CAUTION","احتیاط","خطر","ОСТОРОЖНО","ОПАСНО"],"title":"Caution","localizedTitle":"احتیاط","aliasTitles":{"ОСТОРОЖНО":"Осторожно","ОПАСНО":"Опасно"}}
 ]

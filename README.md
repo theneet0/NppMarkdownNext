@@ -7,14 +7,17 @@ NppMarkdownNext is an ultra-lightweight native Markdown reader and live preview 
 - **Self-Contained Reader**: Bundled HTML, CSS, and JavaScript with no frontend package installation or CDN dependency.
 - **Kelk BiDiCore & BidiView**: Flawless Persian, Arabic, Urdu, and Hebrew bidirectional layout with Unicode script classification, character normalization, and isolated code blocks.
 - **GFM & Extensions**:
-  - Headings, blockquotes, callout alerts (`[!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!هشدار]`).
-  - GFM Tables with alignment and responsive styling.
-  - Interactive Task Lists (`- [ ]`, `- [x]`) that synchronize directly with the Notepad++ editor buffer.
-  - Math expressions and Mermaid diagram containers.
+  - Headings, blockquotes, callout alerts (`[!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!هشدار]`, `[!ВАЖНО]`, `[!ВНИМАНИЕ]` …).
+  - GFM Tables with column alignment. A table wider than the reading column uses the free pane width; drag a header cell's right edge to resize a column (double-click resets). Widths are remembered per file across restarts.
+  - Footnotes (`text[^1]` … `[^1]: note`).
+  - Interactive Task Lists (`- [ ]`, `- [x]`) that synchronize directly with the Notepad++ editor buffer (your selection stays where it was).
+  - Images with paths relative to the document's folder; links to other local files open in Notepad++ (documents and images in their default app).
+  - Formulas and Mermaid diagrams are shown as their source text.
 - **Real-Time Caret & Editor Synchronization**: Moving the editor caret scrolls the reader to the matching line. Double-clicking any element in the preview jumps the editor caret straight to the source line.
-- **Preview Themes & Settings**: The animated gear menu provides Follow Notepad++, Light, Dark, Sepia, Monokai, Dracula, Solarized, Nord, GitHub, VS Code Dark, and all 64 Bearded variants, including hover previews. It also controls caret sync, outline, BiDi, auto-show, zoom, HTML copy/export, and dark mode. Open it from the preview or **Plugins > NppMarkdownNext > Settings...**. Existing settings are preserved.
+- **Preview Themes & Settings**: The animated gear menu provides Follow Notepad++, Light, Dark, Sepia, Monokai, Dracula, Solarized, Nord, GitHub, VS Code Dark, and all 64 Bearded variants, including hover previews. It also controls caret sync, outline, BiDi, auto-show, zoom, HTML copy/export, dark mode, and the language of the plugin's own text (English or Russian; by default the language Notepad++ is shown in). Open it from the preview or **Plugins > NppMarkdownNext > Settings...**. Existing settings are preserved.
 - **Zero Network Dependencies**: 100% offline, private, and secure. Zero external font downloads or CDN tracking requests.
-- **Export & Clipboard**: 1-click "Save As HTML" and "Copy Rendered HTML" to clipboard.
+- **Export & Clipboard**: 1-click "Save As HTML" (named after the document, with a contents list for longer documents) and "Copy Rendered HTML" to clipboard.
+- **Reader tools**: right-click menu (copy, copy link, copy code, copy table as HTML + tab-separated text, select all, find, print / save as PDF, outline), a copy button on code blocks and an outline button next to the settings button.
 
 HTML saves use a temporary sibling file and preserve a recoverable original if replacement fails. Clipboard copy publishes HTML and Unicode text; the menu reports the native result, including partial copy and cancellation. Export still uses the native Markdown parser, so complex Markdown structures can differ from the live reader.
 
@@ -67,8 +70,9 @@ A successful installation prints its backup directory. Restore it with `-Rollbac
 | `Ctrl + -` / `-` | Preview panel | Zoom out |
 | `Ctrl + 0` | Preview panel | Reset zoom level to 100% |
 | `Ctrl + Wheel` | Preview panel | Zoom in / out |
-| `Ctrl + F` | Preview panel | Open in-page search bar |
-| `Escape` | Preview panel | Close search bar or Table of Contents drawer |
+| `Ctrl + F` | Preview panel | Open Edge's find bar (prefilled with the selected text) |
+| `Ctrl + P` | Preview panel | Print or save as PDF |
+| `Escape` | Preview panel | Close the context menu, find bar or Table of Contents drawer |
 | `Double-Click` | Preview panel | Jump to source line in Notepad++ |
 
 ## Configuration
@@ -95,9 +99,14 @@ DarkModeOverride=-1
 ; Zoom factor percentage (30 to 300)
 ZoomLevelPercent=100
 
+; Language of the plugin's menus and messages: auto (as Notepad++), en or ru
+ReaderLanguage=auto
+
 ; Comma-separated list of file extensions that trigger auto-render
 SupportedExtensions=.md,.markdown,.mdown,.mkd,.rst
 ```
+
+Only settings changed in this Notepad++ window are written, so two open instances do not overwrite each other's choices. Per-document reader state (resized table columns, the reading place) is kept separately in `NppMarkdownNext.documents.ini` in the same folder (one line per document, keyed by a hash of its path; it follows a renamed or saved-as document).
 
 ## Architecture
 
@@ -171,10 +180,10 @@ These checks create isolated fixtures under the ignored `bin` directory and vali
 
 ### Running Settings UI Checks
 
-Generate the settings UI regression fixture with `python tests/reader_fixture.py`.
-Serve `bin/reader-validation` locally, open the generated reader page, and evaluate
-the async function in `tests/reader_ui_test.js` to check themes, hover previews,
-settings commands, nested lists, and empty content against a mock host.
+Run `python tests/run_reader_ui.py` (needs `pip install playwright` and Microsoft Edge; CI runs it too).
+It builds the mock-host reader page (`tests/reader_fixture.py`) and evaluates `tests/reader_ui_test.js` in Edge:
+themes, settings, language switching, reader tools, export payload, privacy of remote content and layout bounds.
+For the real Notepad++ and WebView2, run `pwsh tests/reader-native-smoke.ps1 -BinaryDirectory bin` after a build.
 
 ## License
 

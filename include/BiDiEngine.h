@@ -24,6 +24,8 @@ public:
     static TextDirection DetectFirstStrongDirection(const std::wstring& text) noexcept;
     static TextDirection DetectDominantDirection(const std::wstring& text) noexcept;
     static bool IsParagraphRTL(const std::wstring& paragraph) noexcept;
+    // "ru", "fa", "ar", "he" or "en": the language a document is most likely written in, by its letters' script.
+    static std::string DocumentLanguage(std::string_view utf8Text);
 
     // Fix punctuation flip and wrap inline code snippets with BiDi isolation marks
     static std::wstring IsolateInlineBiDi(const std::wstring& text, bool isParentRTL);

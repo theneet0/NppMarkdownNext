@@ -33,6 +33,7 @@ public:
     using ZoomChangeCallback = std::function<void(float factor)>;
     using PageReadyCallback = std::function<void()>;
     using InitFailedCallback = std::function<void()>;
+    using HostShortcutCallback = std::function<bool(UINT virtualKey, bool ctrl, bool shift, bool alt, bool isRepeat)>;
 
     WebView2Viewer();
     ~WebView2Viewer();
@@ -44,6 +45,8 @@ public:
     // Window management
     void Resize(int x, int y, int width, int height);
     void SetVisible(bool visible);
+    void NotifyParentWindowPositionChanged();
+    void Focus();
     bool IsInitialized() const { return m_isInitialized; }
     bool IsPageReady() const { return m_isInitialized && m_pageReady; }
 
@@ -53,6 +56,13 @@ public:
     void ScrollToLine(int line);
     void SetTheme(bool isDark, const std::wstring& themeId = L"follow");
     void SetBiDi(bool isBiDi);
+    void SetDocumentState(const std::wstring& kind, const std::wstring& bufferId, const std::wstring& value);
+    void SetDocumentFolder(const std::wstring& folder);
+    void PostNotice(const std::wstring& text);
+    void ScrollToAnchor(const std::wstring& fragment);
+    bool StartFind(const std::wstring& term);
+    bool ShowPrintDialog();
+    const std::wstring& RenderedBufferId() const { return m_renderedBufferId; }
     void SyncUiState(const PluginConfig& config);
     bool ReportOperationResult(const std::wstring& operation, const OperationResult& result, const std::wstring& requestId = L"");
     bool IsCurrentRender(const CheckboxRequest& request) const;
@@ -70,9 +80,11 @@ public:
     void SetZoomChangeCallback(ZoomChangeCallback cb) { m_zoomChangeCallback = cb; }
     void SetPageReadyCallback(PageReadyCallback cb) { m_pageReadyCallback = cb; }
     void SetInitFailedCallback(InitFailedCallback cb) { m_initFailedCallback = cb; }
+    void SetHostShortcutCallback(HostShortcutCallback cb) { m_hostShortcutCallback = cb; }
 
 private:
     bool PostJson(const std::wstring& json);
+    bool HandleAcceleratorKey(UINT virtualKey, bool ctrl, bool shift, bool alt, bool isRepeat = false);
     std::function<HRESULT(HRESULT, ICoreWebView2Environment*)> MakeEnvironmentCallback();
     std::function<HRESULT(HRESULT, ICoreWebView2Controller*)> MakeControllerCallback();
     void OnEnvironmentCreated(HRESULT result, ICoreWebView2Environment* env);
@@ -108,6 +120,7 @@ private:
     } m_pendingRender;
     ULONGLONG m_renderSequence = 0;
     std::wstring m_renderedBufferId;
+    std::wstring m_documentFolder; // folder mapped to the virtual document host, empty when none
 
     CheckboxCallback m_checkboxCallback;
     JumpToLineCallback m_jumpToLineCallback;
@@ -119,6 +132,7 @@ private:
     ZoomChangeCallback m_zoomChangeCallback;
     PageReadyCallback m_pageReadyCallback;
     InitFailedCallback m_initFailedCallback;
+    HostShortcutCallback m_hostShortcutCallback;
 #ifdef NPP_READER_TESTING
     friend struct ReaderLifecycleTestPeer;
     std::function<HRESULT(const std::wstring&)> m_testPostJson;

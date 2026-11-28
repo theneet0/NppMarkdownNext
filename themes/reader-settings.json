@@ -1,0 +1,9 @@
+{
+  "version": "1.6.0",
+  "presets": {
+    "fontSizePx": [15, 17, 19],
+    "lineHeightPercent": [150, 170, 190],
+    "maxWidthPx": [0, 1100, 860, 680]
+  },
+  "outlineWidthPx": {"min": 200, "max": 640, "default": 280}
+}

@@ -1,6 +1,8 @@
 #include "../include/WebView2Viewer.h"
 #include "../include/BiDiEngine.h"
 #include "../include/NppLog.h"
+#include "../include/LinkPolicy.h"
+#include "../include/ReaderText.h"
 #include "../include/Config.h"
 #include "KelkBundle.inc"
 #include "ReaderThemes.inc"
@@ -15,6 +17,36 @@
 #include <climits>
 
 namespace {
+
+void MatchSystemDpi(HWND parent, ICoreWebView2* view, ICoreWebView2Controller* controller) {
+    const HMODULE user32 = GetModuleHandleW(L"user32.dll");
+    static const auto getContext = reinterpret_cast<HANDLE (WINAPI*)(HWND)>(GetProcAddress(user32, "GetWindowDpiAwarenessContext"));
+    static const auto sameContext = reinterpret_cast<BOOL (WINAPI*)(HANDLE, HANDLE)>(GetProcAddress(user32, "AreDpiAwarenessContextsEqual"));
+    static const auto windowDpi = reinterpret_cast<UINT (WINAPI*)(HWND)>(GetProcAddress(user32, "GetDpiForWindow"));
+    static const auto processDpi = reinterpret_cast<UINT (WINAPI*)(HANDLE)>(GetProcAddress(user32, "GetSystemDpiForProcess"));
+    if (!getContext || !sameContext || !windowDpi || !processDpi ||
+        !sameContext(getContext(parent), DPI_AWARENESS_CONTEXT_SYSTEM_AWARE)) return;
+
+    UINT32 pid = 0;
+    if (FAILED(view->get_BrowserProcessId(&pid)) || !pid) return;
+    HANDLE browser = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (!browser) return;
+    const UINT browserDpi = processDpi(browser);
+    CloseHandle(browser);
+    const UINT hostDpi = windowDpi(parent);
+    if (!hostDpi || !browserDpi || browserDpi == hostDpi) return;
+
+    // A browser started after a scale change can have a different system DPI from the still-running host.
+    ICoreWebView2Controller3* dpiController = nullptr;
+    if (FAILED(controller->QueryInterface(IID_ICoreWebView2Controller3, reinterpret_cast<void**>(&dpiController)))) return;
+    if (SUCCEEDED(dpiController->put_ShouldDetectMonitorScaleChanges(FALSE))) {
+        if (FAILED(dpiController->put_RasterizationScale(hostDpi / 96.0)))
+            dpiController->put_ShouldDetectMonitorScaleChanges(TRUE);
+        else
+            NppLog("WebView2 rasterization matched to panel DPI %u (browser DPI %u)", hostDpi, browserDpi);
+    }
+    dpiController->Release();
+}
 
 bool ParseCheckboxRequest(const std::wstring& value, CheckboxRequest& request) {
     std::array<ULONGLONG, 5> fields = {};
@@ -171,6 +203,26 @@ public:
     }
 };
 
+class AcceleratorKeyPressedHandler : public ICoreWebView2AcceleratorKeyPressedEventHandler {
+    LONG m_ref = 1;
+    std::function<HRESULT(ICoreWebView2Controller*, ICoreWebView2AcceleratorKeyPressedEventArgs*)> m_func;
+public:
+    explicit AcceleratorKeyPressedHandler(std::function<HRESULT(ICoreWebView2Controller*, ICoreWebView2AcceleratorKeyPressedEventArgs*)> func) : m_func(std::move(func)) {}
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override {
+        if (!object) return E_POINTER;
+        *object = nullptr;
+        if (riid != IID_IUnknown && riid != IID_ICoreWebView2AcceleratorKeyPressedEventHandler) return E_NOINTERFACE;
+        *object = static_cast<ICoreWebView2AcceleratorKeyPressedEventHandler*>(this);
+        AddRef();
+        return S_OK;
+    }
+    ULONG STDMETHODCALLTYPE AddRef() override { return InterlockedIncrement(&m_ref); }
+    ULONG STDMETHODCALLTYPE Release() override { ULONG ref = InterlockedDecrement(&m_ref); if (!ref) delete this; return ref; }
+    HRESULT STDMETHODCALLTYPE Invoke(ICoreWebView2Controller* sender, ICoreWebView2AcceleratorKeyPressedEventArgs* args) override {
+        return m_func ? m_func(sender, args) : S_OK;
+    }
+};
+
 class ProcessFailedHandler : public ICoreWebView2ProcessFailedEventHandler {
     LONG m_ref = 1;
     std::function<HRESULT(ICoreWebView2ProcessFailedEventArgs*)> m_func;
@@ -277,6 +329,7 @@ void WebView2Viewer::Close() {
     m_lifetime.reset();
     m_pendingRender = {};
     m_renderedBufferId.clear();
+    m_documentFolder.clear(); // the mapping belongs to the closed webview
     ++m_renderSequence;
     if (m_pWebView) {
         m_pWebView->Release();
@@ -421,6 +474,7 @@ void WebView2Viewer::OnControllerCreated(HRESULT result, ICoreWebView2Controller
     HRESULT coreHr = m_pController->get_CoreWebView2(&m_pWebView);
     NppLog("OnControllerCreated: get_CoreWebView2 hr=0x%08X web=%p", (unsigned)coreHr, (void*)m_pWebView);
     if (SUCCEEDED(coreHr) && m_pWebView) {
+        MatchSystemDpi(m_hParent, m_pWebView, m_pController);
         // Disable default browser context menus so our clean reader experience takes over
         ICoreWebView2Settings* settings = nullptr;
         if (SUCCEEDED(m_pWebView->get_Settings(&settings)) && settings) {
@@ -498,6 +552,32 @@ void WebView2Viewer::OnControllerCreated(HRESULT result, ICoreWebView2Controller
         m_pController->add_ZoomFactorChanged(zoomHandler, &zoomToken);
         zoomHandler->Release();
 
+        // Forward host-level shortcuts (Ctrl+W, Ctrl+F4, Ctrl+S, Ctrl+Shift+M) back to Notepad++
+        EventRegistrationToken accelToken;
+        auto* accelHandler = new AcceleratorKeyPressedHandler(
+            [this, lifetime = m_lifetime](ICoreWebView2Controller*, ICoreWebView2AcceleratorKeyPressedEventArgs* args) -> HRESULT {
+                if (!lifetime->active || !args) return S_OK;
+                COREWEBVIEW2_KEY_EVENT_KIND kind = COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN;
+                if (FAILED(args->get_KeyEventKind(&kind)) ||
+                    (kind != COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN && kind != COREWEBVIEW2_KEY_EVENT_KIND_SYSTEM_KEY_DOWN)) {
+                    return S_OK;
+                }
+                COREWEBVIEW2_PHYSICAL_KEY_STATUS status = {};
+                const bool isRepeat = SUCCEEDED(args->get_PhysicalKeyStatus(&status)) && status.WasKeyDown;
+                UINT vk = 0;
+                if (FAILED(args->get_VirtualKey(&vk))) return S_OK;
+                const bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+                const bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+                const bool alt = (GetKeyState(VK_MENU) & 0x8000) != 0;
+                if (HandleAcceleratorKey(vk, ctrl, shift, alt, isRepeat)) {
+                    args->put_Handled(TRUE);
+                }
+                return S_OK;
+            }
+        );
+        m_pController->add_AcceleratorKeyPressed(accelHandler, &accelToken);
+        accelHandler->Release();
+
         EventRegistrationToken processToken;
         auto* processHandler = new ProcessFailedHandler([this, lifetime = m_lifetime](ICoreWebView2ProcessFailedEventArgs* args) {
             if (!lifetime->active) return S_OK;
@@ -564,6 +644,18 @@ void WebView2Viewer::SetVisible(bool visible) {
     }
 }
 
+void WebView2Viewer::NotifyParentWindowPositionChanged() {
+    if (m_pController) {
+        m_pController->NotifyParentWindowPositionChanged();
+    }
+}
+
+void WebView2Viewer::Focus() {
+    if (m_pController) {
+        m_pController->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+    }
+}
+
 void WebView2Viewer::SetZoom(float zoomFactor) {
     m_zoom = zoomFactor;
     if (m_pController) {
@@ -583,6 +675,87 @@ void WebView2Viewer::SetBiDi(bool isBiDi) {
     PostJson(L"{\"type\":\"setBiDi\",\"isBiDi\":" + std::wstring(isBiDi ? L"true" : L"false") + L"}");
 }
 
+namespace {
+class FindStartedHandler : public ICoreWebView2FindStartCompletedHandler {
+    LONG m_ref = 1;
+public:
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override {
+        if (!object) return E_POINTER;
+        *object = nullptr;
+        if (riid != IID_IUnknown && riid != IID_ICoreWebView2FindStartCompletedHandler) return E_NOINTERFACE;
+        *object = static_cast<ICoreWebView2FindStartCompletedHandler*>(this);
+        AddRef();
+        return S_OK;
+    }
+    ULONG STDMETHODCALLTYPE AddRef() override { return InterlockedIncrement(&m_ref); }
+    ULONG STDMETHODCALLTYPE Release() override { ULONG ref = InterlockedDecrement(&m_ref); if (!ref) delete this; return ref; }
+    HRESULT STDMETHODCALLTYPE Invoke(HRESULT errorCode) override {
+        if (FAILED(errorCode)) NppLog("Find start failed hr=0x%08X", (unsigned)errorCode);
+        return S_OK;
+    }
+};
+
+template <class T> void ReleaseCom(T*& pointer) { if (pointer) { pointer->Release(); pointer = nullptr; } }
+
+}
+
+void WebView2Viewer::ScrollToAnchor(const std::wstring& fragment) {
+    PostJson(L"{\"type\":\"scrollToAnchor\",\"id\":\"" + EscapeJsonString(fragment) + L"\"}");
+}
+
+void WebView2Viewer::PostNotice(const std::wstring& text) {
+    PostJson(L"{\"type\":\"notice\",\"text\":\"" + EscapeJsonString(text) + L"\"}");
+}
+
+// Edge's own find bar (ICoreWebView2Find, runtime 1.0.2849+), seeded with the reader's selection.
+bool WebView2Viewer::StartFind(const std::wstring& term) {
+    ICoreWebView2_28* webView = nullptr;
+    ICoreWebView2Environment15* environment = nullptr;
+    ICoreWebView2Find* find = nullptr;
+    ICoreWebView2FindOptions* options = nullptr;
+    bool started = false;
+    if (m_pWebView && m_pEnvironment &&
+        SUCCEEDED(m_pWebView->QueryInterface(IID_ICoreWebView2_28, reinterpret_cast<void**>(&webView))) &&
+        SUCCEEDED(webView->get_Find(&find)) && find &&
+        SUCCEEDED(m_pEnvironment->QueryInterface(IID_ICoreWebView2Environment15, reinterpret_cast<void**>(&environment))) &&
+        SUCCEEDED(environment->CreateFindOptions(&options)) && options) {
+        options->put_FindTerm(term.c_str());
+        options->put_ShouldHighlightAllMatches(TRUE);
+        auto* handler = new FindStartedHandler();
+        started = SUCCEEDED(find->Start(options, handler));
+        handler->Release();
+    }
+    ReleaseCom(options); ReleaseCom(environment); ReleaseCom(find); ReleaseCom(webView);
+    if (!started) PostNotice(Tr("runtime.find"));
+    return started;
+}
+
+bool WebView2Viewer::ShowPrintDialog() {
+    ICoreWebView2_16* webView = nullptr;
+    bool shown = m_pWebView && SUCCEEDED(m_pWebView->QueryInterface(IID_ICoreWebView2_16, reinterpret_cast<void**>(&webView))) &&
+                 SUCCEEDED(webView->ShowPrintUI(COREWEBVIEW2_PRINT_DIALOG_KIND_BROWSER));
+    ReleaseCom(webView);
+    if (!shown) PostNotice(Tr("runtime.print"));
+    return shown;
+}
+
+// Relative images resolve against the document's folder through a virtual host (NavigateToString pages
+// have no base URL). Only that folder tree is reachable, read-only, without CORS.
+void WebView2Viewer::SetDocumentFolder(const std::wstring& folder) {
+    if (folder == m_documentFolder) return;
+    ICoreWebView2_3* webView = nullptr;
+    if (!m_pWebView || FAILED(m_pWebView->QueryInterface(IID_ICoreWebView2_3, reinterpret_cast<void**>(&webView)))) return;
+    if (!m_documentFolder.empty()) webView->ClearVirtualHostNameToFolderMapping(kDocumentHost);
+    m_documentFolder.clear();
+    if (!folder.empty() && SUCCEEDED(webView->SetVirtualHostNameToFolderMapping(kDocumentHost, folder.c_str(), COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS)))
+        m_documentFolder = folder;
+    ReleaseCom(webView);
+}
+
+void WebView2Viewer::SetDocumentState(const std::wstring& kind, const std::wstring& bufferId, const std::wstring& value) {
+    PostJson(L"{\"type\":\"documentState\",\"kind\":\"" + EscapeJsonString(kind) + L"\",\"bufferId\":\"" + EscapeJsonString(bufferId) + L"\",\"value\":\"" + EscapeJsonString(value) + L"\"}");
+}
+
 void WebView2Viewer::SyncUiState(const PluginConfig& config) {
     std::wstringstream json;
     json << L"{\"type\":\"settings\",\"sync\":" << (config.syncWithCaret ? L"true" : L"false")
@@ -592,10 +765,14 @@ void WebView2Viewer::SyncUiState(const PluginConfig& config) {
          << L",\"themeId\":\"" << EscapeJsonString(config.ThemeId()) << L"\""
          << L",\"zoomPercent\":" << static_cast<int>(config.zoomLevel * 100.0f + 0.5f)
          << L",\"autoShow\":" << (config.autoShowPanel ? L"true" : L"false")
+         << L",\"hideEditor\":" << (config.hideEditor ? L"true" : L"false")
          << L",\"outline\":" << (config.showOutline ? L"true" : L"false")
          << L",\"fontSizePx\":" << config.contentFontSizePx
          << L",\"lineHeightPercent\":" << config.contentLineHeightPercent
-         << L",\"maxWidthPx\":" << config.contentMaxWidthPx << L"}";
+         << L",\"maxWidthPx\":" << config.contentMaxWidthPx
+         << L",\"outlineWidthPx\":" << config.outlineWidthPx
+         << L",\"language\":\"" << (ReaderTextRussian() ? L"ru" : L"en") << L"\""
+         << L",\"languageSetting\":\"" << EscapeJsonString(config.readerLanguage) << L"\"}";
     PostJson(json.str());
 }
 
@@ -675,7 +852,9 @@ bool WebView2Viewer::UpdateMarkdown(const std::string& markdownUtf8, const std::
          << L",\"isBiDi\":" << (isBiDi ? L"true" : L"false")
          << L",\"caretLine\":" << caretLine
          << L",\"bufferId\":\"" << EscapeJsonString(bufferId) << L"\""
+         << L",\"lang\":\"" << BiDiEngine::Utf8ToWide(BiDiEngine::DocumentLanguage(markdownUtf8)) << L"\""
          << L",\"renderRevision\":\"" << sequence << L"\""
+         << L",\"docBase\":\"" << (m_documentFolder.empty() ? L"" : std::wstring(L"https://") + kDocumentHost + L"/") << L"\""
          << L"}";
 
     bool posted = PostJson(json.str());
@@ -687,9 +866,14 @@ bool WebView2Viewer::UpdateMarkdown(const std::string& markdownUtf8, const std::
     return posted;
 }
 
+bool WebView2Viewer::HandleAcceleratorKey(UINT virtualKey, bool ctrl, bool shift, bool alt, bool isRepeat) {
+    return m_hostShortcutCallback && m_hostShortcutCallback(virtualKey, ctrl, shift, alt, isRepeat);
+}
+
 void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
-    std::string msgUtf8 = BiDiEngine::WideToUtf8(message);
-    NppLog("OnWebMessageReceived: %s", msgUtf8.c_str());
+    // Only the command name: payloads carry link targets, search text and document paths.
+    const std::string command = BiDiEngine::WideToUtf8(message.substr(0, (std::min)(message.find(L':'), static_cast<size_t>(40))));
+    NppLog("OnWebMessageReceived: %s (%u chars)", command.c_str(), static_cast<unsigned>(message.size()));
 
     const std::wstring prefixError = L"jsError:";
     if (message.find(prefixError) == 0) {
@@ -737,6 +921,8 @@ void WebView2Viewer::OnWebMessageReceived(const std::wstring& message) {
         if (m_syncCallback) m_syncCallback();
         return;
     }
+    if (message == L"print") { ShowPrintDialog(); return; }
+    if (message == L"find" || message.starts_with(L"find:")) { StartFind(message.size() > 5 ? message.substr(5, 256) : L""); return; }
 
     if (message == L"toggleDark") {
         if (m_themeCallback) m_themeCallback();

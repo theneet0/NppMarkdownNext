@@ -109,6 +109,34 @@ TextDirection BiDiEngine::DetectFirstStrongDirection(const std::wstring& text) n
     return TextDirection::Neutral;
 }
 
+// The script most letters use decides (markup between '<' and '>' is skipped, the first 64 KB are enough):
+// Cyrillic is "ru", Arabic script "fa" when Persian-only letters appear and "ar" otherwise, Hebrew "he", else "en".
+std::string BiDiEngine::DocumentLanguage(std::string_view utf8Text) {
+    size_t end = std::min<size_t>(utf8Text.size(), 64 * 1024);
+    while (end > 0 && end < utf8Text.size() && (static_cast<unsigned char>(utf8Text[end]) & 0xC0) == 0x80) --end; // whole characters
+    size_t latin = 0, cyrillic = 0, arabic = 0, hebrew = 0;
+    bool persian = false, inTag = false;
+    const std::wstring text = Utf8ToWide(utf8Text.substr(0, end));
+    for (size_t i = 0; i < text.size(); ++i) {
+        const wchar_t ch = text[i], next = i + 1 < text.size() ? text[i + 1] : L'\0';
+        if (ch == L'<' && (iswalpha(next) || next == L'/' || next == L'!')) inTag = true;
+        else if (ch == L'>') inTag = false;
+        else if (inTag) continue;
+        else if ((ch >= L'A' && ch <= L'Z') || (ch >= L'a' && ch <= L'z') || (ch >= 0xC0 && ch <= 0x24F && ch != 0xD7 && ch != 0xF7)) ++latin;
+        else if (ch >= 0x400 && ch <= 0x4FF) ++cyrillic;
+        else if (ch >= 0x590 && ch <= 0x5FF) ++hebrew;
+        else if ((ch >= 0x600 && ch <= 0x6FF) || (ch >= 0xFB50 && ch <= 0xFDFF) || (ch >= 0xFE70 && ch <= 0xFEFF)) {
+            ++arabic;
+            persian = persian || ch == 0x67E || ch == 0x686 || ch == 0x698 || ch == 0x6AF; // پ چ ژ گ
+        }
+    }
+    const size_t best = (std::max)({latin, cyrillic, arabic, hebrew});
+    if (best == 0 || best == latin) return "en";
+    if (best == cyrillic) return "ru";
+    if (best == arabic) return persian ? "fa" : "ar";
+    return "he";
+}
+
 TextDirection BiDiEngine::DetectDominantDirection(const std::wstring& text) noexcept {
     size_t rtlCount = 0;
     size_t ltrCount = 0;

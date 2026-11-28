@@ -39,6 +39,12 @@ public:
     static std::wstring ExportToHtml(const MarkdownDocument& doc, const std::wstring& title, PreviewTheme theme, const std::wstring& beardedVariant = L"");
     static OperationResult SaveToFile(const std::wstring& filePath, const MarkdownDocument& doc, const std::wstring& title, PreviewTheme theme, const std::wstring& beardedVariant = L"");
     static OperationResult CopyToClipboard(HWND hwndOwner, const MarkdownDocument& doc, const std::wstring& title, PreviewTheme theme, const std::wstring& beardedVariant = L"");
+    // Export of what the reader shows (its sanitized, rendered body); the parser-based calls above are the fallback.
+    static OperationResult SaveRenderedToFile(const std::wstring& filePath, const std::string& bodyHtmlUtf8, const std::wstring& title, PreviewTheme theme, const std::wstring& beardedVariant = L"");
+    static OperationResult CopyRenderedToClipboard(HWND hwndOwner, const std::string& fragmentUtf8, const std::wstring& plainText);
+    static std::string EmbedDocumentImages(const std::string& htmlUtf8, const std::wstring& folder);
+    static std::string WrapDocument(const std::string& bodyHtmlUtf8, const std::string& tocHtmlUtf8, const std::wstring& title,
+                                    PreviewTheme theme, int darkModeOverride, const std::wstring& beardedVariant, bool includeScripts);
 
     static std::wstring EscapeHtml(const std::wstring& str);
     static std::string EscapeHtmlUtf8(const std::string& str);
@@ -47,6 +53,7 @@ public:
 
 private:
     static std::string GenerateCfHtml(const std::string& htmlFragment);
+    static OperationResult CopyFragmentToClipboard(HWND hwndOwner, const std::string& fragmentUtf8, const std::wstring& plain);
     static std::wstring DocumentToPlainText(const MarkdownDocument& doc);
 };
 

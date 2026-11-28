@@ -61,6 +61,8 @@ try {
     New-Item -ItemType Directory -Path $emptyReleaseRoot | Out-Null
     $emptyReleaseScript = Join-Path $emptyReleaseRoot 'makerelease.ps1'
     Copy-Item -LiteralPath (Join-Path $script:PackageTestProject 'makerelease.ps1') -Destination $emptyReleaseScript
+    New-Item -ItemType Directory -Path (Join-Path $emptyReleaseRoot 'include') | Out-Null
+    Copy-Item -LiteralPath (Join-Path $script:PackageTestProject 'include\Version.h') -Destination (Join-Path $emptyReleaseRoot 'include')
     $releaseProcess = Start-Process -FilePath $shell -WindowStyle Hidden -Wait -PassThru -ArgumentList @('-NoProfile','-File',$emptyReleaseScript) -RedirectStandardOutput (Join-Path $scratch 'empty-release.out') -RedirectStandardError (Join-Path $scratch 'empty-release.err')
     $releaseError = Get-Content -LiteralPath (Join-Path $scratch 'empty-release.err') -Raw
     Assert-PackageTest ($releaseProcess.ExitCode -ne 0 -and $releaseError -match 'no release packages were produced') 'Package_EmptyReleaseCommandFails'
@@ -92,6 +94,8 @@ try {
         New-Item -ItemType Directory -Path (Split-Path $file -Parent) -Force | Out-Null
         [IO.File]::WriteAllText($file,'fixture')
     }
+    New-Item -ItemType Directory -Path (Join-Path $fixtureRoot 'include') -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $script:PackageTestProject 'include/Version.h') -Destination (Join-Path $fixtureRoot 'include')
     $script:PluginRoot = $fixtureRoot
     $binary = Join-Path $fixtureRoot 'bin'
     New-Item -ItemType Directory -Path $binary | Out-Null

@@ -1,12 +1,13 @@
 #include <windows.h>
 #include "../include/Resource.h"
+#include "../include/Version.h"
 
 IDI_ICON_PANEL ICON "md.ico"
 IDB_TOOLBAR_BMP BITMAP "markdown-16x16-solid.bmp"
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     1,6,0,0
-PRODUCTVERSION  1,6,0,0
+FILEVERSION     NPPMD_VERSION_MAJOR,NPPMD_VERSION_MINOR,NPPMD_VERSION_PATCH,0
+PRODUCTVERSION  NPPMD_VERSION_MAJOR,NPPMD_VERSION_MINOR,NPPMD_VERSION_PATCH,0
 FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
 FILEFLAGS       0
 FILEOS          VOS_NT_WINDOWS32
@@ -19,12 +20,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "theneet0"
             VALUE "FileDescription",  "NppMarkdownNext - Lightweight Kelk Markdown Reader for Notepad++"
-            VALUE "FileVersion",      "1.6.0.0"
+            VALUE "FileVersion",      NPPMD_VERSION_STRING4
             VALUE "InternalName",     "NppMarkdownNext"
             VALUE "LegalCopyright",   "Copyright (c) 2026 theneet0"
             VALUE "OriginalFilename", "NppMarkdownNext.dll"
             VALUE "ProductName",      "NppMarkdownNext"
-            VALUE "ProductVersion",   "1.6.0.0"
+            VALUE "ProductVersion",   NPPMD_VERSION_STRING4
         END
     END
     BLOCK "VarFileInfo"

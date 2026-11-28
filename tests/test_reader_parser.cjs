@@ -114,8 +114,11 @@ test('Footnotes', () => {
 test('DuplicateHeadingIdsStayLinear', () => {
     const used = new Set(['a-2']), suffixes = new Map();
     assert.deepEqual(['A', 'A', 'A', 'A'].map(text => slugHeading(text, used, suffixes)), ['a', 'a-1', 'a-3', 'a-4']);
-    const started = Date.now(), many = new Set(), cache = new Map();
+    const many = new Set(), cache = new Map();
+    let probes = 0;
+    const origHas = many.has.bind(many);
+    many.has = key => { probes++; return origHas(key); };
     for (let i = 0; i < 5000; i++) slugHeading('Same heading', many, cache);
-    assert.ok(Date.now() - started < 300, '5000 identical headings stay fast');
+    assert.ok(many.size === 5000 && probes <= 10000, '5000 identical headings stay O(N) (' + probes + ' probes)');
 });
 process.stdout.write('All ' + passed + ' parser suites passed.\n');
